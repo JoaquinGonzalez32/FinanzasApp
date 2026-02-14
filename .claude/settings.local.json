@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s \"C:\\\\Users\\\\joaqu\\\\OneDrive\\\\Escritorio\\\\FinanzaApp\")",
+      "Bash(npm install:*)",
+      "Bash(node -e \"\nconst url = ''https://cwefayzuzyjdfnkuhicu.supabase.co'';\nconst key = ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3ZWZheXp1enlqZGZua3VoaWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0MDI4MjUsImV4cCI6MjA4NTk3ODgyNX0.EFa0a6Jpr97B6HO5MSVSeCCLBV8TBxM03o3HCbu0x-g'';\nfetch\\(url + ''/rest/v1/categories?limit=1'', {\n  headers: { ''apikey'': key, ''Authorization'': ''Bearer '' + key }\n}\\).then\\(r => r.text\\(\\)\\).then\\(t => console.log\\(''categories:'', t.substring\\(0,200\\)\\)\\)\n.catch\\(e => console.log\\(''err:'', e.message\\)\\);\n\")",
+      "Bash(node -e \"\nconst url = ''https://cwefayzuzyjdfnkuhicu.supabase.co'';\nconst key = ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3ZWZheXp1enlqZGZua3VoaWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0MDI4MjUsImV4cCI6MjA4NTk3ODgyNX0.EFa0a6Jpr97B6HO5MSVSeCCLBV8TBxM03o3HCbu0x-g'';\nconst headers = { ''apikey'': key, ''Authorization'': ''Bearer '' + key };\n\nPromise.all\\([\n  fetch\\(url + ''/rest/v1/categories?limit=1'', { headers }\\).then\\(r => r.text\\(\\).then\\(t => \\({ status: r.status, body: t }\\)\\)\\),\n  fetch\\(url + ''/rest/v1/transactions?limit=1'', { headers }\\).then\\(r => r.text\\(\\).then\\(t => \\({ status: r.status, body: t }\\)\\)\\),\n]\\).then\\(\\([cats, txs]\\) => {\n  console.log\\(''categories:'', cats.status, cats.body.substring\\(0, 200\\)\\);\n  console.log\\(''transactions:'', txs.status, txs.body.substring\\(0, 200\\)\\);\n}\\);\n\")",
+      "Bash(node -e \"\nconst url = ''https://cwefayzuzyjdfnkuhicu.supabase.co'';\nconst key = ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3ZWZheXp1enlqZGZua3VoaWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0MDI4MjUsImV4cCI6MjA4NTk3ODgyNX0.EFa0a6Jpr97B6HO5MSVSeCCLBV8TBxM03o3HCbu0x-g'';\nconst headers = { \n  ''apikey'': key, \n  ''Authorization'': ''Bearer '' + key,\n  ''Content-Type'': ''application/json'',\n  ''Prefer'': ''return=representation''\n};\n\n// Try inserting without auth to see if RLS blocks it\nfetch\\(url + ''/rest/v1/categories'', { \n  method: ''POST'', \n  headers,\n  body: JSON.stringify\\({ name: ''test'', icon: ''test'', color: ''orange'', type: ''expense'', sort_order: 0 }\\)\n}\\).then\\(r => r.text\\(\\).then\\(t => console.log\\(''insert test:'', r.status, t\\)\\)\\);\n\")",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx expo export:*)"
+    ]
+  }
+}

@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>FinanzasPro - App de Finanzas Personales</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "card-dark": "#1c2632",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem", 
+                        "lg": "0.5rem", 
+                        "xl": "0.75rem", 
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-1 { font-variation-settings: 'FILL' 1; }
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .calendar-dot { width: 4px; height: 4px; border-radius: 50%; }
+        .ios-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-[#111418] dark:text-white min-h-screen">
+    <div id="root"></div>
+
+    <!-- React and Dependencies -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/history@5/umd/history.development.js"></script>
+    <script src="https://unpkg.com/react-router@6.3.0/umd/react-router.development.js"></script>
+    <script src="https://unpkg.com/react-router-dom@6.3.0/umd/react-router-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
+        const { MemoryRouter, Routes, Route, Link, useNavigate, useLocation } = ReactRouterDOM;
+
+        // --- Shared Components ---
+
+        const BottomNav = ({ active }) => {
+            const navigate = useNavigate();
+            return (
+                <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/80 dark:bg-background-dark/80 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 px-6 py-3 flex justify-between items-center z-50">
+                    <button onClick={() => navigate('/')} className={`flex flex-col items-center gap-1 ${active === 'home' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}>
+                        <span className={`material-symbols-outlined ${active === 'home' ? 'fill-1' : ''}`}>home</span>
+                        <span className="text-[10px] font-bold">Inicio</span>
+                    </button>
+                    <button onClick={() => navigate('/dashboard')} className={`flex flex-col items-center gap-1 ${active === 'stats' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}>
+                        <span className={`material-symbols-outlined ${active === 'stats' ? 'fill-1' : ''}`}>analytics</span>
+                        <span className="text-[10px] font-bold">Análisis</span>
+                    </button>
+                    <button onClick={() => navigate('/calendar')} className={`flex flex-col items-center gap-1 ${active === 'diary' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}>
+                        <span className={`material-symbols-outlined ${active === 'diary' ? 'fill-1' : ''}`}>calendar_today</span>
+                        <span className="text-[10px] font-bold">Diario</span>
+                    </button>
+                    <button onClick={() => navigate('/categories')} className={`flex flex-col items-center gap-1 ${active === 'mgmt' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}>
+                        <span className={`material-symbols-outlined ${active === 'mgmt' ? 'fill-1' : ''}`}>category</span>
+                        <span className="text-[10px] font-bold">Gestión</span>
+                    </button>
+                </nav>
+            );
+        };
+
+        const TransactionItem = ({ icon, label, sub, amount, colorClass, iconBg }) => (
+            <div className="flex items-center gap-4 bg-white dark:bg-slate-900/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800/60">
+                <div className={`size-12 rounded-lg ${iconBg} flex items-center justify-center`}>
+                    <span className="material-symbols-outlined">{icon}</span>
+                </div>
+                <div className="flex-1">
+                    <p className="font-bold text-sm">{label}</p>
+                    <p className="text-xs text-slate-500">{sub}</p>
+                </div>
+                <p className={`font-extrabold text-sm ${colorClass}`}>{amount}</p>
+            </div>
+        );
+
+        // --- Screens ---
+
+        const HomeScreen = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="relative mx-auto min-h-screen max-w-[480px] flex flex-col bg-background-light dark:bg-background-dark overflow-x-hidden pb-24">
+                    <header className="flex items-center p-4 pb-2 justify-between">
+                        <div className="flex size-12 shrink-0 items-center">
+                            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/20" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCrxxNAqSn-huJLa0HR4sQsu9MGo39XJbZ5egZWTTj70qtIIIBzealiJ_eBjUFp4JPKcMCpDPFv5cLiRp6ShPUTFjAdcmJpe-YlTAkwpsyqlq0coEV3hSAGkAzeUnTjiK0k609ZJbr18TS_4MBjy_z_8XV8xWmyUaSVQadtijEwz2FkBMCP95YGPAbaS1LokTOAp537iygZHCIn4hFiALTWuN7kcyavqfnbUKDzdvDhDxTn_JYkPI9f_VfUqdIGoV2gRUHVHvewgys")'}}></div>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <h2 className="text-lg font-bold leading-tight tracking-tight">Hola, Alex</h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Lunes, 24 de Octubre</p>
+                        </div>
+                        <div className="flex w-12 items-center justify-end">
+                            <button className="flex items-center justify-center rounded-lg h-10 w-10 hover:bg-slate-200 dark:hover:bg-slate-800">
+                                <span className="material-symbols-outlined">notifications</span>
+                            </button>
+                        </div>
+                    </header>
+                    <section className="flex flex-col items-center px-4 py-8">
+                        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Saldo disponible del mes</p>
+                        <h1 className="text-[40px] font-extrabold tracking-tight text-primary">$2,450.00</h1>
+                        <div className="mt-4 bg-white dark:bg-slate-800/50 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700">
+                            <p className="text-xs font-medium text-center">
+                                Hoy gastaste <span className="text-red-500 font-bold">$45.00</span> e ingresaste <span className="text-green-500 font-bold">$0.00</span>
+                            </p>
+                        </div>
+                    </section>
+                    <section className="px-4 py-2">
+                        <div className="flex gap-3 justify-center">
+                            <button onClick={() => navigate('/new')} className="flex flex-1 items-center justify-center gap-2 rounded-xl h-14 bg-primary text-white text-base font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform">
+                                <span className="material-symbols-outlined">add_circle</span>
+                                <span>Gasto</span>
+                            </button>
+                            <button onClick={() => navigate('/new')} className="flex flex-1 items-center justify-center gap-2 rounded-xl h-14 bg-white dark:bg-slate-800 text-primary border-2 border-primary/10 dark:border-primary/20 text-base font-bold active:scale-95 transition-transform">
+                                <span className="material-symbols-outlined">account_balance_wallet</span>
+                                <span>Ingreso</span>
+                            </button>
+                        </div>
+                    </section>
+                    <section className="px-4 py-6">
+                        <div onClick={() => navigate('/planning')} className="cursor-pointer bg-primary/5 dark:bg-primary/10 rounded-xl p-4 flex items-center gap-4 border border-primary/10">
+                            <div className="bg-primary/20 p-2 rounded-lg text-primary">
+                                <span className="material-symbols-outlined">trending_down</span>
+                            </div>
+                            <p className="text-sm leading-snug">
+                                <span className="font-bold">¡Vas bien!</span> Tu gasto de hoy es un <span className="text-primary font-bold">5% menor</span> que tu promedio diario habitual.
+                            </p>
+                        </div>
+                    </section>
+                    <section className="flex-1 px-4">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold">Actividad de hoy</h3>
+                            <button className="text-primary text-sm font-bold">Ver todo</button>
+                        </div>
+                        <div className="space-y-3">
+                            <TransactionItem icon="local_cafe" label="Café y Snacks" sub="Starbucks • 08:30 AM" amount="-$12.50" colorClass="text-red-500" iconBg="bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400" />
+                            <TransactionItem icon="directions_car" label="Transporte" sub="Uber • 09:15 AM" amount="-$32.50" colorClass="text-red-500" iconBg="bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400" />
+                            <div className="pt-4 flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold">Ayer</h3>
+                            </div>
+                            <TransactionItem icon="payments" label="Nómina" sub="Empresa Tech • 18:00 PM" amount="+$1,200.00" colorClass="text-green-500" iconBg="bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400" />
+                            <TransactionItem icon="shopping_basket" label="Supermercado" sub="Walmart • 19:20 PM" amount="-$85.20" colorClass="text-red-500" iconBg="bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400" />
+                        </div>
+                    </section>
+                    <BottomNav active="home" />
+                </div>
+            );
+        };
+
+        const CalendarScreen = () => {
+            return (
+                <div className="relative flex min-h-screen w-full flex-col max-w-[430px] mx-auto bg-background-light dark:bg-background-dark shadow-2xl border-x border-slate-200 dark:border-slate-800 pb-24">
+                    <header className="sticky top-0 z-20 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 pt-10 pb-4 flex items-center justify-between">
+                        <button className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800"><span className="material-symbols-outlined">menu</span></button>
+                        <h1 className="text-lg font-bold tracking-tight">Diario y Calendario</h1>
+                        <button className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800"><span className="material-symbols-outlined">search</span></button>
+                    </header>
+                    <main className="flex flex-col flex-1 overflow-y-auto no-scrollbar">
+                        <div className="px-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+                            <div className="flex items-center justify-between mb-4">
+                                <p className="text-base font-bold text-primary">Octubre 2023</p>
+                                <div className="flex gap-2">
+                                    <button className="p-1 text-slate-500 dark:text-slate-400"><span className="material-symbols-outlined">chevron_left</span></button>
+                                    <button className="p-1 text-slate-500 dark:text-slate-400"><span className="material-symbols-outlined">chevron_right</span></button>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-7 gap-y-2 text-center">
+                                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(day => (
+                                    <span key={day} className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">{day}</span>
+                                ))}
+                                <div className="h-10 w-full flex flex-col items-center justify-center opacity-30 text-sm">27</div>
+                                <div className="h-10 w-full flex flex-col items-center justify-center opacity-30 text-sm">28</div>
+                                <div className="h-10 w-full flex flex-col items-center justify-center opacity-30 text-sm">29</div>
+                                <div className="h-10 w-full flex flex-col items-center justify-center opacity-30 text-sm">30</div>
+                                <button className="relative h-10 w-full flex flex-col items-center justify-center text-sm"><span>1</span><div className="calendar-dot bg-slate-300 dark:bg-slate-600 mt-0.5"></div></button>
+                                <button className="relative h-10 w-full flex flex-col items-center justify-center text-sm"><span>2</span></button>
+                                <button className="relative h-10 w-full flex flex-col items-center justify-center text-sm"><span>3</span><div className="calendar-dot bg-primary mt-0.5"></div></button>
+                                <button className="relative h-10 w-full flex flex-col items-center justify-center text-sm"><span>4</span></button>
+                                <button className="relative h-10 w-full flex flex-col items-center justify-center text-sm font-bold text-white z-10">
+                                    <div className="absolute inset-0 bg-primary rounded-lg -z-10 scale-90"></div>
+                                    <span>5</span><div className="calendar-dot bg-white mt-0.5"></div>
+                                </button>
+                                {[6,7,8,9,10,11,12,13,14,15,16,17].map(d => (
+                                    <button key={d} className="h-10 w-full flex flex-col items-center justify-center text-sm">
+                                        <span>{d}</span>
+                                        {d % 3 === 0 && <div className="calendar-dot bg-primary mt-0.5"></div>}
+                                    </button>
+                                ))}
+                                <button className="h-10 w-full flex flex-col items-center justify-center text-sm opacity-50">...</button>
+                            </div>
+                        </div>
+                        <div className="flex-1 bg-white dark:bg-background-dark/40 rounded-t-3xl mt-4 px-4 pt-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wide">Jueves, 5 de Octubre</h3>
+                                    <p className="text-xl font-bold">Resumen del día</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-medium text-slate-400">Total gasto</p>
+                                    <p className="text-xl font-bold text-red-500">-$158.45</p>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <TransactionItem icon="shopping_cart" label="Supermercado Walmart" sub="09:42 AM • Comida" amount="-$84.20" colorClass="text-slate-900 dark:text-white" iconBg="bg-primary/10 text-primary" />
+                                <TransactionItem icon="local_gas_station" label="Gasolinera Shell" sub="11:15 AM • Transporte" amount="-$45.00" colorClass="text-slate-900 dark:text-white" iconBg="bg-orange-500/10 text-orange-500" />
+                                <TransactionItem icon="movie" label="Suscripción Netflix" sub="08:00 AM • Entretenimiento" amount="-$12.99" colorClass="text-slate-900 dark:text-white" iconBg="bg-purple-500/10 text-purple-500" />
+                                <TransactionItem icon="payments" label="Reembolso Amigo" sub="02:30 PM • Ingresos" amount="+$25.00" colorClass="text-emerald-500" iconBg="bg-emerald-500/10 text-emerald-500" />
+                            </div>
+                        </div>
+                    </main>
+                    <BottomNav active="diary" />
+                </div>
+            );
+        };
+
+        const DashboardScreen = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen pb-24 max-w-[480px] mx-auto">
+                    <header className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 ios-blur px-4 pt-6 pb-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary/10 rounded-xl">
+                                    <span className="material-symbols-outlined text-primary text-2xl">dashboard</span>
+                                </div>
+                                <div>
+                                    <h1 className="text-xl font-bold tracking-tight">Dashboard</h1>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Octubre 2023</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800"><span className="material-symbols-outlined">calendar_today</span></button>
+                                <button className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 relative"><span className="material-symbols-outlined">notifications</span><span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background-dark"></span></button>
+                            </div>
+                        </div>
+                    </header>
+                    <main className="px-4 space-y-6">
+                        <section className="grid grid-cols-1 gap-4 mt-2">
+                            <div className="bg-primary p-6 rounded-2xl shadow-xl shadow-primary/20 flex flex-col justify-between">
+                                <div>
+                                    <p className="text-white/80 text-sm font-medium mb-1">Balance Neto</p>
+                                    <h2 className="text-white text-4xl font-extrabold tracking-tight">$2,350.00</h2>
+                                </div>
+                                <div className="flex items-center gap-2 mt-4 bg-white/20 w-fit px-3 py-1 rounded-full">
+                                    <span className="material-symbols-outlined text-white text-sm">trending_up</span>
+                                    <span className="text-white text-sm font-bold">+12% vs sept.</span>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-white dark:bg-card-dark p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center"><span className="material-symbols-outlined text-emerald-500 text-xl">arrow_downward</span></div>
+                                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ingresos</span>
+                                    </div>
+                                    <p className="text-xl font-bold">$4,500.00</p>
+                                    <p className="text-emerald-500 text-xs font-bold mt-1">+5%</p>
+                                </div>
+                                <div className="bg-white dark:bg-card-dark p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="size-8 rounded-lg bg-rose-500/10 flex items-center justify-center"><span className="material-symbols-outlined text-rose-500 text-xl">arrow_upward</span></div>
+                                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gastos</span>
+                                    </div>
+                                    <p className="text-xl font-bold">$2,150.00</p>
+                                    <p className="text-rose-500 text-xs font-bold mt-1">-2%</p>
+                                </div>
+                            </div>
+                        </section>
+                        <section className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-bold">Distribución del Ingreso</h3>
+                                <button onClick={() => navigate('/planning')} className="text-xs font-semibold text-primary">Ver metas</button>
+                            </div>
+                            <div className="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-6">
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-end"><p className="text-sm font-bold">Inversión</p><p className="text-sm font-bold">$850 <span className="text-slate-500 font-normal">/ $1,000</span></p></div>
+                                    <div className="relative h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div className="absolute top-0 left-0 h-full bg-primary" style={{width: '85%'}}></div></div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-end"><p className="text-sm font-bold">Gastos Fijos</p><p className="text-sm font-bold">$1,300 <span className="text-slate-500 font-normal">/ $2,000</span></p></div>
+                                    <div className="relative h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div className="absolute top-0 left-0 h-full bg-slate-400" style={{width: '65%'}}></div></div>
+                                </div>
+                            </div>
+                        </section>
+                        <section className="space-y-4">
+                            <h3 className="text-lg font-bold">Top Categorías</h3>
+                            <div className="space-y-3">
+                                <TransactionItem icon="home_work" label="Vivienda" sub="3 transacciones" amount="$1,200.00" colorClass="text-slate-900 dark:text-white" iconBg="bg-blue-500/10 text-blue-500" />
+                                <TransactionItem icon="restaurant" label="Alimentación" sub="14 transacciones" amount="$450.00" colorClass="text-slate-900 dark:text-white" iconBg="bg-orange-500/10 text-orange-500" />
+                            </div>
+                        </section>
+                    </main>
+                    <BottomNav active="stats" />
+                </div>
+            );
+        };
+
+        const PlanningScreen = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col max-w-[480px] mx-auto">
+                    <header className="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center justify-between px-4 h-16">
+                            <button onClick={() => navigate(-1)} className="size-10 rounded-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-800">
+                                <span className="material-symbols-outlined text-slate-600 dark:text-slate-400">arrow_back_ios_new</span>
+                            </button>
+                            <h1 className="text-lg font-bold tracking-tight">Planificación</h1>
+                            <button className="size-10 rounded-full flex items-center justify-center"><span className="material-symbols-outlined">calendar_today</span></button>
+                        </div>
+                    </header>
+                    <main className="flex-1 px-5 py-6 space-y-8">
+                        <section className="flex items-center justify-center gap-2">
+                            <button className="text-slate-400"><span className="material-symbols-outlined">chevron_left</span></button>
+                            <div className="flex items-center gap-4">
+                                <span className="text-slate-400 text-sm font-medium">Agosto</span>
+                                <span className="text-primary text-lg font-bold bg-primary/10 px-4 py-1 rounded-full">Septiembre 2023</span>
+                                <span className="text-slate-400 text-sm font-medium">Octubre</span>
+                            </div>
+                            <button className="text-slate-400"><span className="material-symbols-outlined">chevron_right</span></button>
+                        </section>
+                        <section className="bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl flex">
+                            <button className="flex-1 bg-white dark:bg-slate-700 shadow-sm py-2 rounded-lg text-sm font-semibold text-primary">Porcentaje</button>
+                            <button className="flex-1 py-2 text-sm font-medium text-slate-500">Montos fijos</button>
+                        </section>
+                        <section className="space-y-6">
+                            {[
+                                {label: "Inversión", val: 30, icon: "trending_up"},
+                                {label: "Gastos Fijos", val: 50, icon: "home"},
+                                {label: "Ahorro", val: 20, icon: "savings"}
+                            ].map(item => (
+                                <div key={item.label} className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-600 uppercase tracking-wider">{item.label}</label>
+                                    <div className="relative flex items-center">
+                                        <div className="absolute left-4 text-slate-400"><span className="material-symbols-outlined">{item.icon}</span></div>
+                                        <input defaultValue={item.val} className="w-full h-16 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 focus:border-primary rounded-xl pl-12 pr-12 text-xl font-bold transition-all outline-none" type="text" />
+                                        <span className="absolute right-4 text-slate-400 font-bold text-xl">%</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </section>
+                        <section className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-6 border border-primary/20">
+                            <div className="flex justify-between items-end mb-4">
+                                <div><p className="text-xs font-bold text-primary uppercase">Total Asignado</p><h3 className="text-3xl font-extrabold text-primary">100%</h3></div>
+                            </div>
+                            <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex">
+                                <div className="h-full bg-primary" style={{width: '30%'}}></div>
+                                <div className="h-full bg-primary/60" style={{width: '50%'}}></div>
+                                <div className="h-full bg-primary/30" style={{width: '20%'}}></div>
+                            </div>
+                        </section>
+                    </main>
+                    <footer className="p-6">
+                        <button onClick={() => navigate('/')} className="w-full bg-primary text-white font-bold py-4 rounded-xl text-lg ios-shadow active:scale-95 transition-transform">Guardar Plan</button>
+                    </footer>
+                </div>
+            );
+        };
+
+        const CategoriesScreen = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col max-w-[480px] mx-auto pb-24">
+                    <header className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 ios-blur px-4 py-2 border-b border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center justify-between">
+                            <button onClick={() => navigate(-1)} className="flex items-center text-primary font-medium">
+                                <span className="material-symbols-outlined !text-[28px]">chevron_left</span><span>Atrás</span>
+                            </button>
+                            <h1 className="text-base font-bold tracking-tight">Categorías y Cuentas</h1>
+                            <button className="text-primary font-bold text-base">Editar</button>
+                        </div>
+                    </header>
+                    <main className="flex-1">
+                        <div className="px-4 py-6">
+                            <div className="bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl flex items-center">
+                                <button className="flex-1 bg-white dark:bg-slate-700 py-1.5 rounded-lg text-sm font-bold shadow-sm">Categorías</button>
+                                <button className="flex-1 text-slate-500 dark:text-slate-400 py-1.5 rounded-lg text-sm font-bold">Cuentas</button>
+                            </div>
+                        </div>
+                        <section className="space-y-1">
+                            <div className="flex items-center justify-between px-6 pb-2">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Categorías de Gastos</h2>
+                                <button className="text-primary flex items-center gap-1"><span className="material-symbols-outlined !text-[18px]">add_circle</span><span className="text-xs font-bold">AÑADIR</span></button>
+                            </div>
+                            <div className="bg-white dark:bg-[#1a242f] mx-4 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
+                                {[
+                                    {icon: "restaurant", label: "Comida y Bebida", color: "text-orange-500", bg: "bg-orange-500/20"},
+                                    {icon: "directions_car", label: "Transporte", color: "text-blue-500", bg: "bg-blue-500/20"},
+                                    {icon: "medical_services", label: "Salud", color: "text-emerald-500", bg: "bg-emerald-500/20"}
+                                ].map(cat => (
+                                    <div key={cat.label} className="flex items-center gap-4 p-4 border-b border-slate-100 dark:border-slate-800">
+                                        <div className={`size-10 rounded-full ${cat.bg} ${cat.color} flex items-center justify-center`}><span className="material-symbols-outlined">{cat.icon}</span></div>
+                                        <div className="flex-1 font-semibold text-sm">{cat.label}</div>
+                                        <span className="material-symbols-outlined text-slate-400 !text-[20px]">drag_handle</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                        <section className="mt-8 space-y-1">
+                            <div className="flex items-center justify-between px-6 pb-2">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Mis Cuentas</h2>
+                                <button className="text-primary flex items-center gap-1"><span className="material-symbols-outlined !text-[18px]">add_circle</span><span className="text-xs font-bold">AÑADIR</span></button>
+                            </div>
+                            <div className="bg-white dark:bg-[#1a242f] mx-4 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
+                                {[
+                                    {icon: "payments", label: "Efectivo", amount: "$1,240.00"},
+                                    {icon: "account_balance", label: "Banco Principal", amount: "$24,850.32"}
+                                ].map(acc => (
+                                    <div key={acc.label} className="flex items-center gap-4 p-4 border-b border-slate-100 dark:border-slate-800">
+                                        <div className="size-10 rounded-full bg-primary/20 text-primary flex items-center justify-center"><span className="material-symbols-outlined">{acc.icon}</span></div>
+                                        <div className="flex-1"><p className="font-semibold text-sm">{acc.label}</p><p className="text-xs text-slate-500">{acc.amount}</p></div>
+                                        <span className="material-symbols-outlined text-slate-400 !text-[20px]">chevron_right</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    </main>
+                    <BottomNav active="mgmt" />
+                </div>
+            );
+        };
+
+        const NewTransactionScreen = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 m-0 overflow-hidden bg-black/40 dark:bg-black/60">
+                    <div onClick={() => navigate(-1)} className="absolute inset-0 -z-10"></div>
+                    <div className="relative flex flex-col h-full max-h-[92vh] w-full max-w-md bg-white dark:bg-[#111418] rounded-t-[2.5rem] shadow-2xl overflow-hidden self-end">
+                        <div className="flex flex-col items-center pt-3 pb-2"><div className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-[#3b4754]"></div></div>
+                        <div className="flex-1 overflow-y-auto no-scrollbar pb-8">
+                            <h4 className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase tracking-[0.1em] px-4 py-2 text-center">Nueva Transacción</h4>
+                            <div className="px-6 pt-4 pb-6 text-center">
+                                <div className="flex items-center justify-center space-x-1">
+                                    <span className="text-3xl font-bold text-slate-400">$</span>
+                                    <h1 className="text-slate-900 dark:text-white text-[48px] font-extrabold leading-none">245.00</h1>
+                                </div>
+                            </div>
+                            <div className="px-6 mb-8">
+                                <div className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-100 dark:bg-[#283039] p-1.5">
+                                    <button className="flex grow items-center justify-center rounded-lg bg-white dark:bg-[#111418] shadow-sm text-primary text-sm font-bold h-full">Gasto</button>
+                                    <button className="flex grow items-center justify-center text-slate-500 text-sm font-bold h-full">Ingreso</button>
+                                </div>
+                            </div>
+                            <div className="px-6 mb-8">
+                                <h3 className="text-slate-900 dark:text-white text-base font-bold mb-4">Categoría</h3>
+                                <div className="grid grid-cols-4 gap-4">
+                                    {[
+                                        {icon: "restaurant", label: "Comida", active: true},
+                                        {icon: "directions_car", label: "Transporte"},
+                                        {icon: "shopping_bag", label: "Compras"},
+                                        {icon: "house", label: "Hogar"}
+                                    ].map(cat => (
+                                        <div key={cat.label} className="flex flex-col items-center gap-2">
+                                            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center ${cat.active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-[#283039] text-slate-600'}`}>
+                                                <span className="material-symbols-outlined text-[28px]">{cat.icon}</span>
+                                            </div>
+                                            <span className={`text-[11px] font-bold ${cat.active ? 'text-primary' : 'text-slate-500'}`}>{cat.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="px-6 mb-8">
+                                <h3 className="text-slate-900 dark:text-white text-base font-bold mb-4">Fecha</h3>
+                                <div className="flex gap-3">
+                                    <button className="flex-1 py-2 rounded-xl bg-primary/10 border border-primary/20 text-primary text-sm font-bold">Hoy</button>
+                                    <button className="flex-1 py-2 rounded-xl bg-slate-100 dark:bg-[#283039] text-slate-600 text-sm font-bold">Ayer</button>
+                                    <button className="w-12 py-2 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-[#283039] text-slate-600"><span className="material-symbols-outlined text-xl">calendar_today</span></button>
+                                </div>
+                            </div>
+                            <div className="px-6 mb-8">
+                                <h3 className="text-slate-900 dark:text-white text-base font-bold mb-3">Nota (opcional)</h3>
+                                <input className="w-full h-12 px-4 rounded-xl bg-slate-100 dark:bg-[#283039] border-none text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary text-sm" placeholder="¿En qué gastaste?" type="text"/>
+                            </div>
+                            <div className="px-6 pt-2">
+                                <button onClick={() => navigate(-1)} className="w-full bg-primary text-white font-bold py-4 rounded-2xl shadow-xl shadow-primary/25 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                    <span className="material-symbols-outlined">check_circle</span>Confirmar Transacción
+                                </button>
+                            </div>
+                        </div>
+                        <div className="h-8 flex items-center justify-center bg-white dark:bg-[#111418]"><div className="h-1.5 w-32 bg-slate-200 dark:bg-slate-800 rounded-full"></div></div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- App Shell ---
+
+        const App = () => {
+            return (
+                <MemoryRouter>
+                    <Routes>
+                        <Route path="/" element={<HomeScreen />} />
+                        <Route path="/calendar" element={<CalendarScreen />} />
+                        <Route path="/dashboard" element={<DashboardScreen />} />
+                        <Route path="/planning" element={<PlanningScreen />} />
+                        <Route path="/categories" element={<CategoriesScreen />} />
+                        <Route path="/new" element={<NewTransactionScreen />} />
+                    </Routes>
+                </MemoryRouter>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

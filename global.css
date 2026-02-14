@@ -1,0 +1,25 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+@layer base {
+    .font-regular {
+        font-family: 'Manrope_400Regular';
+    }
+
+    .font-medium {
+        font-family: 'Manrope_500Medium';
+    }
+
+    .font-semibold {
+        font-family: 'Manrope_600SemiBold';
+    }
+
+    .font-bold {
+        font-family: 'Manrope_700Bold';
+    }
+
+    .font-extrabold {
+        font-family: 'Manrope_800ExtraBold';
+    }
+}
