@@ -45,11 +45,8 @@ export default function TabLayout() {
                     borderTopWidth: 1,
                     borderTopColor: 'rgba(226, 232, 240, 0.5)', // slate-200 with opacity
                     height: 80,
-                    backgroundColor: 'transparent',
+                    backgroundColor: '#ffffff',
                 },
-                tabBarBackground: () => (
-                    <BlurView intensity={80} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} tint="light" />
-                ),
                 tabBarShowLabel: false,
             }}
         >
