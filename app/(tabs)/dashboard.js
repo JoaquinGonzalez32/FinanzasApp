@@ -1,11 +1,15 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import TransactionItem from '../../components/TransactionItem';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useBudget } from '../../src/hooks/useBudget';
-import { formatCurrency, getCategoryStyle, sumByType, groupByCategory, MONTHS_ES } from '../../src/lib/helpers';
+import { formatCurrency, formatAmount, formatTime, getCategoryStyle, sumByType, groupByCategory, MONTHS_ES } from '../../src/lib/helpers';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function DashboardScreen() {
     const router = useRouter();
@@ -17,8 +21,20 @@ export default function DashboardScreen() {
     const monthIncome = useMemo(() => sumByType(monthTx, 'income'), [monthTx]);
     const monthExpense = useMemo(() => sumByType(monthTx, 'expense'), [monthTx]);
     const netBalance = monthIncome - monthExpense;
-    const topCats = useMemo(() => groupByCategory(monthTx.filter(t => t.type === 'expense')), [monthTx]);
+    const expenseTx = useMemo(() => monthTx.filter(t => t.type === 'expense'), [monthTx]);
+    const topCats = useMemo(() => groupByCategory(expenseTx), [expenseTx]);
     const { budgetItems } = useBudget();
+
+    const [expandedCatId, setExpandedCatId] = useState(null);
+
+    const toggleCategory = useCallback((catId) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setExpandedCatId(prev => prev === catId ? null : catId);
+    }, []);
+
+    const getTxForCategory = useCallback((catId) => {
+        return expenseTx.filter(t => t.category?.id === catId);
+    }, [expenseTx]);
 
     return (
         <View className="flex-1 bg-background-light dark:bg-background-dark">
@@ -138,17 +154,49 @@ export default function DashboardScreen() {
                         <View>
                             {topCats.slice(0, 5).map(item => {
                                 const style = getCategoryStyle(item.category.color);
+                                const isExpanded = expandedCatId === item.category.id;
+                                const catTx = isExpanded ? getTxForCategory(item.category.id) : [];
                                 return (
-                                    <TransactionItem
-                                        key={item.category.id}
-                                        icon={item.category.icon}
-                                        label={item.category.name}
-                                        sub={`${item.count} ${item.count === 1 ? 'transacción' : 'transacciones'}`}
-                                        amount={formatCurrency(item.total)}
-                                        colorClass="text-slate-900 dark:text-white"
-                                        iconBg={style.bg}
-                                        iconColor={style.hex}
-                                    />
+                                    <View key={item.category.id}>
+                                        <TransactionItem
+                                            icon={item.category.icon}
+                                            label={item.category.name}
+                                            sub={`${item.count} ${item.count === 1 ? 'transacción' : 'transacciones'}`}
+                                            amount={formatCurrency(item.total)}
+                                            colorClass="text-slate-900 dark:text-white"
+                                            iconBg={style.bg}
+                                            iconColor={style.hex}
+                                            onPress={() => toggleCategory(item.category.id)}
+                                        />
+                                        {isExpanded && (
+                                            <View className="ml-6 mb-3 border-l-2 border-slate-200 dark:border-slate-700 pl-3">
+                                                {catTx.map(tx => {
+                                                    const txStyle = getCategoryStyle(tx.category?.color);
+                                                    return (
+                                                        <View
+                                                            key={tx.id}
+                                                            className="flex-row items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-800/40"
+                                                        >
+                                                            <View className={`h-8 w-8 rounded-lg ${txStyle.bg} items-center justify-center`}>
+                                                                <MaterialIcons name={tx.category?.icon ?? 'payments'} size={16} color={txStyle.hex} />
+                                                            </View>
+                                                            <View className="flex-1">
+                                                                <Text className="text-sm font-semibold text-slate-900 dark:text-white">
+                                                                    {tx.note || tx.category?.name || 'Sin nota'}
+                                                                </Text>
+                                                                <Text className="text-xs text-slate-500">
+                                                                    {tx.date} • {formatTime(tx.created_at)}
+                                                                </Text>
+                                                            </View>
+                                                            <Text className="text-sm font-bold text-red-500">
+                                                                -{formatCurrency(tx.amount)}
+                                                            </Text>
+                                                        </View>
+                                                    );
+                                                })}
+                                            </View>
+                                        )}
+                                    </View>
                                 );
                             })}
                             {!loading && topCats.length === 0 && (
