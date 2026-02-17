@@ -55,6 +55,7 @@ export async function updateAccount(
   return data;
 }
 
+/** Adjust account balance by a delta amount (+/-) */
 export async function adjustAccountBalance(
   id: string,
   delta: number
