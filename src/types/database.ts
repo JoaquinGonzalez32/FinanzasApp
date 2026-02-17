@@ -21,6 +21,7 @@ export interface Category {
   color: string;
   type: TransactionType;
   sort_order: number;
+  account_id: string | null;
 }
 
 export interface TransactionInsert {
@@ -81,6 +82,7 @@ export interface CategoryUpdate {
   color?: string;
   type?: TransactionType;
   sort_order?: number;
+  account_id?: string | null;
 }
 
 export interface BudgetItem {

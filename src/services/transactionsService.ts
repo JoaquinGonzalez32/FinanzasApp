@@ -1,5 +1,7 @@
 import { supabase } from "../lib/supabase";
 import type { Transaction, TransactionInsert } from "../types/database";
+import { adjustAccountBalance } from "./accountsService";
+import { emitAccountsChange } from "../lib/events";
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -68,10 +70,37 @@ export async function createTransaction(
     .single();
 
   if (error) throw error;
+
+  // Auto-adjust account balance if category is linked to an account
+  const accountId = data.category?.account_id;
+  if (accountId) {
+    const delta = data.type === "income" ? data.amount : -data.amount;
+    await adjustAccountBalance(accountId, delta);
+    emitAccountsChange();
+  }
+
   return data;
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
+  // Fetch transaction with category to check for linked account
+  const { data: tx, error: fetchErr } = await supabase
+    .from("transactions")
+    .select("*, category:categories(*)")
+    .eq("id", id)
+    .single();
+
+  if (fetchErr) throw fetchErr;
+
+  // Revert account balance if category is linked to an account
+  const accountId = tx.category?.account_id;
+  if (accountId) {
+    // Reverse: expense was -amount, so revert with +amount; income vice versa
+    const delta = tx.type === "income" ? -tx.amount : tx.amount;
+    await adjustAccountBalance(accountId, delta);
+    emitAccountsChange();
+  }
+
   const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) throw error;
 }

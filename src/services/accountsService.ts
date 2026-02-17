@@ -55,6 +55,27 @@ export async function updateAccount(
   return data;
 }
 
+export async function adjustAccountBalance(
+  id: string,
+  delta: number
+): Promise<void> {
+  const { data: acc, error: fetchErr } = await supabase
+    .from("accounts")
+    .select("balance")
+    .eq("id", id)
+    .single();
+
+  if (fetchErr) throw fetchErr;
+
+  const newBalance = Number(acc.balance) + delta;
+  const { error: updateErr } = await supabase
+    .from("accounts")
+    .update({ balance: newBalance })
+    .eq("id", id);
+
+  if (updateErr) throw updateErr;
+}
+
 export async function deleteAccount(id: string): Promise<void> {
   const { error } = await supabase.from("accounts").delete().eq("id", id);
   if (error) throw error;

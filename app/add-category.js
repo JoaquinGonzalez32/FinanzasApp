@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { createCategory, updateCategory } from '../src/services/categoriesService';
 import { emitCategoriesChange } from '../src/lib/events';
 import { CATEGORY_COLORS, getCategoryStyle } from '../src/lib/helpers';
+import { useAccounts } from '../src/hooks/useAccounts';
 
 const ICON_OPTIONS = [
     'restaurant', 'directions-car', 'shopping-bag', 'house',
@@ -26,7 +27,10 @@ export default function AddCategoryScreen() {
     const [type, setType] = useState(params.type === 'income' ? 'income' : 'expense');
     const [selectedIcon, setSelectedIcon] = useState('restaurant');
     const [selectedColor, setSelectedColor] = useState('orange');
+    const [selectedAccount, setSelectedAccount] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+
+    const { accounts } = useAccounts();
 
     useEffect(() => {
         if (isEditing) {
@@ -34,6 +38,7 @@ export default function AddCategoryScreen() {
             setType(typeof params.catType === 'string' ? params.catType : 'expense');
             setSelectedIcon(typeof params.icon === 'string' ? params.icon : 'restaurant');
             setSelectedColor(typeof params.color === 'string' ? params.color : 'orange');
+            setSelectedAccount(typeof params.account_id === 'string' && params.account_id ? params.account_id : null);
         }
     }, [isEditing]);
 
@@ -50,6 +55,7 @@ export default function AddCategoryScreen() {
                     icon: selectedIcon,
                     color: selectedColor,
                     type,
+                    account_id: selectedAccount,
                 });
             } else {
                 await createCategory({
@@ -58,6 +64,7 @@ export default function AddCategoryScreen() {
                     color: selectedColor,
                     type,
                     sort_order: 99,
+                    account_id: selectedAccount,
                     created_at: new Date().toISOString(),
                 });
             }
@@ -138,6 +145,36 @@ export default function AddCategoryScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                {/* Linked Account */}
+                {accounts.length > 0 && (
+                    <View className="px-6 mb-6">
+                        <Text className="text-slate-900 dark:text-white text-base font-bold mb-1">Cuenta vinculada</Text>
+                        <Text className="text-slate-500 text-xs mb-3">Las transacciones ajustarán el saldo de esta cuenta</Text>
+                        <View className="flex-row flex-wrap gap-2">
+                            <TouchableOpacity
+                                onPress={() => setSelectedAccount(null)}
+                                className={`px-4 h-10 rounded-xl items-center justify-center ${selectedAccount === null ? 'bg-primary' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                            >
+                                <Text className={`text-sm font-semibold ${selectedAccount === null ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>Ninguna</Text>
+                            </TouchableOpacity>
+                            {accounts.map((acc) => {
+                                const isActive = selectedAccount === acc.id;
+                                const style = getCategoryStyle(acc.color);
+                                return (
+                                    <TouchableOpacity
+                                        key={acc.id}
+                                        onPress={() => setSelectedAccount(acc.id)}
+                                        className={`flex-row items-center gap-2 px-4 h-10 rounded-xl ${isActive ? 'bg-primary' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                                    >
+                                        <MaterialIcons name={acc.icon} size={16} color={isActive ? 'white' : style.hex} />
+                                        <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>{acc.name}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+                )}
 
                 {/* Icon Grid */}
                 <View className="px-6 mb-6">

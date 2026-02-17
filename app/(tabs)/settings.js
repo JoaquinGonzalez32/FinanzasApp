@@ -81,6 +81,7 @@ export default function SettingsScreen() {
                 catType: cat.type,
                 icon: cat.icon,
                 color: cat.color,
+                account_id: cat.account_id ?? '',
             },
         });
     };
