@@ -76,7 +76,8 @@ export default function AddCategoryScreen() {
             emitCategoriesChange();
             router.back();
         } catch (e) {
-            Alert.alert('Error', e.message);
+            console.log('[DEBUG] error:', JSON.stringify(e));
+            Alert.alert('Error', e?.message ?? String(e));
         } finally {
             setSubmitting(false);
         }
