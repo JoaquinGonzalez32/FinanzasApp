@@ -3,7 +3,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 
 const TransactionItem = ({ icon, label, sub, amount, colorClass, iconBg, iconColor, onPress, onLongPress, onDelete }) => {
     return (
-        <View className="flex-row items-center bg-white dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800/60 mb-3">
+        <View className="flex-row items-center bg-white dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800/60 mb-3 overflow-hidden">
             <TouchableOpacity
                 onPress={onPress}
                 onLongPress={onLongPress}
@@ -22,7 +22,9 @@ const TransactionItem = ({ icon, label, sub, amount, colorClass, iconBg, iconCol
             {onDelete && (
                 <TouchableOpacity
                     onPress={onDelete}
-                    className="px-3 self-stretch items-center justify-center"
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    activeOpacity={0.5}
+                    style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
                 >
                     <MaterialIcons name="delete-outline" size={20} color="#ef4444" />
                 </TouchableOpacity>
