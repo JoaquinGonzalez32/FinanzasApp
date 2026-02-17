@@ -33,7 +33,7 @@ export default function AddAccountScreen() {
     const [selectedIcon, setSelectedIcon] = useState('payments');
     const [selectedColor, setSelectedColor] = useState('primary');
     const [balance, setBalance] = useState('');
-    const [currency, setCurrency] = useState('ARS');
+    const [currency, setCurrency] = useState('UYU');
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -43,7 +43,7 @@ export default function AddAccountScreen() {
             setSelectedIcon(typeof params.icon === 'string' ? params.icon : 'payments');
             setSelectedColor(typeof params.color === 'string' ? params.color : 'primary');
             setBalance(typeof params.balance === 'string' ? params.balance : '0');
-            setCurrency(typeof params.currency === 'string' ? params.currency : 'ARS');
+            setCurrency(typeof params.currency === 'string' ? params.currency : 'UYU');
         }
     }, [isEditing]);
 
@@ -140,7 +140,7 @@ export default function AddAccountScreen() {
                     <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Moneda</Text>
                     <View className="flex-row gap-3">
                         {[
-                            { key: 'ARS', label: 'ARS', symbol: '$', desc: 'Pesos' },
+                            { key: 'UYU', label: 'UYU', symbol: '$U', desc: 'Pesos Uruguayos' },
                             { key: 'USD', label: 'USD', symbol: 'US$', desc: 'Dólares' },
                         ].map((cur) => {
                             const isActive = currency === cur.key;

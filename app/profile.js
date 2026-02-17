@@ -13,14 +13,14 @@ export default function ProfileScreen() {
 
     const [fullName, setFullName] = useState('');
     const [username, setUsername] = useState('');
-    const [currency, setCurrency] = useState('ARS');
+    const [currency, setCurrency] = useState('UYU');
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (profile) {
             setFullName(profile.full_name ?? '');
             setUsername(profile.username ?? '');
-            setCurrency(profile.currency ?? 'ARS');
+            setCurrency(profile.currency ?? 'UYU');
         }
     }, [profile]);
 
@@ -30,7 +30,7 @@ export default function ProfileScreen() {
             await saveProfile({
                 full_name: fullName.trim() || null,
                 username: username.trim() || null,
-                currency: currency.trim() || 'ARS',
+                currency: currency.trim() || 'UYU',
             });
             Alert.alert('Listo', 'Perfil actualizado');
         } catch (e) {
@@ -126,7 +126,7 @@ export default function ProfileScreen() {
                     <View className="bg-white dark:bg-[#1a242f] rounded-xl border border-slate-200 dark:border-slate-800/50 p-4">
                         <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Moneda</Text>
                         <View className="flex-row gap-3">
-                            {['ARS', 'USD', 'EUR'].map((cur) => (
+                            {['UYU', 'USD', 'EUR'].map((cur) => (
                                 <TouchableOpacity
                                     key={cur}
                                     onPress={() => setCurrency(cur)}

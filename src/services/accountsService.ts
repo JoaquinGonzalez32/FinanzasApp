@@ -10,7 +10,7 @@ import type { Account, AccountInsert } from "../types/database";
 //   icon text NOT NULL DEFAULT 'account-balance-wallet',
 //   color text NOT NULL DEFAULT 'primary',
 //   balance numeric NOT NULL DEFAULT 0,
-//   currency text NOT NULL DEFAULT 'ARS',
+//   currency text NOT NULL DEFAULT 'UYU',
 //   created_at timestamptz DEFAULT now()
 // );
 // ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;

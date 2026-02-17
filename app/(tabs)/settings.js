@@ -30,8 +30,8 @@ export default function SettingsScreen() {
     const expenseCats = categories.filter(c => c.type === 'expense');
     const incomeCats = categories.filter(c => c.type === 'income');
 
-    const accountsTotalARS = useMemo(
-        () => accounts.filter(a => (a.currency ?? 'ARS') === 'ARS').reduce((s, a) => s + Number(a.balance), 0),
+    const accountsTotalUYU = useMemo(
+        () => accounts.filter(a => (a.currency ?? 'UYU') === 'UYU').reduce((s, a) => s + Number(a.balance), 0),
         [accounts]
     );
     const accountsTotalUSD = useMemo(
@@ -118,7 +118,7 @@ export default function SettingsScreen() {
                 icon: acc.icon,
                 color: acc.color,
                 balance: String(acc.balance),
-                currency: acc.currency ?? 'ARS',
+                currency: acc.currency ?? 'UYU',
             },
         });
     };
@@ -288,7 +288,7 @@ export default function SettingsScreen() {
                                                     <MaterialIcons name="account-balance-wallet" size={16} color="#137fec" />
                                                 </View>
                                                 <Text className="text-xl font-extrabold text-slate-900 dark:text-white">
-                                                    {formatCurrency(accountsTotalARS)}
+                                                    {formatCurrency(accountsTotalUYU)}
                                                 </Text>
                                             </View>
                                             {accountsTotalUSD > 0 && (
@@ -326,7 +326,7 @@ export default function SettingsScreen() {
                                         <View className="bg-white dark:bg-[#1a242f] mx-4 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
                                             {accounts.map((acc, i) => {
                                                 const style = getCategoryStyle(acc.color);
-                                                const currSymbol = (acc.currency ?? 'ARS') === 'USD' ? 'US' : '';
+                                                const currSymbol = (acc.currency ?? 'UYU') === 'USD' ? 'US' : '';
                                                 return (
                                                     <TouchableOpacity
                                                         key={acc.id}

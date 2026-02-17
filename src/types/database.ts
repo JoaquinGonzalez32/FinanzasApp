@@ -50,7 +50,7 @@ export interface ProfileUpdate {
 
 export type AccountType = "cash" | "bank" | "credit" | "savings" | "other";
 
-export type AccountCurrency = "ARS" | "USD";
+export type AccountCurrency = "UYU" | "USD";
 
 export interface Account {
   id: string;
