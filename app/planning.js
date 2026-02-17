@@ -31,7 +31,13 @@ export default function PlanningScreen() {
     // Sync DB items to local state on load
     useEffect(() => {
         if (!loading && budgetItems.length > 0 && items.length === 0) {
-            setItems(budgetItems.map(b => ({ ...b, _local: false })));
+            setItems(budgetItems.map(b => ({
+                ...b,
+                _local: false,
+                _fixedAmount: monthIncome > 0
+                    ? String(Math.round(monthIncome * (Number(b.percentage) || 0) / 100))
+                    : '',
+            })));
         }
     }, [loading, budgetItems]);
 
@@ -47,7 +53,13 @@ export default function PlanningScreen() {
         [expenseCategories, assignedCategoryIds]
     );
 
-    const totalPercent = useMemo(() => items.reduce((s, i) => s + Number(i.percentage || 0), 0), [items]);
+    const totalPercent = useMemo(() => {
+        if (!showPercent && monthIncome > 0) {
+            const totalAmt = items.reduce((s, i) => s + (Number(i._fixedAmount) || 0), 0);
+            return Math.round((totalAmt / monthIncome) * 10000) / 100;
+        }
+        return items.reduce((s, i) => s + Number(i.percentage || 0), 0);
+    }, [items, showPercent, monthIncome]);
 
     const updateItem = useCallback((idx, field, value) => {
         setItems(prev => {
@@ -74,6 +86,7 @@ export default function PlanningScreen() {
                 category_id: category.id,
                 category: category,
                 percentage: 0,
+                _fixedAmount: '',
                 sort_order: prev.length,
                 _local: true,
             },
@@ -91,9 +104,15 @@ export default function PlanningScreen() {
             // Create/update remaining items
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
+                // If in fixed mode, convert amount to percentage before saving
+                let pct = Number(item.percentage) || 0;
+                if (!showPercent && monthIncome > 0) {
+                    const amt = Number(item._fixedAmount) || 0;
+                    pct = Math.round((amt / monthIncome) * 10000) / 100;
+                }
                 const payload = {
                     category_id: item.category_id,
-                    percentage: Number(item.percentage) || 0,
+                    percentage: pct,
                     sort_order: i,
                 };
                 if (item._local || !item.id) {
@@ -143,13 +162,31 @@ export default function PlanningScreen() {
                     {/* Toggle */}
                     <View className="bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl flex-row">
                         <TouchableOpacity
-                            onPress={() => setShowPercent(true)}
+                            onPress={() => {
+                                // Switching to percent: sync percentages from fixed amounts
+                                if (!showPercent && monthIncome > 0) {
+                                    setItems(prev => prev.map(it => {
+                                        const amt = Number(it._fixedAmount) || 0;
+                                        return { ...it, percentage: String(Math.round((amt / monthIncome) * 10000) / 100) };
+                                    }));
+                                }
+                                setShowPercent(true);
+                            }}
                             className={`flex-1 py-2 rounded-lg items-center ${showPercent ? 'bg-white dark:bg-slate-700 shadow-sm' : ''}`}
                         >
                             <Text className={`text-sm font-semibold ${showPercent ? 'text-primary' : 'text-slate-500'}`}>Porcentaje</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            onPress={() => setShowPercent(false)}
+                            onPress={() => {
+                                // Switching to fixed: sync fixed amounts from percentages
+                                setItems(prev => prev.map(it => ({
+                                    ...it,
+                                    _fixedAmount: monthIncome > 0
+                                        ? String(Math.round(monthIncome * (Number(it.percentage) || 0) / 100))
+                                        : String(it._fixedAmount ?? ''),
+                                })));
+                                setShowPercent(false);
+                            }}
                             className={`flex-1 py-2 rounded-lg items-center ${!showPercent ? 'bg-white dark:bg-slate-700 shadow-sm' : ''}`}
                         >
                             <Text className={`text-sm font-semibold ${!showPercent ? 'text-primary' : 'text-slate-500'}`}>Montos fijos</Text>
@@ -171,10 +208,6 @@ export default function PlanningScreen() {
                         {items.map((item, idx) => {
                             const cat = item.category;
                             const style = getCategoryStyle(cat?.color);
-                            const fixedAmount = monthIncome > 0
-                                ? (monthIncome * (Number(item.percentage) || 0) / 100).toFixed(0)
-                                : '0';
-
                             return (
                                 <View key={item.id || `local-${idx}`} className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
                                     <View className="flex-row items-center gap-3">
@@ -204,14 +237,20 @@ export default function PlanningScreen() {
                                             <View className="flex-row items-center">
                                                 <Text className="text-slate-400 font-bold text-base mr-1">$</Text>
                                                 <TextInput
-                                                    value={fixedAmount}
+                                                    value={item._fixedAmount ?? ''}
                                                     onChangeText={(v) => {
-                                                        const num = Number(v.replace(/[^0-9.]/g, '')) || 0;
-                                                        const pct = monthIncome > 0 ? ((num / monthIncome) * 100) : 0;
-                                                        updateItem(idx, 'percentage', String(Math.round(pct * 100) / 100));
+                                                        const clean = v.replace(/[^0-9]/g, '');
+                                                        updateItem(idx, '_fixedAmount', clean);
+                                                    }}
+                                                    onBlur={() => {
+                                                        if (monthIncome > 0) {
+                                                            const num = Number(item._fixedAmount) || 0;
+                                                            const pct = Math.round((num / monthIncome) * 10000) / 100;
+                                                            updateItem(idx, 'percentage', String(pct));
+                                                        }
                                                     }}
                                                     keyboardType="numeric"
-                                                    className="w-20 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg text-center text-base font-bold text-slate-900 dark:text-white"
+                                                    className="w-24 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg text-center text-base font-bold text-slate-900 dark:text-white"
                                                 />
                                             </View>
                                         )}
