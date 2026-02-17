@@ -50,6 +50,7 @@ export default function SettingsScreen() {
     }, [activeTab, refreshCats, refreshAccs]);
 
     const handleDeleteCategory = (cat) => {
+        console.log('[DEBUG] handleDeleteCategory called for:', cat.id, cat.name);
         Alert.alert(
             'Eliminar categoría',
             `¿Seguro que querés eliminar "${cat.name}"? Las transacciones asociadas no se eliminarán.`,
