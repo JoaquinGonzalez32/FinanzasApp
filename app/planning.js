@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useBudget } from '../src/hooks/useBudget';
 import { useCategories } from '../src/hooks/useCategories';
 import { useTransactions } from '../src/hooks/useTransactions';
+import { useAccounts } from '../src/hooks/useAccounts';
 import { formatCurrency, getCategoryStyle } from '../src/lib/helpers';
 import { emitBudgetChange } from '../src/lib/events';
 import * as svc from '../src/services/budgetService';
@@ -15,10 +16,27 @@ export default function PlanningScreen() {
     const { budgetItems, loading } = useBudget();
     const { categories: expenseCategories } = useCategories('expense');
     const { transactions } = useTransactions({ mode: 'month' });
+    const { accounts } = useAccounts();
+
+    const [selectedAccountId, setSelectedAccountId] = useState(null);
+
+    // Auto-select first account once loaded
+    useEffect(() => {
+        if (accounts.length > 0 && selectedAccountId === null) {
+            setSelectedAccountId(accounts[0].id);
+        }
+    }, [accounts]);
 
     const monthIncome = useMemo(
-        () => transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0),
-        [transactions]
+        () => transactions
+            .filter(t => {
+                if (t.type !== 'income') return false;
+                if (!selectedAccountId) return true;
+                const txAccId = t.account_id ?? t.category?.account_id;
+                return txAccId === selectedAccountId;
+            })
+            .reduce((s, t) => s + Number(t.amount), 0),
+        [transactions, selectedAccountId]
     );
 
     // Local editable state
@@ -28,18 +46,25 @@ export default function PlanningScreen() {
     const [saving, setSaving] = useState(false);
     const [pickerVisible, setPickerVisible] = useState(false);
 
-    // Sync DB items to local state on load
+    // Sync DB items to local state when account changes or items load
     useEffect(() => {
-        if (!loading && budgetItems.length > 0 && items.length === 0) {
-            setItems(budgetItems.map(b => ({
+        if (!loading && budgetItems.length > 0) {
+            const filtered = budgetItems.filter(b =>
+                selectedAccountId ? b.account_id === selectedAccountId : !b.account_id
+            );
+            setItems(filtered.map(b => ({
                 ...b,
                 _local: false,
                 _fixedAmount: monthIncome > 0
                     ? String(Math.round(monthIncome * (Number(b.percentage) || 0) / 100))
                     : '',
             })));
+            setRemovedIds([]);
+        } else if (!loading && budgetItems.length === 0) {
+            setItems([]);
+            setRemovedIds([]);
         }
-    }, [loading, budgetItems]);
+    }, [loading, budgetItems, selectedAccountId]);
 
     // Category IDs already assigned
     const assignedCategoryIds = useMemo(
@@ -47,10 +72,13 @@ export default function PlanningScreen() {
         [items]
     );
 
-    // Available categories (not yet assigned)
+    // Available categories (not yet assigned + matching selected account)
     const availableCategories = useMemo(
-        () => expenseCategories.filter(c => !assignedCategoryIds.has(c.id)),
-        [expenseCategories, assignedCategoryIds]
+        () => expenseCategories.filter(c =>
+            !assignedCategoryIds.has(c.id) &&
+            (selectedAccountId ? c.account_id === selectedAccountId : !c.account_id)
+        ),
+        [expenseCategories, assignedCategoryIds, selectedAccountId]
     );
 
     const totalPercent = useMemo(() => {
@@ -85,6 +113,7 @@ export default function PlanningScreen() {
             {
                 category_id: category.id,
                 category: category,
+                account_id: selectedAccountId || null,
                 percentage: 0,
                 _fixedAmount: '',
                 sort_order: prev.length,
@@ -92,7 +121,7 @@ export default function PlanningScreen() {
             },
         ]);
         setPickerVisible(false);
-    }, []);
+    }, [selectedAccountId]);
 
     const handleSave = useCallback(async () => {
         setSaving(true);
@@ -112,6 +141,7 @@ export default function PlanningScreen() {
                 }
                 const payload = {
                     category_id: item.category_id,
+                    account_id: item.account_id || null,
                     percentage: pct,
                     sort_order: i,
                 };
@@ -159,6 +189,25 @@ export default function PlanningScreen() {
 
             <ScrollView className="flex-1 px-5 py-6" keyboardShouldPersistTaps="handled">
                 <View className="space-y-6 pb-24">
+                    {/* Account selector */}
+                    {accounts.length > 0 && (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                            {accounts.map((acc) => {
+                                const isActive = selectedAccountId === acc.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={acc.id}
+                                        onPress={() => setSelectedAccountId(acc.id)}
+                                        className={`flex-row items-center gap-2 mr-3 px-4 py-3 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                                    >
+                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={20} color={isActive ? '#137fec' : '#475569'} />
+                                        <Text className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>{acc.name}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    )}
+
                     {/* Toggle */}
                     <View className="bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl flex-row">
                         <TouchableOpacity

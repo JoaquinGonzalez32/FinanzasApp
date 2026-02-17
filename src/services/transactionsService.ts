@@ -71,8 +71,8 @@ export async function createTransaction(
 
   if (error) throw error;
 
-  // Auto-adjust account balance if category is linked to an account
-  const accountId = data.category?.account_id;
+  // Auto-adjust account balance: prefer explicit account_id, fallback to category's account
+  const accountId = data.account_id ?? data.category?.account_id;
   if (accountId) {
     const delta = data.type === "income" ? data.amount : -data.amount;
     await adjustAccountBalance(accountId, delta);
@@ -92,8 +92,8 @@ export async function deleteTransaction(id: string): Promise<void> {
 
   if (fetchErr) throw fetchErr;
 
-  // Revert account balance if category is linked to an account
-  const accountId = tx.category?.account_id;
+  // Revert account balance: prefer explicit account_id, fallback to category's account
+  const accountId = tx.account_id ?? tx.category?.account_id;
   if (accountId) {
     // Reverse: expense was -amount, so revert with +amount; income vice versa
     const delta = tx.type === "income" ? -tx.amount : tx.amount;

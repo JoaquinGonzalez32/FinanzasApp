@@ -6,6 +6,7 @@ export interface Transaction {
   amount: number;
   type: TransactionType;
   category_id: string | null;
+  account_id: string | null;
   note: string | null;
   date: string; // ISO date string YYYY-MM-DD
   created_at: string;
@@ -28,6 +29,7 @@ export interface TransactionInsert {
   amount: number;
   type: TransactionType;
   category_id?: string | null;
+  account_id?: string | null;
   note?: string | null;
   date: string;
 }
@@ -89,6 +91,7 @@ export interface BudgetItem {
   id: string;
   user_id: string;
   category_id: string;
+  account_id: string | null;
   percentage: number;
   sort_order: number;
   created_at: string;
@@ -97,6 +100,7 @@ export interface BudgetItem {
 
 export interface BudgetItemInsert {
   category_id: string;
+  account_id?: string | null;
   percentage: number;
   sort_order?: number;
 }

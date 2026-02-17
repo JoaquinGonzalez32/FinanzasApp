@@ -3,6 +3,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { useCategories } from '../src/hooks/useCategories';
+import { useAccounts } from '../src/hooks/useAccounts';
 import { createTransaction } from '../src/services/transactionsService';
 import { emitTransactionsChange } from '../src/lib/events';
 import { toDateISO, DAYS_ES } from '../src/lib/helpers';
@@ -29,6 +30,7 @@ export default function AddTransactionScreen() {
     const [type, setType] = useState(params.type === 'income' ? 'income' : 'expense');
     const [amount, setAmount] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [selectedAccount, setSelectedAccount] = useState(null);
     const [note, setNote] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [showAllDates, setShowAllDates] = useState(false);
@@ -38,6 +40,7 @@ export default function AddTransactionScreen() {
     const [selectedDate, setSelectedDate] = useState(todayStr);
 
     const { categories, loading: loadingCats } = useCategories(type);
+    const { accounts } = useAccounts();
 
     const visibleDates = showAllDates ? recentDates : recentDates.slice(0, 2);
 
@@ -53,6 +56,7 @@ export default function AddTransactionScreen() {
                 amount: numAmount,
                 type,
                 category_id: selectedCategory || null,
+                account_id: selectedAccount || null,
                 note: note.trim() || null,
                 date: selectedDate,
             });
@@ -127,7 +131,13 @@ export default function AddTransactionScreen() {
                             return (
                                 <View key={cat.id} className="items-center gap-2 mb-4 w-[22%]">
                                     <TouchableOpacity
-                                        onPress={() => setSelectedCategory(isActive ? null : cat.id)}
+                                        onPress={() => {
+                                            const newId = isActive ? null : cat.id;
+                                            setSelectedCategory(newId);
+                                            if (newId && cat.account_id) {
+                                                setSelectedAccount(cat.account_id);
+                                            }
+                                        }}
                                         className={`h-14 w-14 rounded-2xl items-center justify-center ${isActive ? 'bg-primary shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-[#283039]'}`}
                                     >
                                         <MaterialIcons name={cat.icon} size={28} color={isActive ? 'white' : '#475569'} />
@@ -143,6 +153,28 @@ export default function AddTransactionScreen() {
                         )}
                     </View>
                 </View>
+
+                {/* Account */}
+                {accounts.length > 0 && (
+                    <View className="px-6 mb-8">
+                        <Text className="text-slate-900 dark:text-white text-base font-bold mb-4">Cuenta</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                            {accounts.map((acc) => {
+                                const isActive = selectedAccount === acc.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={acc.id}
+                                        onPress={() => setSelectedAccount(isActive ? null : acc.id)}
+                                        className={`flex-row items-center gap-2 mr-3 px-4 py-3 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                                    >
+                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={20} color={isActive ? '#137fec' : '#475569'} />
+                                        <Text className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>{acc.name}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                )}
 
                 {/* Date */}
                 <View className="px-6 mb-8">
