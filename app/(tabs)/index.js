@@ -98,30 +98,16 @@ export default function HomeScreen() {
         try { await refresh(); } finally { setRefreshing(false); }
     }, [refresh]);
 
-    const handleDeleteTx = (tx) => {
+    const handleDeleteTx = async (tx) => {
         console.log('[Home] handleDeleteTx called', tx.id);
-        const label = tx.category?.name ?? 'Sin categoría';
-        setTimeout(() => {
-            Alert.alert(
-                'Eliminar transacción',
-                `¿Eliminar "${label}" por ${formatCurrency(tx.amount)}?`,
-                [
-                    { text: 'Cancelar', style: 'cancel' },
-                    {
-                        text: 'Eliminar',
-                        style: 'destructive',
-                        onPress: async () => {
-                            try {
-                                await deleteTransaction(tx.id);
-                                emitTransactionsChange();
-                            } catch (e) {
-                                Alert.alert('Error', e.message);
-                            }
-                        },
-                    },
-                ]
-            );
-        }, 100);
+        try {
+            console.log('[Home] Deleting from DB...');
+            await deleteTransaction(tx.id);
+            console.log('[Home] Deleted OK, emitting change');
+            emitTransactionsChange();
+        } catch (e) {
+            console.log('[Home] Delete ERROR:', e.message);
+        }
     };
 
     // TODO: Notificaciones - implementar sistema de notificaciones push
