@@ -52,13 +52,16 @@ export default function AddCategoryScreen() {
         setSubmitting(true);
         try {
             if (isEditing && typeof params.id === 'string') {
-                await updateCategory(params.id, {
+                const payload = {
                     name: name.trim(),
                     icon: selectedIcon,
                     color: selectedColor,
                     type,
                     account_id: selectedAccount,
-                });
+                };
+                console.log('[DEBUG] updateCategory id:', params.id, 'payload:', JSON.stringify(payload));
+                const result = await updateCategory(params.id, payload);
+                console.log('[DEBUG] updateCategory result:', JSON.stringify(result));
             } else {
                 await createCategory({
                     name: name.trim(),
