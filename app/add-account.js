@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -34,6 +34,7 @@ export default function AddAccountScreen() {
     const [selectedColor, setSelectedColor] = useState('primary');
     const [balance, setBalance] = useState('');
     const [currency, setCurrency] = useState('UYU');
+    const [includeInTotal, setIncludeInTotal] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -44,6 +45,7 @@ export default function AddAccountScreen() {
             setSelectedColor(typeof params.color === 'string' ? params.color : 'primary');
             setBalance(typeof params.balance === 'string' ? params.balance : '0');
             setCurrency(typeof params.currency === 'string' ? params.currency : 'UYU');
+            setIncludeInTotal(params.include_in_total === 'false' ? false : true);
         }
     }, [isEditing]);
 
@@ -65,6 +67,7 @@ export default function AddAccountScreen() {
                     color: selectedColor,
                     balance: parsedBalance,
                     currency,
+                    include_in_total: includeInTotal,
                 });
             } else {
                 await createAccount({
@@ -74,6 +77,7 @@ export default function AddAccountScreen() {
                     color: selectedColor,
                     balance: parsedBalance,
                     currency,
+                    include_in_total: includeInTotal,
                 });
             }
             emitAccountsChange();
@@ -176,6 +180,22 @@ export default function AddAccountScreen() {
                             placeholderTextColor="#94a3b8"
                             keyboardType="decimal-pad"
                             className="flex-1 text-base text-slate-900 dark:text-white font-medium"
+                        />
+                    </View>
+                </View>
+
+                {/* Include in Total */}
+                <View className="px-6 mb-6">
+                    <View className="flex-row items-center justify-between bg-slate-100 dark:bg-[#283039] rounded-xl px-4 h-14">
+                        <View className="flex-row items-center gap-3">
+                            <MaterialIcons name="functions" size={20} color="#64748b" />
+                            <Text className="text-base font-medium text-slate-900 dark:text-white">Incluir en saldo total</Text>
+                        </View>
+                        <Switch
+                            value={includeInTotal}
+                            onValueChange={setIncludeInTotal}
+                            trackColor={{ false: '#cbd5e1', true: '#137fec' }}
+                            thumbColor="white"
                         />
                     </View>
                 </View>

@@ -61,6 +61,7 @@ export interface Account {
   color: string;
   balance: number;
   currency: AccountCurrency;
+  include_in_total: boolean;
   created_at: string;
 }
 
@@ -71,6 +72,7 @@ export interface AccountInsert {
   color: string;
   balance?: number;
   currency?: AccountCurrency;
+  include_in_total?: boolean;
 }
 
 export interface CategoryUpdate {

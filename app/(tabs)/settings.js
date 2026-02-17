@@ -31,11 +31,11 @@ export default function SettingsScreen() {
     const incomeCats = categories.filter(c => c.type === 'income');
 
     const accountsTotalUYU = useMemo(
-        () => accounts.filter(a => (a.currency ?? 'UYU') === 'UYU').reduce((s, a) => s + Number(a.balance), 0),
+        () => accounts.filter(a => a.include_in_total !== false && (a.currency ?? 'UYU') === 'UYU').reduce((s, a) => s + Number(a.balance), 0),
         [accounts]
     );
     const accountsTotalUSD = useMemo(
-        () => accounts.filter(a => a.currency === 'USD').reduce((s, a) => s + Number(a.balance), 0),
+        () => accounts.filter(a => a.include_in_total !== false && a.currency === 'USD').reduce((s, a) => s + Number(a.balance), 0),
         [accounts]
     );
 
@@ -119,6 +119,7 @@ export default function SettingsScreen() {
                 color: acc.color,
                 balance: String(acc.balance),
                 currency: acc.currency ?? 'UYU',
+                include_in_total: String(acc.include_in_total !== false),
             },
         });
     };
