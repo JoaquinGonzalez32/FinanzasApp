@@ -70,14 +70,15 @@ export default function AddTransactionScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             className="flex-1 bg-white dark:bg-[#111418]"
         >
-            <View className="items-center pt-3 pb-2">
-                <View className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-[#3b4754]" />
+            <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
+                <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-full active:bg-slate-200 dark:active:bg-slate-800">
+                    <MaterialIcons name="arrow-back-ios-new" size={20} color="#475569" />
+                </TouchableOpacity>
+                <Text className="text-base font-bold text-slate-900 dark:text-white">Nueva Transacción</Text>
+                <View className="w-10" />
             </View>
 
             <ScrollView className="flex-1">
-                <Text className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase tracking-[0.1em] px-4 py-2 text-center">
-                    Nueva Transacción
-                </Text>
 
                 {/* Amount */}
                 <View className="px-6 pt-4 pb-6 items-center">
