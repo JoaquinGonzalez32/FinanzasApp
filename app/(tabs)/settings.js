@@ -60,10 +60,13 @@ export default function SettingsScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
+                            console.log('[DEBUG] deleting category:', cat.id);
                             await deleteCategory(cat.id);
+                            console.log('[DEBUG] delete success');
                             emitCategoriesChange();
                         } catch (e) {
-                            Alert.alert('Error', e.message);
+                            console.log('[DEBUG] delete error:', e?.message, e?.code, e?.details);
+                            Alert.alert('Error', e?.message ?? String(e));
                         }
                     },
                 },
