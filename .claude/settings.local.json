@@ -8,7 +8,9 @@
       "Bash(node -e \"\nconst url = ''https://cwefayzuzyjdfnkuhicu.supabase.co'';\nconst key = ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3ZWZheXp1enlqZGZua3VoaWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0MDI4MjUsImV4cCI6MjA4NTk3ODgyNX0.EFa0a6Jpr97B6HO5MSVSeCCLBV8TBxM03o3HCbu0x-g'';\nconst headers = { \n  ''apikey'': key, \n  ''Authorization'': ''Bearer '' + key,\n  ''Content-Type'': ''application/json'',\n  ''Prefer'': ''return=representation''\n};\n\n// Try inserting without auth to see if RLS blocks it\nfetch\\(url + ''/rest/v1/categories'', { \n  method: ''POST'', \n  headers,\n  body: JSON.stringify\\({ name: ''test'', icon: ''test'', color: ''orange'', type: ''expense'', sort_order: 0 }\\)\n}\\).then\\(r => r.text\\(\\).then\\(t => console.log\\(''insert test:'', r.status, t\\)\\)\\);\n\")",
       "Bash(ls:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx expo export:*)"
+      "Bash(npx expo export:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
