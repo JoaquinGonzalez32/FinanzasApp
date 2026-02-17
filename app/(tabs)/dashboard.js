@@ -198,10 +198,8 @@ export default function DashboardScreen() {
                                                 {catTx.map(tx => {
                                                     const txStyle = getCategoryStyle(tx.category?.color);
                                                     return (
-                                                        <TouchableOpacity
+                                                        <View
                                                             key={tx.id}
-                                                            onLongPress={() => handleDeleteTx(tx)}
-                                                            activeOpacity={0.7}
                                                             className="flex-row items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-800/40"
                                                         >
                                                             <View className={`h-8 w-8 rounded-lg ${txStyle.bg} items-center justify-center`}>
@@ -218,10 +216,10 @@ export default function DashboardScreen() {
                                                             <Text className="text-sm font-bold text-red-500 mr-1">
                                                                 -{formatCurrency(tx.amount)}
                                                             </Text>
-                                                            <TouchableOpacity onPress={() => handleDeleteTx(tx)} hitSlop={8}>
-                                                                <MaterialIcons name="delete-outline" size={18} color="#ef4444" />
+                                                            <TouchableOpacity onPress={() => handleDeleteTx(tx)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} className="p-1.5 rounded-full active:bg-red-100 dark:active:bg-red-500/20">
+                                                                <MaterialIcons name="delete-outline" size={20} color="#ef4444" />
                                                             </TouchableOpacity>
-                                                        </TouchableOpacity>
+                                                        </View>
                                                     );
                                                 })}
                                             </View>

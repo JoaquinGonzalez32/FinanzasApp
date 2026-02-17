@@ -138,7 +138,7 @@ export default function HomeScreen() {
                 colorClass={tx.type === 'expense' ? 'text-red-500' : 'text-green-500'}
                 iconBg={style.bg}
                 iconColor={style.hex}
-                onLongPress={() => handleDeleteTx(tx)}
+                onDelete={() => handleDeleteTx(tx)}
             />
         );
     };
