@@ -40,24 +40,27 @@ export default function DashboardScreen() {
 
     const handleDeleteTx = useCallback((tx) => {
         const label = tx.note || tx.category?.name || 'Sin categoría';
-        Alert.alert(
-            'Eliminar transacción',
-            `¿Eliminar "${label}" por ${formatCurrency(tx.amount)}?`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Eliminar',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteTransaction(tx.id);
-                            emitTransactionsChange();
-                        } catch (e) {
-                            Alert.alert('Error', e.message);
-                        }
+        setTimeout(() => {
+            Alert.alert(
+                'Eliminar transacción',
+                `¿Eliminar "${label}" por ${formatCurrency(tx.amount)}?`,
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                        text: 'Eliminar',
+                        style: 'destructive',
+                        onPress: async () => {
+                            try {
+                                await deleteTransaction(tx.id);
+                                emitTransactionsChange();
+                            } catch (e) {
+                                Alert.alert('Error', e.message);
+                            }
+                        },
                     },
-                },
-            ]
+                ]
+            );
+        }, 100
         );
     }, []);
 

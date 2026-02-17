@@ -44,25 +44,27 @@ export default function AllTransactionsScreen() {
 
     const handleDeleteTx = (tx) => {
         const label = tx.category?.name ?? 'Sin categoría';
-        Alert.alert(
-            'Eliminar transacción',
-            `¿Eliminar "${label}" por ${formatCurrency(tx.amount)}?`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Eliminar',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteTransaction(tx.id);
-                            emitTransactionsChange();
-                        } catch (e) {
-                            Alert.alert('Error', e.message);
-                        }
+        setTimeout(() => {
+            Alert.alert(
+                'Eliminar transacción',
+                `¿Eliminar "${label}" por ${formatCurrency(tx.amount)}?`,
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                        text: 'Eliminar',
+                        style: 'destructive',
+                        onPress: async () => {
+                            try {
+                                await deleteTransaction(tx.id);
+                                emitTransactionsChange();
+                            } catch (e) {
+                                Alert.alert('Error', e.message);
+                            }
+                        },
                     },
-                },
-            ]
-        );
+                ]
+            );
+        }, 100);
     };
 
     const renderTx = (tx) => {
