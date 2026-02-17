@@ -1,5 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert, Pressable } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useMemo } from 'react';
@@ -72,9 +71,9 @@ export default function AddTransactionScreen() {
             className="flex-1 bg-white dark:bg-[#111418]"
         >
             <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
-                <GHTouchableOpacity onPress={() => router.back()} style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 }}>
+                <Pressable onPress={() => router.back()} style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 }}>
                     <MaterialIcons name="arrow-back-ios-new" size={20} color="#475569" />
-                </GHTouchableOpacity>
+                </Pressable>
                 <Text className="text-base font-bold text-slate-900 dark:text-white">Nueva Transacción</Text>
                 <View className="w-10" />
             </View>
