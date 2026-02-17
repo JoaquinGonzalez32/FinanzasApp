@@ -5,10 +5,11 @@ import { useMemo, useState, useCallback } from 'react';
 import TransactionItem from '../../components/TransactionItem';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTransactions } from '../../src/hooks/useTransactions';
+import { useAccounts } from '../../src/hooks/useAccounts';
 import { useBudget } from '../../src/hooks/useBudget';
 import { deleteTransaction } from '../../src/services/transactionsService';
 import { emitTransactionsChange } from '../../src/lib/events';
-import { formatCurrency, formatAmount, formatTime, getCategoryStyle, sumByType, groupByCategory, MONTHS_ES } from '../../src/lib/helpers';
+import { formatCurrency, formatTime, getCategoryStyle, sumByType, groupByCategory, MONTHS_ES } from '../../src/lib/helpers';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -17,6 +18,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 export default function DashboardScreen() {
     const router = useRouter();
     const { transactions: monthTx, loading } = useTransactions({ mode: 'month' });
+    const { accounts } = useAccounts();
 
     const now = new Date();
     const monthLabel = `${MONTHS_ES[now.getMonth()]} ${now.getFullYear()}`;
@@ -26,6 +28,15 @@ export default function DashboardScreen() {
     const netBalance = monthIncome - monthExpense;
     const expenseTx = useMemo(() => monthTx.filter(t => t.type === 'expense'), [monthTx]);
     const topCats = useMemo(() => groupByCategory(expenseTx), [expenseTx]);
+    const accountStats = useMemo(() => accounts.map(acc => {
+        const linkedTx = monthTx.filter(t => t.category?.account_id === acc.id);
+        return {
+            account: acc,
+            monthIncome: sumByType(linkedTx, 'income'),
+            monthExpense: sumByType(linkedTx, 'expense'),
+        };
+    }), [accounts, monthTx]);
+
     const { budgetItems } = useBudget();
 
     const [expandedCatId, setExpandedCatId] = useState(null);
@@ -89,6 +100,36 @@ export default function DashboardScreen() {
                             <Text className="text-white text-4xl font-extrabold">{formatCurrency(netBalance)}</Text>
                         </View>
                     </View>
+
+                    {/* Account Cards */}
+                    {accountStats.length > 0 && (
+                        <View>
+                            <Text className="text-lg font-bold text-slate-900 dark:text-white mb-3">Cuentas</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                                {accountStats.map(({ account: acc, monthIncome: accIncome, monthExpense: accExpense }) => {
+                                    const style = getCategoryStyle(acc.color);
+                                    return (
+                                        <View key={acc.id} className="bg-white dark:bg-card-dark p-4 rounded-2xl border border-slate-200 dark:border-slate-800" style={{ width: 180 }}>
+                                            <View className="flex-row items-center gap-2 mb-3">
+                                                <View className={`h-8 w-8 rounded-lg items-center justify-center ${style.bg}`}>
+                                                    <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={style.hex} />
+                                                </View>
+                                                <View className="flex-1">
+                                                    <Text className="text-sm font-bold text-slate-900 dark:text-white" numberOfLines={1}>{acc.name}</Text>
+                                                    <Text className="text-[10px] text-slate-400 font-medium">{acc.currency}</Text>
+                                                </View>
+                                            </View>
+                                            <Text className="text-xl font-extrabold text-slate-900 dark:text-white mb-2">{formatCurrency(acc.balance)}</Text>
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-xs font-semibold text-emerald-500">+{formatCurrency(accIncome)}</Text>
+                                                <Text className="text-xs font-semibold text-rose-500">-{formatCurrency(accExpense)}</Text>
+                                            </View>
+                                        </View>
+                                    );
+                                })}
+                            </ScrollView>
+                        </View>
+                    )}
 
                     {/* Income/Expense Cards */}
                     <View className="flex-row gap-4">

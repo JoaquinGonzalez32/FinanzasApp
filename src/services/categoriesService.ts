@@ -41,16 +41,6 @@ export async function updateCategory(
     .eq("id", id);
 
   if (error) throw error;
-
-  // Verificar que el update se aplicó leyendo la fila
-  const { data, error: readErr } = await supabase
-    .from("categories")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (readErr) throw readErr;
-  console.log("[DEBUG] category after update:", JSON.stringify(data));
 }
 
 export async function deleteCategory(id: string): Promise<void> {

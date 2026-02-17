@@ -52,16 +52,13 @@ export default function AddCategoryScreen() {
         setSubmitting(true);
         try {
             if (isEditing && typeof params.id === 'string') {
-                const payload = {
+                await updateCategory(params.id, {
                     name: name.trim(),
                     icon: selectedIcon,
                     color: selectedColor,
                     type,
                     account_id: selectedAccount,
-                };
-                console.log('[DEBUG] updateCategory id:', params.id, 'payload:', JSON.stringify(payload));
-                const result = await updateCategory(params.id, payload);
-                console.log('[DEBUG] updateCategory result:', JSON.stringify(result));
+                });
             } else {
                 await createCategory({
                     name: name.trim(),
@@ -76,7 +73,6 @@ export default function AddCategoryScreen() {
             emitCategoriesChange();
             router.back();
         } catch (e) {
-            console.log('[DEBUG] error:', JSON.stringify(e));
             Alert.alert('Error', e?.message ?? String(e));
         } finally {
             setSubmitting(false);
