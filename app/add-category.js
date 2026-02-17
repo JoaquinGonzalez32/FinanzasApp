@@ -23,24 +23,26 @@ export default function AddCategoryScreen() {
 
     const isEditing = !!params.id;
 
-    const [name, setName] = useState('');
-    const [type, setType] = useState(params.type === 'income' ? 'income' : 'expense');
-    const [selectedIcon, setSelectedIcon] = useState('restaurant');
-    const [selectedColor, setSelectedColor] = useState('orange');
-    const [selectedAccount, setSelectedAccount] = useState(null);
+    const getInitial = (key, fallback) => (typeof params[key] === 'string' ? params[key] : fallback);
+
+    const [name, setName] = useState(isEditing ? getInitial('name', '') : '');
+    const [type, setType] = useState(isEditing ? getInitial('catType', 'expense') : (params.type === 'income' ? 'income' : 'expense'));
+    const [selectedIcon, setSelectedIcon] = useState(getInitial('icon', 'restaurant'));
+    const [selectedColor, setSelectedColor] = useState(getInitial('color', 'orange'));
+    const [selectedAccount, setSelectedAccount] = useState(getInitial('account_id', '') || null);
     const [submitting, setSubmitting] = useState(false);
 
     const { accounts } = useAccounts();
 
     useEffect(() => {
         if (isEditing) {
-            setName(typeof params.name === 'string' ? params.name : '');
-            setType(typeof params.catType === 'string' ? params.catType : 'expense');
-            setSelectedIcon(typeof params.icon === 'string' ? params.icon : 'restaurant');
-            setSelectedColor(typeof params.color === 'string' ? params.color : 'orange');
-            setSelectedAccount(typeof params.account_id === 'string' && params.account_id ? params.account_id : null);
+            setName(getInitial('name', ''));
+            setType(getInitial('catType', 'expense'));
+            setSelectedIcon(getInitial('icon', 'restaurant'));
+            setSelectedColor(getInitial('color', 'orange'));
+            setSelectedAccount(getInitial('account_id', '') || null);
         }
-    }, [isEditing]);
+    }, [params.id]);
 
     const handleSubmit = async () => {
         if (!name.trim()) {
