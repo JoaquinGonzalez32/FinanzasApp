@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMemo, useState, useCallback } from 'react';
 import TransactionItem from '../../components/TransactionItem';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useProfile } from '../../src/hooks/useProfile';
 import { deleteTransaction } from '../../src/services/transactionsService';
@@ -77,6 +78,7 @@ export default function HomeScreen() {
     const { profile } = useProfile();
     const { transactions: monthTx, loading, error, refresh } = useTransactions({ mode: 'month' });
     const [refreshing, setRefreshing] = useState(false);
+    const [deleteTx, setDeleteTx] = useState(null);
 
     const todayStr = useMemo(() => toDateISO(), []);
     const yesterdayStr = useMemo(() => {
@@ -98,15 +100,17 @@ export default function HomeScreen() {
         try { await refresh(); } finally { setRefreshing(false); }
     }, [refresh]);
 
-    const handleDeleteTx = async (tx) => {
-        console.log('[Home] handleDeleteTx called', tx.id);
+    const handleDeleteTx = (tx) => setDeleteTx(tx);
+
+    const confirmDelete = async () => {
+        if (!deleteTx) return;
         try {
-            console.log('[Home] Deleting from DB...');
-            await deleteTransaction(tx.id);
-            console.log('[Home] Deleted OK, emitting change');
+            await deleteTransaction(deleteTx.id);
             emitTransactionsChange();
         } catch (e) {
-            console.log('[Home] Delete ERROR:', e.message);
+            console.log('Delete error:', e.message);
+        } finally {
+            setDeleteTx(null);
         }
     };
 
@@ -262,6 +266,13 @@ export default function HomeScreen() {
                     )}
                 </View>
             </ScrollView>
+            <ConfirmModal
+                visible={!!deleteTx}
+                title="Eliminar transacción"
+                message={deleteTx ? `¿Eliminar "${deleteTx.category?.name ?? 'Sin categoría'}" por ${formatCurrency(deleteTx.amount)}?` : ''}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteTx(null)}
+            />
         </SafeAreaView>
     );
 }

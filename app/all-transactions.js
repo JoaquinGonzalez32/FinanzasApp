@@ -1,9 +1,10 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMemo, useState, useCallback } from 'react';
 import TransactionItem from '../components/TransactionItem';
+import ConfirmModal from '../components/ConfirmModal';
 import { useTransactions } from '../src/hooks/useTransactions';
 import { deleteTransaction } from '../src/services/transactionsService';
 import { emitTransactionsChange } from '../src/lib/events';
@@ -21,6 +22,7 @@ export default function AllTransactionsScreen() {
     const router = useRouter();
     const { transactions: monthTx, loading, error, refresh } = useTransactions({ mode: 'month' });
     const [refreshing, setRefreshing] = useState(false);
+    const [deleteTx, setDeleteTx] = useState(null);
 
     const now = new Date();
     const monthLabel = `${MONTHS_ES[now.getMonth()]} ${now.getFullYear()}`;
@@ -42,29 +44,18 @@ export default function AllTransactionsScreen() {
         try { await refresh(); } finally { setRefreshing(false); }
     }, [refresh]);
 
-    const handleDeleteTx = (tx) => {
-        const label = tx.category?.name ?? 'Sin categoría';
-        setTimeout(() => {
-            Alert.alert(
-                'Eliminar transacción',
-                `¿Eliminar "${label}" por ${formatCurrency(tx.amount)}?`,
-                [
-                    { text: 'Cancelar', style: 'cancel' },
-                    {
-                        text: 'Eliminar',
-                        style: 'destructive',
-                        onPress: async () => {
-                            try {
-                                await deleteTransaction(tx.id);
-                                emitTransactionsChange();
-                            } catch (e) {
-                                Alert.alert('Error', e.message);
-                            }
-                        },
-                    },
-                ]
-            );
-        }, 100);
+    const handleDeleteTx = (tx) => setDeleteTx(tx);
+
+    const confirmDelete = async () => {
+        if (!deleteTx) return;
+        try {
+            await deleteTransaction(deleteTx.id);
+            emitTransactionsChange();
+        } catch (e) {
+            console.log('Delete error:', e.message);
+        } finally {
+            setDeleteTx(null);
+        }
     };
 
     const renderTx = (tx) => {
@@ -154,6 +145,13 @@ export default function AllTransactionsScreen() {
                     );
                 })}
             </ScrollView>
+            <ConfirmModal
+                visible={!!deleteTx}
+                title="Eliminar transacción"
+                message={deleteTx ? `¿Eliminar "${deleteTx.category?.name ?? 'Sin categoría'}" por ${formatCurrency(deleteTx.amount)}?` : ''}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteTx(null)}
+            />
         </SafeAreaView>
     );
 }

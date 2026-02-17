@@ -1,8 +1,9 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, LayoutAnimation, Platform, UIManager, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, useState, useCallback } from 'react';
 import TransactionItem from '../../components/TransactionItem';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useBudget } from '../../src/hooks/useBudget';
 import { deleteTransaction } from '../../src/services/transactionsService';
@@ -28,6 +29,7 @@ export default function DashboardScreen() {
     const { budgetItems } = useBudget();
 
     const [expandedCatId, setExpandedCatId] = useState(null);
+    const [deleteTx, setDeleteTx] = useState(null);
 
     const toggleCategory = useCallback((catId) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -38,31 +40,19 @@ export default function DashboardScreen() {
         return expenseTx.filter(t => t.category?.id === catId);
     }, [expenseTx]);
 
-    const handleDeleteTx = useCallback((tx) => {
-        const label = tx.note || tx.category?.name || 'Sin categoría';
-        setTimeout(() => {
-            Alert.alert(
-                'Eliminar transacción',
-                `¿Eliminar "${label}" por ${formatCurrency(tx.amount)}?`,
-                [
-                    { text: 'Cancelar', style: 'cancel' },
-                    {
-                        text: 'Eliminar',
-                        style: 'destructive',
-                        onPress: async () => {
-                            try {
-                                await deleteTransaction(tx.id);
-                                emitTransactionsChange();
-                            } catch (e) {
-                                Alert.alert('Error', e.message);
-                            }
-                        },
-                    },
-                ]
-            );
-        }, 100
-        );
-    }, []);
+    const handleDeleteTx = useCallback((tx) => setDeleteTx(tx), []);
+
+    const confirmDelete = useCallback(async () => {
+        if (!deleteTx) return;
+        try {
+            await deleteTransaction(deleteTx.id);
+            emitTransactionsChange();
+        } catch (e) {
+            console.log('Delete error:', e.message);
+        } finally {
+            setDeleteTx(null);
+        }
+    }, [deleteTx]);
 
     return (
         <View className="flex-1 bg-background-light dark:bg-background-dark">
@@ -237,6 +227,13 @@ export default function DashboardScreen() {
                     </View>
                 </View>
             </ScrollView>
+            <ConfirmModal
+                visible={!!deleteTx}
+                title="Eliminar transacción"
+                message={deleteTx ? `¿Eliminar "${deleteTx.note || deleteTx.category?.name || 'Sin categoría'}" por ${formatCurrency(deleteTx.amount)}?` : ''}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteTx(null)}
+            />
         </View>
     );
 }
