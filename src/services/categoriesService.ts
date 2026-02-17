@@ -34,16 +34,13 @@ export async function createCategory(
 export async function updateCategory(
   id: string,
   updates: CategoryUpdate
-): Promise<Category> {
-  const { data, error } = await supabase
+): Promise<void> {
+  const { error } = await supabase
     .from("categories")
     .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+    .eq("id", id);
 
   if (error) throw error;
-  return data;
 }
 
 export async function deleteCategory(id: string): Promise<void> {
