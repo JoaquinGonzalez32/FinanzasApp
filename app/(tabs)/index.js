@@ -99,6 +99,7 @@ export default function HomeScreen() {
     }, [refresh]);
 
     const handleDeleteTx = (tx) => {
+        console.log('[Home] handleDeleteTx called', tx.id);
         const label = tx.category?.name ?? 'Sin categoría';
         Alert.alert(
             'Eliminar transacción',
