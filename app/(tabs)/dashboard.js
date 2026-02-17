@@ -88,10 +88,6 @@ export default function DashboardScreen() {
                             <Text className="text-white/80 text-sm font-medium mb-1">Balance Neto</Text>
                             <Text className="text-white text-4xl font-extrabold">{formatCurrency(netBalance)}</Text>
                         </View>
-                        <View className="flex-row items-center gap-2 mt-4 bg-white/20 self-start px-3 py-1 rounded-full">
-                            <MaterialIcons name="trending-up" size={16} color="white" />
-                            <Text className="text-white text-sm font-bold">+12% vs sept.</Text>
-                        </View>
                     </View>
 
                     {/* Income/Expense Cards */}
@@ -104,7 +100,6 @@ export default function DashboardScreen() {
                                 <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ingresos</Text>
                             </View>
                             <Text className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(monthIncome)}</Text>
-                            <Text className="text-emerald-500 text-xs font-bold mt-1">+5%</Text>
                         </View>
                         <View className="flex-1 bg-white dark:bg-card-dark p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
                             <View className="flex-row items-center gap-2 mb-3">
@@ -114,7 +109,6 @@ export default function DashboardScreen() {
                                 <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gastos</Text>
                             </View>
                             <Text className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(monthExpense)}</Text>
-                            <Text className="text-rose-500 text-xs font-bold mt-1">-2%</Text>
                         </View>
                     </View>
 
