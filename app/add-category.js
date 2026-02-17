@@ -69,7 +69,7 @@ export default function AddCategoryScreen() {
                 });
             }
             emitCategoriesChange();
-            router.back();
+            router.dismiss();
         } catch (e) {
             Alert.alert('Error', e.message);
         } finally {
