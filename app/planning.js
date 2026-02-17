@@ -171,11 +171,9 @@ export default function PlanningScreen() {
                         {items.map((item, idx) => {
                             const cat = item.category;
                             const style = getCategoryStyle(cat?.color);
-                            const displayValue = showPercent
-                                ? `${item.percentage ?? ''}`
-                                : monthIncome > 0
-                                    ? formatCurrency(monthIncome * (Number(item.percentage) || 0) / 100)
-                                    : '$0.00';
+                            const fixedAmount = monthIncome > 0
+                                ? (monthIncome * (Number(item.percentage) || 0) / 100).toFixed(0)
+                                : '0';
 
                             return (
                                 <View key={item.id || `local-${idx}`} className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
@@ -203,7 +201,19 @@ export default function PlanningScreen() {
                                                 <Text className="text-slate-400 font-bold text-base ml-1">%</Text>
                                             </View>
                                         ) : (
-                                            <Text className="text-base font-bold text-slate-900 dark:text-white">{displayValue}</Text>
+                                            <View className="flex-row items-center">
+                                                <Text className="text-slate-400 font-bold text-base mr-1">$</Text>
+                                                <TextInput
+                                                    value={fixedAmount}
+                                                    onChangeText={(v) => {
+                                                        const num = Number(v.replace(/[^0-9.]/g, '')) || 0;
+                                                        const pct = monthIncome > 0 ? ((num / monthIncome) * 100) : 0;
+                                                        updateItem(idx, 'percentage', String(Math.round(pct * 100) / 100));
+                                                    }}
+                                                    keyboardType="numeric"
+                                                    className="w-20 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg text-center text-base font-bold text-slate-900 dark:text-white"
+                                                />
+                                            </View>
                                         )}
 
                                         {/* Delete */}

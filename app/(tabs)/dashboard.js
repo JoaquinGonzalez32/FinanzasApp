@@ -1,10 +1,12 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, LayoutAnimation, Platform, UIManager, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, useState, useCallback } from 'react';
 import TransactionItem from '../../components/TransactionItem';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useBudget } from '../../src/hooks/useBudget';
+import { deleteTransaction } from '../../src/services/transactionsService';
+import { emitTransactionsChange } from '../../src/lib/events';
 import { formatCurrency, formatAmount, formatTime, getCategoryStyle, sumByType, groupByCategory, MONTHS_ES } from '../../src/lib/helpers';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -35,6 +37,29 @@ export default function DashboardScreen() {
     const getTxForCategory = useCallback((catId) => {
         return expenseTx.filter(t => t.category?.id === catId);
     }, [expenseTx]);
+
+    const handleDeleteTx = useCallback((tx) => {
+        const label = tx.note || tx.category?.name || 'Sin categoría';
+        Alert.alert(
+            'Eliminar transacción',
+            `¿Eliminar "${label}" por ${formatCurrency(tx.amount)}?`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Eliminar',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await deleteTransaction(tx.id);
+                            emitTransactionsChange();
+                        } catch (e) {
+                            Alert.alert('Error', e.message);
+                        }
+                    },
+                },
+            ]
+        );
+    }, []);
 
     return (
         <View className="flex-1 bg-background-light dark:bg-background-dark">
@@ -173,8 +198,10 @@ export default function DashboardScreen() {
                                                 {catTx.map(tx => {
                                                     const txStyle = getCategoryStyle(tx.category?.color);
                                                     return (
-                                                        <View
+                                                        <TouchableOpacity
                                                             key={tx.id}
+                                                            onLongPress={() => handleDeleteTx(tx)}
+                                                            activeOpacity={0.7}
                                                             className="flex-row items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-800/40"
                                                         >
                                                             <View className={`h-8 w-8 rounded-lg ${txStyle.bg} items-center justify-center`}>
@@ -188,10 +215,13 @@ export default function DashboardScreen() {
                                                                     {tx.date} • {formatTime(tx.created_at)}
                                                                 </Text>
                                                             </View>
-                                                            <Text className="text-sm font-bold text-red-500">
+                                                            <Text className="text-sm font-bold text-red-500 mr-1">
                                                                 -{formatCurrency(tx.amount)}
                                                             </Text>
-                                                        </View>
+                                                            <TouchableOpacity onPress={() => handleDeleteTx(tx)} hitSlop={8}>
+                                                                <MaterialIcons name="delete-outline" size={18} color="#ef4444" />
+                                                            </TouchableOpacity>
+                                                        </TouchableOpacity>
                                                     );
                                                 })}
                                             </View>
