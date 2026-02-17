@@ -81,7 +81,7 @@ export default function AddAccountScreen() {
                 });
             }
             emitAccountsChange();
-            router.dismiss();
+            router.back();
         } catch (e) {
             Alert.alert('Error', e.message);
         } finally {
