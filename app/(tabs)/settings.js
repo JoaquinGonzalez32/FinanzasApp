@@ -49,30 +49,27 @@ export default function SettingsScreen() {
         }
     }, [activeTab, refreshCats, refreshAccs]);
 
-    const handleDeleteCategory = (cat) => {
-        console.log('[DEBUG] handleDeleteCategory called for:', cat.id, cat.name);
-        Alert.alert(
-            'Eliminar categoría',
-            `¿Seguro que querés eliminar "${cat.name}"? Las transacciones asociadas no se eliminarán.`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Eliminar',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            console.log('[DEBUG] deleting category:', cat.id);
-                            await deleteCategory(cat.id);
-                            console.log('[DEBUG] delete success');
-                            emitCategoriesChange();
-                        } catch (e) {
-                            console.log('[DEBUG] delete error:', e?.message, e?.code, e?.details);
-                            Alert.alert('Error', e?.message ?? String(e));
-                        }
-                    },
-                },
-            ]
-        );
+    const handleDeleteCategory = async (cat) => {
+        const confirmed = typeof window !== 'undefined' && window.confirm
+            ? window.confirm(`¿Seguro que querés eliminar "${cat.name}"? Las transacciones asociadas no se eliminarán.`)
+            : await new Promise((resolve) =>
+                Alert.alert(
+                    'Eliminar categoría',
+                    `¿Seguro que querés eliminar "${cat.name}"? Las transacciones asociadas no se eliminarán.`,
+                    [
+                        { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
+                        { text: 'Eliminar', onPress: () => resolve(true), style: 'destructive' },
+                    ]
+                )
+            );
+
+        if (!confirmed) return;
+        try {
+            await deleteCategory(cat.id);
+            emitCategoriesChange();
+        } catch (e) {
+            Alert.alert('Error', e?.message ?? String(e));
+        }
     };
 
     const handleEditCategory = (cat) => {
@@ -90,26 +87,27 @@ export default function SettingsScreen() {
         });
     };
 
-    const handleDeleteAccount = (acc) => {
-        Alert.alert(
-            'Eliminar cuenta',
-            `¿Seguro que querés eliminar "${acc.name}"?`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Eliminar',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteAccount(acc.id);
-                            emitAccountsChange();
-                        } catch (e) {
-                            Alert.alert('Error', e.message);
-                        }
-                    },
-                },
-            ]
-        );
+    const handleDeleteAccount = async (acc) => {
+        const confirmed = typeof window !== 'undefined' && window.confirm
+            ? window.confirm(`¿Seguro que querés eliminar "${acc.name}"?`)
+            : await new Promise((resolve) =>
+                Alert.alert(
+                    'Eliminar cuenta',
+                    `¿Seguro que querés eliminar "${acc.name}"?`,
+                    [
+                        { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
+                        { text: 'Eliminar', onPress: () => resolve(true), style: 'destructive' },
+                    ]
+                )
+            );
+
+        if (!confirmed) return;
+        try {
+            await deleteAccount(acc.id);
+            emitAccountsChange();
+        } catch (e) {
+            Alert.alert('Error', e?.message ?? String(e));
+        }
     };
 
     const handleEditAccount = (acc) => {
