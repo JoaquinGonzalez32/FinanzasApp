@@ -93,6 +93,7 @@ export interface BudgetItem {
   category_id: string;
   account_id: string | null;
   percentage: number;
+  month: string;
   sort_order: number;
   created_at: string;
   category?: Category;
@@ -102,5 +103,28 @@ export interface BudgetItemInsert {
   category_id: string;
   account_id?: string | null;
   percentage: number;
+  month: string;
   sort_order?: number;
+}
+
+export type AccountGoalType = "balance" | "category";
+
+export interface AccountGoal {
+  id: string;
+  user_id: string;
+  account_id: string;
+  goal_type: AccountGoalType;
+  category_id: string | null;
+  target_amount: number;
+  target_date: string | null;
+  created_at: string;
+  category?: Category;
+}
+
+export interface AccountGoalInsert {
+  account_id: string;
+  goal_type: AccountGoalType;
+  category_id?: string | null;
+  target_amount: number;
+  target_date?: string | null;
 }

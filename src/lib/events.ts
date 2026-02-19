@@ -27,3 +27,7 @@ export const emitAccountsChange = accounts.emit;
 const budget = createChannel();
 export const onBudgetChange = budget.on;
 export const emitBudgetChange = budget.emit;
+
+const accountGoals = createChannel();
+export const onAccountGoalsChange = accountGoals.on;
+export const emitAccountGoalsChange = accountGoals.emit;

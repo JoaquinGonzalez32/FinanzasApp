@@ -10,7 +10,25 @@
       "Bash(npx tsc:*)",
       "Bash(npx expo export:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(head:*)",
+      "Bash(npx supabase --version)",
+      "Bash(npx supabase projects list:*)",
+      "Bash(npx supabase db execute:*)",
+      "Bash(npx supabase:*)",
+      "Bash(where:*)",
+      "Bash(powershell.exe -Command \"[System.Text.Encoding]::UTF8.GetString\\([System.Convert]::FromBase64String\\(\\(cmdkey /list:supabase* 2>&1 | Out-String\\)\\)\\)\")",
+      "Bash(cmdkey.exe /list:*)",
+      "Bash(powershell.exe -Command \"cmdkey /list\")",
+      "Bash(powershell.exe -Command \":*)",
+      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d '{\"\"query\"\": \"\"UPDATE budget_items SET month = to_char\\(now\\(\\), ''''YYYY-MM''''\\) WHERE month IS NULL;\"\"}')",
+      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d '{\"\"query\"\": \"\"ALTER TABLE budget_items ALTER COLUMN month SET NOT NULL;\"\"}')",
+      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d '{\"\"query\"\": \"\"CREATE TABLE account_goals \\(id uuid DEFAULT gen_random_uuid\\(\\) PRIMARY KEY, user_id uuid REFERENCES auth.users\\(id\\) ON DELETE CASCADE NOT NULL DEFAULT auth.uid\\(\\), account_id uuid REFERENCES accounts\\(id\\) ON DELETE CASCADE NOT NULL, goal_type text NOT NULL CHECK \\(goal_type IN \\(''''balance'''', ''''category''''\\)\\), category_id uuid REFERENCES categories\\(id\\) ON DELETE CASCADE, target_amount numeric NOT NULL DEFAULT 0, target_date date, created_at timestamptz DEFAULT now\\(\\)\\);\"\"}')",
+      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d '{\"\"query\"\": \"\"ALTER TABLE account_goals ADD CONSTRAINT category_goal_needs_category CHECK \\(goal_type != ''''category'''' OR category_id IS NOT NULL\\);\"\"}')",
+      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" --data-raw '{\"\"query\"\": \"\"ALTER TABLE account_goals ADD CONSTRAINT category_goal_needs_category CHECK \\(goal_type != '\"''\"'category'\"''\"' OR category_id IS NOT NULL\\);\"\"}')",
+      "Bash(printf '{\"\"query\"\": \"\"ALTER TABLE account_goals ADD CONSTRAINT category_goal_needs_category CHECK \\(goal_type != %ccategory%c OR category_id IS NOT NULL\\);\"\"}' \"''\" \"''\")",
+      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d @-)",
+      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d @\"C:/Users/joaqu/OneDrive/Escritorio/FinanzaApp/tmp_sql.json\")"
     ]
   }
 }

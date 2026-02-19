@@ -14,10 +14,11 @@ import type { BudgetItem, BudgetItemInsert } from "../types/database";
 // CREATE POLICY "Users can manage own budget items" ON budget_items
 //   FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
-export async function getBudgetItems(): Promise<BudgetItem[]> {
+export async function getBudgetItems(month: string): Promise<BudgetItem[]> {
   const { data, error } = await supabase
     .from("budget_items")
     .select("*, category:categories(*)")
+    .eq("month", month)
     .order("sort_order", { ascending: true });
 
   if (error) throw error;

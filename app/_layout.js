@@ -114,6 +114,22 @@ function RootNavigator() {
                     animation: 'slide_from_bottom'
                 }}
             />
+            <Stack.Screen
+                name="account-detail"
+                options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                    animation: 'slide_from_bottom'
+                }}
+            />
+            <Stack.Screen
+                name="add-account-goal"
+                options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                    animation: 'slide_from_bottom'
+                }}
+            />
         </Stack>
     );
 }

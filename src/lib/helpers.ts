@@ -18,11 +18,11 @@ export function getCategoryStyle(color?: string) {
   return CATEGORY_COLORS[color ?? ""] ?? DEFAULT_STYLE;
 }
 
-export function formatCurrency(amount: number | string): string {
+export function formatCurrency(amount: number | string, currency?: string): string {
   const num = Math.abs(Number(amount));
   const parts = num.toFixed(2).split(".");
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `$${parts.join(".")}`;
+  return `${getCurrencySymbol(currency)}${parts.join(".")}`;
 }
 
 export function formatAmount(amount: number | string, type: "expense" | "income"): string {

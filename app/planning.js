@@ -7,15 +7,39 @@ import { useBudget } from '../src/hooks/useBudget';
 import { useCategories } from '../src/hooks/useCategories';
 import { useTransactions } from '../src/hooks/useTransactions';
 import { useAccounts } from '../src/hooks/useAccounts';
-import { formatCurrency, getCategoryStyle } from '../src/lib/helpers';
+import { formatCurrency, getCategoryStyle, MONTHS_ES } from '../src/lib/helpers';
 import { emitBudgetChange } from '../src/lib/events';
 import * as svc from '../src/services/budgetService';
 
+function getCurrentMonth() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function parseMonth(month) {
+    const [y, m] = month.split('-').map(Number);
+    return { year: y, month: m };
+}
+
+function shiftMonth(month, delta) {
+    const { year, month: m } = parseMonth(month);
+    const d = new Date(year, m - 1 + delta, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(month) {
+    const { year, month: m } = parseMonth(month);
+    return `${MONTHS_ES[m - 1]} ${year}`;
+}
+
 export default function PlanningScreen() {
     const router = useRouter();
-    const { budgetItems, loading } = useBudget();
+    const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
+    const { budgetItems, loading } = useBudget(selectedMonth);
     const { categories: expenseCategories } = useCategories('expense');
-    const { transactions } = useTransactions({ mode: 'month' });
+
+    const { year: txYear, month: txMonth } = parseMonth(selectedMonth);
+    const { transactions } = useTransactions({ mode: 'month', year: txYear, month: txMonth });
     const { accounts } = useAccounts();
 
     const [selectedAccountId, setSelectedAccountId] = useState(null);
@@ -143,6 +167,7 @@ export default function PlanningScreen() {
                     category_id: item.category_id,
                     account_id: item.account_id || null,
                     percentage: pct,
+                    month: selectedMonth,
                     sort_order: i,
                 };
                 if (item._local || !item.id) {
@@ -158,7 +183,7 @@ export default function PlanningScreen() {
         } finally {
             setSaving(false);
         }
-    }, [items, removedIds, router]);
+    }, [items, removedIds, router, selectedMonth, showPercent, monthIncome]);
 
     if (loading) {
         return (
@@ -189,6 +214,26 @@ export default function PlanningScreen() {
 
             <ScrollView className="flex-1 px-5 py-6" keyboardShouldPersistTaps="handled">
                 <View className="space-y-6 pb-24">
+                    {/* Month selector */}
+                    <View className="flex-row items-center justify-center gap-4">
+                        <TouchableOpacity onPress={() => setSelectedMonth(m => shiftMonth(m, -1))} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 active:bg-slate-200">
+                            <MaterialIcons name="chevron-left" size={24} color="#475569" />
+                        </TouchableOpacity>
+                        <Text className="text-base font-bold text-slate-900 dark:text-white min-w-[160px] text-center">
+                            {monthLabel(selectedMonth)}
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => {
+                                const next = shiftMonth(selectedMonth, 1);
+                                if (next <= getCurrentMonth()) setSelectedMonth(next);
+                            }}
+                            disabled={shiftMonth(selectedMonth, 1) > getCurrentMonth()}
+                            className={`h-10 w-10 items-center justify-center rounded-full ${shiftMonth(selectedMonth, 1) > getCurrentMonth() ? 'bg-slate-50 dark:bg-slate-900' : 'bg-slate-100 dark:bg-slate-800 active:bg-slate-200'}`}
+                        >
+                            <MaterialIcons name="chevron-right" size={24} color={shiftMonth(selectedMonth, 1) > getCurrentMonth() ? '#cbd5e1' : '#475569'} />
+                        </TouchableOpacity>
+                    </View>
+
                     {/* Account selector */}
                     {accounts.length > 0 && (
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">

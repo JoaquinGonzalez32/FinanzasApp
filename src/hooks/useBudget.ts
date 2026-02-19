@@ -10,7 +10,7 @@ interface UseBudgetResult {
   refresh: () => Promise<void>;
 }
 
-export function useBudget(): UseBudgetResult {
+export function useBudget(month: string): UseBudgetResult {
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,14 +19,14 @@ export function useBudget(): UseBudgetResult {
     setLoading(true);
     setError(null);
     try {
-      const data = await svc.getBudgetItems();
+      const data = await svc.getBudgetItems(month);
       setBudgetItems(data);
     } catch (e: any) {
       setError(e.message ?? "Error loading budget");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [month]);
 
   useEffect(() => {
     fetch();
