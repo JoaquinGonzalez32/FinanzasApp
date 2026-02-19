@@ -82,3 +82,12 @@ export const MONTHS_ES = [
 export const DAYS_ES = [
   "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
 ];
+
+export function getCurrencySymbol(currency?: string): string {
+  switch (currency) {
+    case "UYU": return "$U";
+    case "USD": return "US$";
+    case "EUR": return "€";
+    default: return "$";
+  }
+}

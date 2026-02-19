@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { createAccount, updateAccount } from '../src/services/accountsService';
 import { emitAccountsChange } from '../src/lib/events';
-import { CATEGORY_COLORS, getCategoryStyle } from '../src/lib/helpers';
+import { CATEGORY_COLORS, getCategoryStyle, getCurrencySymbol } from '../src/lib/helpers';
 
 const ACCOUNT_TYPES = [
     { key: 'cash', label: 'Efectivo', icon: 'payments' },
@@ -146,6 +146,7 @@ export default function AddAccountScreen() {
                         {[
                             { key: 'UYU', label: 'UYU', symbol: '$U', desc: 'Pesos Uruguayos' },
                             { key: 'USD', label: 'USD', symbol: 'US$', desc: 'Dólares' },
+                            { key: 'EUR', label: 'EUR', symbol: '€', desc: 'Euros' },
                         ].map((cur) => {
                             const isActive = currency === cur.key;
                             return (
@@ -172,7 +173,7 @@ export default function AddAccountScreen() {
                         {isEditing ? 'Saldo actual' : 'Saldo inicial'}
                     </Text>
                     <View className="bg-slate-100 dark:bg-[#283039] rounded-xl px-4 h-12 flex-row items-center">
-                        <Text className="text-slate-500 text-base font-bold mr-2">{currency === 'USD' ? 'US$' : '$'}</Text>
+                        <Text className="text-slate-500 text-base font-bold mr-2">{getCurrencySymbol(currency)}</Text>
                         <TextInput
                             value={balance}
                             onChangeText={setBalance}
