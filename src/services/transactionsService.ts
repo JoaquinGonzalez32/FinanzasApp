@@ -47,6 +47,24 @@ export async function getMonthTransactions(
   return data ?? [];
 }
 
+export async function getYearTransactions(
+  year: number
+): Promise<Transaction[]> {
+  const start = `${year}-01-01`;
+  const end = `${year}-12-31`;
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("*, category:categories(*)")
+    .gte("date", start)
+    .lte("date", end)
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getTransactionsByDate(
   date: string
 ): Promise<Transaction[]> {
