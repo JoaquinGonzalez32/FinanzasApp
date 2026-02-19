@@ -6,26 +6,14 @@ import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
 import { createTransaction } from '../src/services/transactionsService';
 import { emitTransactionsChange } from '../src/lib/events';
-import { toDateISO, DAYS_ES } from '../src/lib/helpers';
-
-function buildRecentDates(count) {
-    const dates = [];
-    for (let i = 0; i < count; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        dates.push({
-            iso: toDateISO(d),
-            day: d.getDate(),
-            weekday: DAYS_ES[d.getDay()].slice(0, 3),
-            label: i === 0 ? 'Hoy' : i === 1 ? 'Ayer' : null,
-        });
-    }
-    return dates;
-}
+import { toDateISO, MONTHS_ES } from '../src/lib/helpers';
 
 export default function AddTransactionScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
+
+    const now = new Date();
+    const todayStr = toDateISO(now);
 
     const [type, setType] = useState(params.type === 'income' ? 'income' : 'expense');
     const [amount, setAmount] = useState('');
@@ -33,16 +21,53 @@ export default function AddTransactionScreen() {
     const [selectedAccount, setSelectedAccount] = useState(null);
     const [note, setNote] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const [showAllDates, setShowAllDates] = useState(false);
-
-    const recentDates = useMemo(() => buildRecentDates(7), []);
-    const todayStr = recentDates[0].iso;
     const [selectedDate, setSelectedDate] = useState(todayStr);
+
+    // Calendar state
+    const [calYear, setCalYear] = useState(now.getFullYear());
+    const [calMonth, setCalMonth] = useState(now.getMonth() + 1);
 
     const { categories, loading: loadingCats } = useCategories(type);
     const { accounts } = useAccounts();
 
-    const visibleDates = showAllDates ? recentDates : recentDates.slice(0, 2);
+    // Calendar grid
+    const firstDayOfWeek = new Date(calYear, calMonth - 1, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+    const daysInPrevMonth = new Date(calYear, calMonth - 1, 0).getDate();
+
+    const prevDays = useMemo(() => {
+        const arr = [];
+        for (let i = firstDayOfWeek - 1; i >= 0; i--) arr.push(daysInPrevMonth - i);
+        return arr;
+    }, [firstDayOfWeek, daysInPrevMonth]);
+
+    const currentDays = useMemo(
+        () => Array.from({ length: daysInMonth }, (_, i) => i + 1),
+        [daysInMonth]
+    );
+
+    const padCells = (7 - ((prevDays.length + currentDays.length) % 7)) % 7;
+
+    const prevMonth = () => {
+        if (calMonth === 1) { setCalMonth(12); setCalYear(y => y - 1); }
+        else setCalMonth(m => m - 1);
+    };
+    const nextMonth = () => {
+        if (calMonth === 12) { setCalMonth(1); setCalYear(y => y + 1); }
+        else setCalMonth(m => m + 1);
+    };
+
+    const selectDay = (d) => {
+        const iso = `${calYear}-${String(calMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        setSelectedDate(iso);
+    };
+
+    // Parse selected date for display
+    const selParts = selectedDate.split('-');
+    const selDay = parseInt(selParts[2], 10);
+    const selMonth = parseInt(selParts[1], 10);
+    const selYear = parseInt(selParts[0], 10);
+    const isSelectedInView = selYear === calYear && selMonth === calMonth;
 
     const handleConfirm = async () => {
         const numAmount = parseFloat(amount.replace(',', '.'));
@@ -176,38 +201,54 @@ export default function AddTransactionScreen() {
                     </View>
                 )}
 
-                {/* Date */}
+                {/* Date Calendar */}
                 <View className="px-6 mb-8">
                     <Text className="text-slate-900 dark:text-white text-base font-bold mb-4">Fecha</Text>
-                    <View className="flex-row flex-wrap gap-3">
-                        {visibleDates.map((d) => {
-                            const isActive = selectedDate === d.iso;
-                            return (
-                                <TouchableOpacity
-                                    key={d.iso}
-                                    onPress={() => setSelectedDate(d.iso)}
-                                    className={`py-3 rounded-xl items-center ${showAllDates ? 'w-[28%]' : 'flex-1'} ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-[#283039]'}`}
-                                >
-                                    <Text className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>
-                                        {d.label ?? `${d.weekday} ${d.day}`}
-                                    </Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                        {!showAllDates && (
-                            <TouchableOpacity
-                                onPress={() => setShowAllDates(true)}
-                                className="w-12 py-3 items-center justify-center rounded-xl bg-slate-100 dark:bg-[#283039]"
-                            >
-                                <MaterialIcons name="calendar-today" size={20} color="#475569" />
+                    <View className="bg-slate-50 dark:bg-[#1a2230] rounded-2xl border border-slate-200 dark:border-slate-700/50 p-4">
+                        {/* Month navigation */}
+                        <View className="flex-row items-center justify-between mb-3">
+                            <TouchableOpacity onPress={prevMonth} className="p-1">
+                                <MaterialIcons name="chevron-left" size={22} color="#94a3b8" />
                             </TouchableOpacity>
-                        )}
+                            <Text className="text-sm font-bold text-primary">{MONTHS_ES[calMonth - 1]} {calYear}</Text>
+                            <TouchableOpacity onPress={nextMonth} className="p-1">
+                                <MaterialIcons name="chevron-right" size={22} color="#94a3b8" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Day headers */}
+                        <View className="flex-row justify-between mb-1">
+                            {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'].map(d => (
+                                <Text key={d} className="w-9 text-center text-[10px] font-bold text-slate-400 uppercase">{d}</Text>
+                            ))}
+                        </View>
+
+                        {/* Grid */}
+                        <View className="flex-row flex-wrap justify-between">
+                            {prevDays.map(d => (
+                                <View key={`p-${d}`} className="w-9 h-9 items-center justify-center opacity-25">
+                                    <Text className="text-xs dark:text-white">{d}</Text>
+                                </View>
+                            ))}
+
+                            {currentDays.map(d => {
+                                const isSelected = isSelectedInView && d === selDay;
+                                const dayISO = `${calYear}-${String(calMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                                const isToday = dayISO === todayStr;
+                                return (
+                                    <TouchableOpacity key={d} onPress={() => selectDay(d)} className="w-9 h-9 items-center justify-center">
+                                        {isSelected && <View className="absolute inset-0 bg-primary rounded-lg" />}
+                                        {!isSelected && isToday && <View className="absolute inset-0 border border-primary/30 rounded-lg" />}
+                                        <Text className={`text-xs ${isSelected ? 'font-bold text-white' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-300'}`}>{d}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+
+                            {Array.from({ length: padCells }, (_, i) => (
+                                <View key={`e-${i}`} className="w-9 h-9" />
+                            ))}
+                        </View>
                     </View>
-                    {showAllDates && (
-                        <TouchableOpacity onPress={() => setShowAllDates(false)} className="mt-2 self-center">
-                            <Text className="text-xs text-primary font-bold">Menos fechas</Text>
-                        </TouchableOpacity>
-                    )}
                 </View>
 
                 {/* Note */}
