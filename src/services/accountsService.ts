@@ -55,6 +55,18 @@ export async function updateAccount(
   return data;
 }
 
+/** Get current balance for an account */
+export async function getAccountBalance(id: string): Promise<number> {
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("balance")
+    .eq("id", id)
+    .single();
+
+  if (error) throw error;
+  return Number(data.balance);
+}
+
 /** Adjust account balance by a delta amount (+/-) */
 export async function adjustAccountBalance(
   id: string,

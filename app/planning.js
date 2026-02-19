@@ -50,7 +50,7 @@ export default function PlanningScreen() {
     useEffect(() => {
         if (!loading && budgetItems.length > 0) {
             const filtered = budgetItems.filter(b =>
-                selectedAccountId ? b.account_id === selectedAccountId : !b.account_id
+                !b.account_id || b.account_id === selectedAccountId
             );
             setItems(filtered.map(b => ({
                 ...b,
@@ -72,11 +72,11 @@ export default function PlanningScreen() {
         [items]
     );
 
-    // Available categories (not yet assigned + matching selected account)
+    // Available categories (not yet assigned + matching or unlinked account)
     const availableCategories = useMemo(
         () => expenseCategories.filter(c =>
             !assignedCategoryIds.has(c.id) &&
-            (selectedAccountId ? c.account_id === selectedAccountId : !c.account_id)
+            (!c.account_id || c.account_id === selectedAccountId)
         ),
         [expenseCategories, assignedCategoryIds, selectedAccountId]
     );

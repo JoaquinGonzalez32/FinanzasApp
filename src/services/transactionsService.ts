@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabase";
 import type { Transaction, TransactionInsert } from "../types/database";
-import { adjustAccountBalance } from "./accountsService";
+import { adjustAccountBalance, getAccountBalance } from "./accountsService";
 import { emitAccountsChange } from "../lib/events";
 
 function todayISO(): string {
@@ -63,6 +63,27 @@ export async function getTransactionsByDate(
 export async function createTransaction(
   tx: TransactionInsert
 ): Promise<Transaction> {
+  // Pre-check: resolve account for balance validation
+  let preAccountId = tx.account_id ?? null;
+  if (!preAccountId && tx.category_id) {
+    const { data: cat } = await supabase
+      .from("categories")
+      .select("account_id")
+      .eq("id", tx.category_id)
+      .single();
+    preAccountId = cat?.account_id ?? null;
+  }
+
+  // Check sufficient balance for expenses
+  if (preAccountId && tx.type === "expense") {
+    const balance = await getAccountBalance(preAccountId);
+    if (balance < tx.amount) {
+      throw new Error(
+        `Saldo insuficiente. Disponible: $${balance.toLocaleString()}, Gasto: $${tx.amount.toLocaleString()}`
+      );
+    }
+  }
+
   const { data, error } = await supabase
     .from("transactions")
     .insert(tx)
