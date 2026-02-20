@@ -1,23 +1,32 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, useColorScheme } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo, useState, useCallback } from 'react';
-import TransactionItem from '../../components/TransactionItem';
-import ConfirmModal from '../../components/ConfirmModal';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useMemo, useState } from 'react';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useAccounts } from '../../src/hooks/useAccounts';
 import { useBudget } from '../../src/hooks/useBudget';
-import { deleteTransaction } from '../../src/services/transactionsService';
-import { emitTransactionsChange } from '../../src/lib/events';
-import { formatCurrency, formatTime, getCategoryStyle, getCurrencySymbol, sumByType, groupByCategory, MONTHS_ES } from '../../src/lib/helpers';
+import { formatCurrency, getCategoryStyle, sumByType, groupByCategory, MONTHS_ES } from '../../src/lib/helpers';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+const polarToCartesian = (cx, cy, r, deg) => {
+    const rad = (deg - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+};
+
+const createSlicePath = (cx, cy, r, startDeg, endDeg) => {
+    if (endDeg - startDeg >= 359.99) {
+        return `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx} ${cy + r} A ${r} ${r} 0 1 1 ${cx} ${cy - r} Z`;
+    }
+    const s = polarToCartesian(cx, cy, r, startDeg);
+    const e = polarToCartesian(cx, cy, r, endDeg);
+    const large = endDeg - startDeg > 180 ? 1 : 0;
+    return `M ${cx} ${cy} L ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y} Z`;
+};
 
 export default function DashboardScreen() {
     const router = useRouter();
-    const { transactions: monthTx, loading } = useTransactions({ mode: 'month' });
+    const { transactions: monthTx } = useTransactions({ mode: 'month' });
     const { accounts } = useAccounts();
 
     const now = new Date();
@@ -40,9 +49,8 @@ export default function DashboardScreen() {
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const { budgetItems } = useBudget(currentMonth);
 
-    const [expandedCatId, setExpandedCatId] = useState(null);
-    const [deleteTx, setDeleteTx] = useState(null);
     const [selectedAccountId, setSelectedAccountId] = useState(null);
+    const colorScheme = useColorScheme();
 
     // Budget items filtered by selected account
     const filteredBudgetItems = useMemo(() => {
@@ -50,64 +58,38 @@ export default function DashboardScreen() {
         return budgetItems.filter(b => !b.account_id || b.account_id === selectedAccountId);
     }, [budgetItems, selectedAccountId]);
 
-    // Income for the selected account (used for distribution targets)
-    const distributionIncome = useMemo(() => {
-        if (!selectedAccountId) return monthIncome;
-        const stat = accountStats.find(s => s.account.id === selectedAccountId);
-        return stat ? stat.monthIncome : 0;
-    }, [selectedAccountId, monthIncome, accountStats]);
-
-    const toggleCategory = useCallback((catId) => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setExpandedCatId(prev => prev === catId ? null : catId);
-    }, []);
-
-    const getTxForCategory = useCallback((catId) => {
-        return expenseTx.filter(t => t.category?.id === catId);
-    }, [expenseTx]);
-
-    const handleDeleteTx = useCallback((tx) => setDeleteTx(tx), []);
-
-    const confirmDelete = useCallback(async () => {
-        if (!deleteTx) return;
-        try {
-            await deleteTransaction(deleteTx.id);
-            emitTransactionsChange();
-        } catch (e) {
-            console.log('Delete error:', e.message);
-        } finally {
-            setDeleteTx(null);
-        }
-    }, [deleteTx]);
+    // Pie chart data from budget items
+    const pieData = useMemo(() => {
+        const total = filteredBudgetItems.reduce((s, b) => s + Number(b.percentage), 0);
+        if (total <= 0) return [];
+        return filteredBudgetItems
+            .filter(b => Number(b.percentage) > 0)
+            .map(b => ({
+                category: b.category,
+                amount: Number(b.percentage),
+                pct: (Number(b.percentage) / total) * 100,
+            }));
+    }, [filteredBudgetItems]);
 
     return (
-        <View className="flex-1 bg-background-light dark:bg-background-dark">
+        <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
             {/* Header */}
-            <View className="absolute top-0 left-0 right-0 z-50 px-4 pt-12 pb-4 bg-background-light/80 dark:bg-background-dark/80">
+            <View className="px-5 pb-3 pt-1">
                 <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center gap-3">
                         <View className="p-2 bg-primary/10 rounded-xl">
                             <MaterialIcons name="dashboard" size={24} color="#137fec" />
                         </View>
                         <View>
-                            <Text className="text-xl font-bold text-slate-900 dark:text-white mt-1">Dashboard</Text>
+                            <Text className="text-xl font-bold text-slate-900 dark:text-white">Dashboard</Text>
                             <Text className="text-xs text-slate-500 font-medium">{monthLabel}</Text>
                         </View>
-                    </View>
-                    <View className="flex-row gap-2">
-                        <TouchableOpacity className="p-2 rounded-full active:bg-slate-200 dark:active:bg-slate-800">
-                            <MaterialIcons name="calendar-today" size={24} color="#64748b" />
-                        </TouchableOpacity>
-                        <TouchableOpacity className="p-2 rounded-full active:bg-slate-200 dark:active:bg-slate-800 relative">
-                            <MaterialIcons name="notifications" size={24} color="#64748b" />
-                            <View className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background-light dark:border-background-dark" />
-                        </TouchableOpacity>
                     </View>
                 </View>
             </View>
 
-            <ScrollView className="flex-1" contentContainerStyle={{ paddingTop: 100, paddingBottom: 100 }}>
-                <View className="px-4 space-y-6">
+            <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
+                <View className="px-5 space-y-6">
                     {/* Main Balance Card */}
                     <View className="bg-primary p-6 rounded-2xl shadow-xl shadow-primary/20 flex-col justify-between mt-2">
                         <View>
@@ -140,7 +122,7 @@ export default function DashboardScreen() {
                                             })}
                                             activeOpacity={0.8}
                                             className="p-4 rounded-2xl border bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800"
-                                            style={{ width: 180 }}
+                                            style={{ width: 170, minWidth: 160 }}
                                         >
                                             <View className="flex-row items-center gap-2 mb-3">
                                                 <View className={`h-8 w-8 rounded-lg items-center justify-center ${style.bg}`}>
@@ -199,7 +181,7 @@ export default function DashboardScreen() {
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                                 <TouchableOpacity
                                     onPress={() => setSelectedAccountId(null)}
-                                    className={`flex-row items-center gap-1.5 mr-2 px-3 py-2 rounded-xl ${!selectedAccountId ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                                    className={`flex-row items-center gap-1.5 mr-2 px-3 py-2 rounded-xl ${!selectedAccountId ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-input-dark'}`}
                                 >
                                     <Text className={`text-xs font-bold ${!selectedAccountId ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`}>Todas</Text>
                                 </TouchableOpacity>
@@ -209,7 +191,7 @@ export default function DashboardScreen() {
                                         <TouchableOpacity
                                             key={acc.id}
                                             onPress={() => setSelectedAccountId(acc.id)}
-                                            className={`flex-row items-center gap-1.5 mr-2 px-3 py-2 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                                            className={`flex-row items-center gap-1.5 mr-2 px-3 py-2 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-input-dark'}`}
                                         >
                                             <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={14} color={isActive ? '#137fec' : '#475569'} />
                                             <Text className={`text-xs font-bold ${isActive ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`}>{acc.name}</Text>
@@ -223,7 +205,7 @@ export default function DashboardScreen() {
                                 {filteredBudgetItems.map(item => {
                                     const cat = item.category;
                                     const style = getCategoryStyle(cat?.color);
-                                    const target = distributionIncome * Number(item.percentage) / 100;
+                                    const target = Number(item.percentage);
                                     const catSpending = cat ? topCats.find(tc => tc.category.id === cat.id) : null;
                                     const spent = catSpending ? catSpending.total : 0;
                                     const progressPct = target > 0 ? Math.min((spent / target) * 100, 100) : 0;
@@ -257,75 +239,60 @@ export default function DashboardScreen() {
                         )}
                     </View>
 
-                    {/* Top Categories */}
+                    {/* Distribución por Categoría — Pie Chart */}
                     <View className="space-y-4">
-                        <Text className="text-lg font-bold text-slate-900 dark:text-white">Top Categorías</Text>
-                        {loading && <ActivityIndicator color="#137fec" />}
-                        <View>
-                            {topCats.slice(0, 5).map(item => {
-                                const style = getCategoryStyle(item.category.color);
-                                const isExpanded = expandedCatId === item.category.id;
-                                const catTx = isExpanded ? getTxForCategory(item.category.id) : [];
-                                return (
-                                    <View key={item.category.id}>
-                                        <TransactionItem
-                                            icon={item.category.icon}
-                                            label={item.category.name}
-                                            sub={`${item.count} ${item.count === 1 ? 'transacción' : 'transacciones'}`}
-                                            amount={formatCurrency(item.total)}
-                                            colorClass="text-slate-900 dark:text-white"
-                                            iconBg={style.bg}
-                                            iconColor={style.hex}
-                                            onPress={() => toggleCategory(item.category.id)}
-                                        />
-                                        {isExpanded && (
-                                            <View className="ml-6 mb-3 border-l-2 border-slate-200 dark:border-slate-700 pl-3">
-                                                {catTx.map(tx => {
-                                                    const txStyle = getCategoryStyle(tx.category?.color);
-                                                    return (
-                                                        <View
-                                                            key={tx.id}
-                                                            className="flex-row items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-800/40"
-                                                        >
-                                                            <View className={`h-8 w-8 rounded-lg ${txStyle.bg} items-center justify-center`}>
-                                                                <MaterialIcons name={tx.category?.icon ?? 'payments'} size={16} color={txStyle.hex} />
-                                                            </View>
-                                                            <View className="flex-1">
-                                                                <Text className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                                    {tx.note || tx.category?.name || 'Sin nota'}
-                                                                </Text>
-                                                                <Text className="text-xs text-slate-500">
-                                                                    {tx.date} • {formatTime(tx.created_at)}
-                                                                </Text>
-                                                            </View>
-                                                            <Text className="text-sm font-bold text-red-500 mr-1">
-                                                                -{formatCurrency(tx.amount)}
-                                                            </Text>
-                                                            <TouchableOpacity onPress={() => handleDeleteTx(tx)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} className="p-1.5 rounded-full active:bg-red-100 dark:active:bg-red-500/20">
-                                                                <MaterialIcons name="delete-outline" size={20} color="#ef4444" />
-                                                            </TouchableOpacity>
-                                                        </View>
-                                                    );
-                                                })}
-                                            </View>
-                                        )}
+                        <Text className="text-lg font-bold text-slate-900 dark:text-white">Distribución por Categoría</Text>
+                        {pieData.length > 0 ? (
+                            <View className="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                <View className="items-center mb-5">
+                                    <View style={{ width: 180, height: 180 }}>
+                                        <Svg width={180} height={180} viewBox="0 0 200 200">
+                                            {(() => {
+                                                let angle = 0;
+                                                return pieData.map((item, idx) => {
+                                                    const sweep = (item.pct / 100) * 360;
+                                                    const path = createSlicePath(100, 100, 90, angle, angle + sweep);
+                                                    angle += sweep;
+                                                    const s = getCategoryStyle(item.category?.color);
+                                                    return <Path key={idx} d={path} fill={s.hex} />;
+                                                });
+                                            })()}
+                                            <Circle cx={100} cy={100} r={55} fill={colorScheme === 'dark' ? '#1c2632' : '#ffffff'} />
+                                        </Svg>
+                                        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }}>
+                                            <Text className="text-[10px] text-slate-400 font-medium">Total</Text>
+                                            <Text className="text-base font-extrabold text-slate-900 dark:text-white">
+                                                {formatCurrency(pieData.reduce((s, d) => s + d.amount, 0))}
+                                            </Text>
+                                        </View>
                                     </View>
-                                );
-                            })}
-                            {!loading && topCats.length === 0 && (
-                                <Text className="text-slate-400 text-sm text-center py-4">Sin datos este mes</Text>
-                            )}
-                        </View>
+                                </View>
+                                <View className="space-y-3">
+                                    {pieData.map((item, idx) => {
+                                        const s = getCategoryStyle(item.category?.color);
+                                        return (
+                                            <View key={idx} className="flex-row items-center gap-3">
+                                                <View className="h-3 w-3 rounded-full" style={{ backgroundColor: s.hex }} />
+                                                <Text className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300" numberOfLines={1}>
+                                                    {item.category?.name || 'Sin categoría'}
+                                                </Text>
+                                                <Text className="text-sm font-bold text-slate-900 dark:text-white">{item.pct.toFixed(1)}%</Text>
+                                                <Text className="text-xs text-slate-400 ml-1">{formatCurrency(item.amount)}</Text>
+                                            </View>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+                        ) : (
+                            <TouchableOpacity onPress={() => router.push('/planning')} className="bg-white dark:bg-card-dark p-6 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 items-center">
+                                <MaterialIcons name="pie-chart-outline" size={32} color="#94a3b8" />
+                                <Text className="text-slate-400 text-sm font-medium mt-2">{selectedAccountId ? 'Sin distribución para esta cuenta' : 'Configura tu distribución'}</Text>
+                                <Text className="text-primary text-xs font-bold mt-1">Ir a Planificación</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
             </ScrollView>
-            <ConfirmModal
-                visible={!!deleteTx}
-                title="Eliminar transacción"
-                message={deleteTx ? `¿Eliminar "${deleteTx.note || deleteTx.category?.name || 'Sin categoría'}" por ${formatCurrency(deleteTx.amount)}?` : ''}
-                onConfirm={confirmDelete}
-                onCancel={() => setDeleteTx(null)}
-            />
-        </View>
+        </SafeAreaView>
     );
 }

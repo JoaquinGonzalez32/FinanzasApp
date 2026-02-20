@@ -68,7 +68,7 @@ export default function ProfileScreen() {
     return (
         <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
             {/* Header */}
-            <View className="flex-row items-center justify-between px-4 py-2 border-b border-slate-200 dark:border-slate-800">
+            <View className="flex-row items-center justify-between px-5 py-2 border-b border-slate-200 dark:border-slate-800">
                 <TouchableOpacity onPress={() => router.back()} className="flex-row items-center">
                     <MaterialIcons name="chevron-left" size={28} color="#137fec" />
                     <Text className="text-primary font-medium text-base">Atrás</Text>
@@ -96,9 +96,9 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* Form Fields */}
-                <View className="px-4 gap-4">
+                <View className="px-5 gap-4">
                     {/* Full Name */}
-                    <View className="bg-white dark:bg-[#1a242f] rounded-xl border border-slate-200 dark:border-slate-800/50 p-4">
+                    <View className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 p-4">
                         <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Nombre completo</Text>
                         <TextInput
                             value={fullName}
@@ -110,7 +110,7 @@ export default function ProfileScreen() {
                     </View>
 
                     {/* Username */}
-                    <View className="bg-white dark:bg-[#1a242f] rounded-xl border border-slate-200 dark:border-slate-800/50 p-4">
+                    <View className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 p-4">
                         <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Usuario</Text>
                         <TextInput
                             value={username}
@@ -123,7 +123,7 @@ export default function ProfileScreen() {
                     </View>
 
                     {/* Currency */}
-                    <View className="bg-white dark:bg-[#1a242f] rounded-xl border border-slate-200 dark:border-slate-800/50 p-4">
+                    <View className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 p-4">
                         <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Moneda</Text>
                         <View className="flex-row gap-3">
                             {['UYU', 'USD', 'EUR'].map((cur) => (
@@ -141,14 +141,14 @@ export default function ProfileScreen() {
                     </View>
 
                     {/* Email (read-only) */}
-                    <View className="bg-white dark:bg-[#1a242f] rounded-xl border border-slate-200 dark:border-slate-800/50 p-4 opacity-60">
+                    <View className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 p-4 opacity-60">
                         <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Email</Text>
                         <Text className="text-base text-slate-900 dark:text-white font-medium">{email}</Text>
                     </View>
                 </View>
 
                 {/* Sign Out */}
-                <View className="px-4 mt-8">
+                <View className="px-5 mt-8">
                     <TouchableOpacity
                         onPress={handleSignOut}
                         className="bg-red-500/10 rounded-xl p-4 flex-row items-center justify-center gap-2"

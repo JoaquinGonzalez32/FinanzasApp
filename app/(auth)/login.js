@@ -42,7 +42,7 @@ export default function LoginScreen() {
                 </View>
 
                 {/* Email */}
-                <View className="bg-white dark:bg-[#1a242f] rounded-xl border border-slate-200 dark:border-slate-800/50 p-4 mb-3">
+                <View className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 p-4 mb-3">
                     <TextInput
                         value={email}
                         onChangeText={setEmail}
@@ -56,7 +56,7 @@ export default function LoginScreen() {
                 </View>
 
                 {/* Password */}
-                <View className="bg-white dark:bg-[#1a242f] rounded-xl border border-slate-200 dark:border-slate-800/50 p-4 mb-4">
+                <View className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 p-4 mb-4">
                     <TextInput
                         value={password}
                         onChangeText={setPassword}

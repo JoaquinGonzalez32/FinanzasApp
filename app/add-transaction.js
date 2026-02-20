@@ -97,9 +97,9 @@ export default function AddTransactionScreen() {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            className="flex-1 bg-white dark:bg-[#111418]"
+            className="flex-1 bg-white dark:bg-modal-dark"
         >
-            <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
+            <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
                 <Pressable onPress={() => router.back()} style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 }}>
                     <MaterialIcons name="arrow-back-ios-new" size={20} color="#475569" />
                 </Pressable>
@@ -111,7 +111,7 @@ export default function AddTransactionScreen() {
 
                 {/* Amount */}
                 <View className="px-6 pt-4 pb-6 items-center">
-                    <View className="w-full bg-slate-50 dark:bg-[#1a2230] rounded-2xl border border-slate-200 dark:border-slate-700/50 px-5 py-5 items-center">
+                    <View className="w-full bg-slate-50 dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-700/50 px-5 py-5 items-center">
                         <Text className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Monto</Text>
                         <View className="flex-row items-center justify-center">
                             <Text className="text-3xl font-bold text-slate-400 mr-1">{getCurrencySymbol(accounts.find(a => a.id === selectedAccount)?.currency)}</Text>
@@ -130,16 +130,16 @@ export default function AddTransactionScreen() {
 
                 {/* Type Toggle */}
                 <View className="px-6 mb-8">
-                    <View className="flex-row h-12 w-full items-center justify-center rounded-xl bg-slate-100 dark:bg-[#283039] p-1.5">
+                    <View className="flex-row h-12 w-full items-center justify-center rounded-xl bg-slate-100 dark:bg-input-dark p-1.5">
                         <TouchableOpacity
                             onPress={() => { setType('expense'); setSelectedCategory(null); }}
-                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'expense' ? 'bg-white dark:bg-[#111418] shadow-sm' : ''}`}
+                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'expense' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
                         >
                             <Text className={`text-sm font-bold ${type === 'expense' ? 'text-primary' : 'text-slate-500'}`}>Gasto</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => { setType('income'); setSelectedCategory(null); }}
-                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'income' ? 'bg-white dark:bg-[#111418] shadow-sm' : ''}`}
+                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'income' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
                         >
                             <Text className={`text-sm font-bold ${type === 'income' ? 'text-primary' : 'text-slate-500'}`}>Ingreso</Text>
                         </TouchableOpacity>
@@ -163,7 +163,7 @@ export default function AddTransactionScreen() {
                                                 setSelectedAccount(cat.account_id);
                                             }
                                         }}
-                                        className={`h-14 w-14 rounded-2xl items-center justify-center ${isActive ? 'bg-primary shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                                        className={`h-14 w-14 rounded-2xl items-center justify-center ${isActive ? 'bg-primary shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-input-dark'}`}
                                     >
                                         <MaterialIcons name={cat.icon} size={28} color={isActive ? 'white' : '#475569'} />
                                     </TouchableOpacity>
@@ -190,7 +190,7 @@ export default function AddTransactionScreen() {
                                     <TouchableOpacity
                                         key={acc.id}
                                         onPress={() => setSelectedAccount(isActive ? null : acc.id)}
-                                        className={`flex-row items-center gap-2 mr-3 px-4 py-3 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                                        className={`flex-row items-center gap-2 mr-3 px-4 py-3 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-input-dark'}`}
                                     >
                                         <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={20} color={isActive ? '#137fec' : '#475569'} />
                                         <Text className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>{acc.name}</Text>
@@ -204,7 +204,7 @@ export default function AddTransactionScreen() {
                 {/* Date Calendar */}
                 <View className="px-6 mb-8">
                     <Text className="text-slate-900 dark:text-white text-base font-bold mb-4">Fecha</Text>
-                    <View className="bg-slate-50 dark:bg-[#1a2230] rounded-2xl border border-slate-200 dark:border-slate-700/50 p-4">
+                    <View className="bg-slate-50 dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-700/50 p-4">
                         {/* Month navigation */}
                         <View className="flex-row items-center justify-between mb-3">
                             <TouchableOpacity onPress={prevMonth} className="p-1">
@@ -219,14 +219,14 @@ export default function AddTransactionScreen() {
                         {/* Day headers */}
                         <View className="flex-row justify-between mb-1">
                             {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'].map(d => (
-                                <Text key={d} className="w-9 text-center text-[10px] font-bold text-slate-400 uppercase">{d}</Text>
+                                <Text key={d} className="w-11 text-center text-[10px] font-bold text-slate-400 uppercase">{d}</Text>
                             ))}
                         </View>
 
                         {/* Grid */}
                         <View className="flex-row flex-wrap justify-between">
                             {prevDays.map(d => (
-                                <View key={`p-${d}`} className="w-9 h-9 items-center justify-center opacity-25">
+                                <View key={`p-${d}`} className="w-11 h-11 items-center justify-center opacity-25">
                                     <Text className="text-xs dark:text-white">{d}</Text>
                                 </View>
                             ))}
@@ -236,7 +236,7 @@ export default function AddTransactionScreen() {
                                 const dayISO = `${calYear}-${String(calMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                                 const isToday = dayISO === todayStr;
                                 return (
-                                    <TouchableOpacity key={d} onPress={() => selectDay(d)} className="w-9 h-9 items-center justify-center">
+                                    <TouchableOpacity key={d} onPress={() => selectDay(d)} className="w-11 h-11 items-center justify-center">
                                         {isSelected && <View className="absolute inset-0 bg-primary rounded-lg" />}
                                         {!isSelected && isToday && <View className="absolute inset-0 border border-primary/30 rounded-lg" />}
                                         <Text className={`text-xs ${isSelected ? 'font-bold text-white' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-300'}`}>{d}</Text>
@@ -245,7 +245,7 @@ export default function AddTransactionScreen() {
                             })}
 
                             {Array.from({ length: padCells }, (_, i) => (
-                                <View key={`e-${i}`} className="w-9 h-9" />
+                                <View key={`e-${i}`} className="w-11 h-11" />
                             ))}
                         </View>
                     </View>
@@ -255,7 +255,7 @@ export default function AddTransactionScreen() {
                 <View className="px-6 mb-8">
                     <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Nota (opcional)</Text>
                     <TextInput
-                        className="w-full h-12 px-4 rounded-xl bg-slate-100 dark:bg-[#283039] text-slate-900 dark:text-white text-sm"
+                        className="w-full h-12 px-4 rounded-xl bg-slate-100 dark:bg-input-dark text-slate-900 dark:text-white text-sm"
                         placeholder={type === 'expense' ? '¿En qué gastaste?' : '¿De dónde proviene?'}
                         placeholderTextColor="#94a3b8"
                         value={note}

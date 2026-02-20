@@ -11,6 +11,9 @@ module.exports = {
                 "background-light": "#f6f7f8",
                 "background-dark": "#101922",
                 "card-dark": "#1c2632",
+                "surface-dark": "#1a242f",
+                "input-dark": "#283039",
+                "modal-dark": "#111418",
             },
             fontFamily: {
                 sans: ['Manrope_400Regular'],

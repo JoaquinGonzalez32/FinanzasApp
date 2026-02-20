@@ -146,7 +146,7 @@ export default function HomeScreen() {
                 }
             >
                 {/* Header */}
-                <View className="flex-row items-center justify-between p-4 pb-2">
+                <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
                     <TouchableOpacity onPress={() => router.push('/profile')} className="h-12 w-12 items-center justify-center">
                         {profile?.avatar_url ? (
                             <Image
@@ -175,7 +175,7 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Balance Section */}
-                <View className="items-center px-4 py-8">
+                <View className="items-center px-5 py-8">
                     <Text className="text-slate-500 text-sm font-medium mb-1">Balance del mes</Text>
                     <Text className={`text-[40px] font-extrabold ${monthBalance >= 0 ? 'text-primary' : 'text-red-500'}`}>
                         {monthBalance < 0 ? '-' : ''}{formatCurrency(Math.abs(monthBalance))}
@@ -188,7 +188,7 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Actions */}
-                <View className="px-4 py-2 flex-row gap-3 justify-center">
+                <View className="px-5 py-2 flex-row gap-3 justify-center">
                     <TouchableOpacity
                         onPress={() => router.push({ pathname: '/add-transaction', params: { type: 'expense' } })}
                         className="flex-1 flex-row items-center justify-center gap-2 rounded-xl h-14 bg-primary shadow-lg shadow-primary/20"
@@ -207,7 +207,7 @@ export default function HomeScreen() {
 
                 {/* Insight Card */}
                 {insight && (
-                    <View className="px-4 py-6">
+                    <View className="px-5 py-6">
                         <View className={`${insight.iconBg.replace('bg-', 'bg-').includes('/') ? '' : 'bg-primary/5'} rounded-xl p-4 flex-row items-center gap-4 border border-slate-100 dark:border-slate-800/50`}>
                             <View className={`${insight.iconBg} p-2 rounded-lg`}>
                                 <MaterialIcons name={insight.icon} size={24} color={insight.iconColor} />
@@ -224,7 +224,7 @@ export default function HomeScreen() {
 
                 {/* Error State */}
                 {error && (
-                    <View className="px-4 py-4">
+                    <View className="px-5 py-4">
                         <View className="bg-red-500/10 rounded-xl p-4 flex-row items-center gap-3 border border-red-200 dark:border-red-900/30">
                             <MaterialIcons name="error-outline" size={24} color="#ef4444" />
                             <Text className="text-red-500 text-sm flex-1 font-medium">{error}</Text>
@@ -236,7 +236,7 @@ export default function HomeScreen() {
                 )}
 
                 {/* Transactions List */}
-                <View className="px-4 flex-1">
+                <View className="px-5 flex-1">
                     <View className="flex-row items-center justify-between mb-4">
                         <Text className="text-lg font-bold text-slate-900 dark:text-white">Actividad de hoy</Text>
                         <TouchableOpacity onPress={() => router.push('/all-transactions')}>

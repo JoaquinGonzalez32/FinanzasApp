@@ -78,7 +78,7 @@ export default function AllTransactionsScreen() {
     return (
         <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
             {/* Header */}
-            <View className="flex-row items-center px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+            <View className="flex-row items-center px-5 py-3 border-b border-slate-100 dark:border-slate-800">
                 <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-lg active:bg-slate-200 dark:active:bg-slate-800">
                     <MaterialIcons name="arrow-back" size={24} color="#64748b" />
                 </TouchableOpacity>
@@ -87,7 +87,7 @@ export default function AllTransactionsScreen() {
             </View>
 
             {/* Summary */}
-            <View className="flex-row px-4 py-4 gap-3">
+            <View className="flex-row px-5 py-4 gap-3">
                 <View className="flex-1 bg-green-500/10 rounded-xl p-3 border border-green-200 dark:border-green-900/30">
                     <Text className="text-xs text-green-600 dark:text-green-400 font-medium">Ingresos</Text>
                     <Text className="text-lg font-extrabold text-green-500 mt-1">+{formatCurrency(totalIncome)}</Text>
@@ -99,7 +99,7 @@ export default function AllTransactionsScreen() {
             </View>
 
             <ScrollView
-                className="flex-1 px-4"
+                className="flex-1 px-5"
                 contentContainerStyle={{ paddingBottom: 40 }}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#137fec" colors={['#137fec']} />

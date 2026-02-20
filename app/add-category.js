@@ -84,7 +84,7 @@ export default function AddCategoryScreen() {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            className="flex-1 bg-white dark:bg-[#111418]"
+            className="flex-1 bg-white dark:bg-modal-dark"
         >
             <View className="items-center pt-3 pb-2">
                 <View className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-[#3b4754]" />
@@ -118,7 +118,7 @@ export default function AddCategoryScreen() {
                 {/* Name */}
                 <View className="px-6 mb-6">
                     <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Nombre</Text>
-                    <View className="bg-slate-100 dark:bg-[#283039] rounded-xl px-4 h-12 justify-center">
+                    <View className="bg-slate-100 dark:bg-input-dark rounded-xl px-4 h-12 justify-center">
                         <TextInput
                             value={name}
                             onChangeText={setName}
@@ -132,16 +132,16 @@ export default function AddCategoryScreen() {
                 {/* Type Toggle */}
                 <View className="px-6 mb-6">
                     <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Tipo</Text>
-                    <View className="flex-row h-12 w-full items-center justify-center rounded-xl bg-slate-100 dark:bg-[#283039] p-1.5">
+                    <View className="flex-row h-12 w-full items-center justify-center rounded-xl bg-slate-100 dark:bg-input-dark p-1.5">
                         <TouchableOpacity
                             onPress={() => setType('expense')}
-                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'expense' ? 'bg-white dark:bg-[#111418] shadow-sm' : ''}`}
+                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'expense' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
                         >
                             <Text className={`text-sm font-bold ${type === 'expense' ? 'text-primary' : 'text-slate-500'}`}>Gasto</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => setType('income')}
-                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'income' ? 'bg-white dark:bg-[#111418] shadow-sm' : ''}`}
+                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'income' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
                         >
                             <Text className={`text-sm font-bold ${type === 'income' ? 'text-primary' : 'text-slate-500'}`}>Ingreso</Text>
                         </TouchableOpacity>
@@ -156,7 +156,7 @@ export default function AddCategoryScreen() {
                         <View className="flex-row flex-wrap gap-2">
                             <TouchableOpacity
                                 onPress={() => setSelectedAccount(null)}
-                                className={`px-4 h-10 rounded-xl items-center justify-center ${selectedAccount === null ? 'bg-primary' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                                className={`px-4 h-10 rounded-xl items-center justify-center ${selectedAccount === null ? 'bg-primary' : 'bg-slate-100 dark:bg-input-dark'}`}
                             >
                                 <Text className={`text-sm font-semibold ${selectedAccount === null ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>Ninguna</Text>
                             </TouchableOpacity>
@@ -167,7 +167,7 @@ export default function AddCategoryScreen() {
                                     <TouchableOpacity
                                         key={acc.id}
                                         onPress={() => setSelectedAccount(acc.id)}
-                                        className={`flex-row items-center gap-2 px-4 h-10 rounded-xl ${isActive ? 'bg-primary' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                                        className={`flex-row items-center gap-2 px-4 h-10 rounded-xl ${isActive ? 'bg-primary' : 'bg-slate-100 dark:bg-input-dark'}`}
                                     >
                                         <MaterialIcons name={acc.icon} size={16} color={isActive ? 'white' : style.hex} />
                                         <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>{acc.name}</Text>
@@ -188,7 +188,7 @@ export default function AddCategoryScreen() {
                                 <TouchableOpacity
                                     key={icon}
                                     onPress={() => setSelectedIcon(icon)}
-                                    className={`h-12 w-12 rounded-xl items-center justify-center ${isActive ? 'bg-primary' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                                    className={`h-12 w-12 rounded-xl items-center justify-center ${isActive ? 'bg-primary' : 'bg-slate-100 dark:bg-input-dark'}`}
                                 >
                                     <MaterialIcons name={icon} size={24} color={isActive ? 'white' : '#64748b'} />
                                 </TouchableOpacity>

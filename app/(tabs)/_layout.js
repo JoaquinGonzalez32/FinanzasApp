@@ -1,8 +1,7 @@
-import { Platform, TouchableOpacity } from 'react-native';
+import { Platform, TouchableOpacity, useColorScheme } from 'react-native';
 import { Tabs } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { View, Text } from 'react-native';
-import { BlurView } from 'expo-blur';
 
 export function ErrorBoundary({ error, retry }) {
     return (
@@ -32,6 +31,9 @@ const TabIcon = ({ name, color, focused, label }) => (
 );
 
 export default function TabLayout() {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+
     return (
         <Tabs
             screenOptions={{
@@ -43,9 +45,9 @@ export default function TabLayout() {
                     right: 0,
                     elevation: 0,
                     borderTopWidth: 1,
-                    borderTopColor: 'rgba(226, 232, 240, 0.5)', // slate-200 with opacity
+                    borderTopColor: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(226, 232, 240, 0.5)',
                     height: 80,
-                    backgroundColor: '#ffffff',
+                    backgroundColor: isDark ? '#101922' : '#ffffff',
                 },
                 tabBarShowLabel: false,
             }}

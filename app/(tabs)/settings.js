@@ -160,7 +160,7 @@ export default function SettingsScreen() {
     );
 
     const renderErrorState = (message) => (
-        <View className="py-6 items-center mx-4">
+        <View className="py-6 items-center mx-5">
             <MaterialIcons name="error-outline" size={36} color="#ef4444" />
             <Text className="text-red-400 text-sm mt-2 text-center">{message}</Text>
         </View>
@@ -169,7 +169,7 @@ export default function SettingsScreen() {
     return (
         <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
             {/* Header */}
-            <View className="flex-row items-center justify-between px-4 py-2 border-b border-slate-200 dark:border-slate-800">
+            <View className="flex-row items-center justify-between px-5 py-2 border-b border-slate-200 dark:border-slate-800">
                 <View style={{ width: 70 }} />
                 <Text className="text-base font-bold text-slate-900 dark:text-white">Gestión</Text>
                 <TouchableOpacity onPress={() => setEditing(!editing)} style={{ width: 70, alignItems: 'flex-end' }}>
@@ -187,7 +187,7 @@ export default function SettingsScreen() {
                 }
             >
                 {/* Tabs Toggle */}
-                <View className="px-4 py-6">
+                <View className="px-5 py-6">
                     <View className="bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl flex-row items-center">
                         <TouchableOpacity
                             onPress={() => { setActiveTab('categories'); setEditing(false); }}
@@ -219,7 +219,7 @@ export default function SettingsScreen() {
                             <>
                                 {/* Expense Categories */}
                                 <View className="mb-8">
-                                    <View className="flex-row items-center justify-between px-6 pb-2">
+                                    <View className="flex-row items-center justify-between px-5 pb-2">
                                         <Text className="text-xs font-bold uppercase tracking-wider text-slate-500">
                                             Categorías de Gastos ({expenseCats.length})
                                         </Text>
@@ -235,7 +235,7 @@ export default function SettingsScreen() {
                                     {expenseCats.length === 0 ? (
                                         renderEmptyState('No tenés categorías de gastos.\nCreá una para organizar tus movimientos.')
                                     ) : (
-                                        <View className="bg-white dark:bg-[#1a242f] mx-4 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
+                                        <View className="bg-white dark:bg-surface-dark mx-5 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
                                             {expenseCats.map((cat, i) => renderCategoryItem(cat, i, expenseCats))}
                                         </View>
                                     )}
@@ -243,7 +243,7 @@ export default function SettingsScreen() {
 
                                 {/* Income Categories */}
                                 <View className="mb-8">
-                                    <View className="flex-row items-center justify-between px-6 pb-2">
+                                    <View className="flex-row items-center justify-between px-5 pb-2">
                                         <Text className="text-xs font-bold uppercase tracking-wider text-slate-500">
                                             Categorías de Ingresos ({incomeCats.length})
                                         </Text>
@@ -259,7 +259,7 @@ export default function SettingsScreen() {
                                     {incomeCats.length === 0 ? (
                                         renderEmptyState('No tenés categorías de ingresos.\nCreá una para registrar lo que ganás.')
                                     ) : (
-                                        <View className="bg-white dark:bg-[#1a242f] mx-4 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
+                                        <View className="bg-white dark:bg-surface-dark mx-5 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
                                             {incomeCats.map((cat, i) => renderCategoryItem(cat, i, incomeCats))}
                                         </View>
                                     )}
@@ -284,7 +284,7 @@ export default function SettingsScreen() {
                             <>
                                 {/* Balance Summary */}
                                 {accounts.length > 0 && (
-                                    <View className="mx-4 mb-6 bg-white dark:bg-[#1a242f] rounded-xl border border-slate-200 dark:border-slate-800/50 p-4">
+                                    <View className="mx-4 mb-6 bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 p-4">
                                         <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Saldo total</Text>
                                         <View className="flex-row items-center justify-between">
                                             <View className="flex-row items-center gap-2">
@@ -311,7 +311,7 @@ export default function SettingsScreen() {
 
                                 {/* Account List */}
                                 <View className="mb-8">
-                                    <View className="flex-row items-center justify-between px-6 pb-2">
+                                    <View className="flex-row items-center justify-between px-5 pb-2">
                                         <Text className="text-xs font-bold uppercase tracking-wider text-slate-500">
                                             Mis Cuentas ({accounts.length})
                                         </Text>
@@ -327,7 +327,7 @@ export default function SettingsScreen() {
                                     {accounts.length === 0 ? (
                                         renderEmptyState('No tenés cuentas registradas.\nAgregá tus cuentas para un mejor seguimiento.')
                                     ) : (
-                                        <View className="bg-white dark:bg-[#1a242f] mx-4 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
+                                        <View className="bg-white dark:bg-surface-dark mx-5 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
                                             {accounts.map((acc, i) => {
                                                 const style = getCategoryStyle(acc.color);
                                                 const currSymbol = (acc.currency ?? 'UYU') === 'USD' ? 'US' : '';

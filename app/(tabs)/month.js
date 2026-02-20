@@ -118,7 +118,7 @@ export default function MonthScreen() {
     if (!selectedMonth) {
         return (
             <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
-                <View className="flex-row items-center justify-between px-4 py-3">
+                <View className="flex-row items-center justify-between px-5 py-3">
                     <View className="flex-row items-center gap-3">
                         <View className="p-2 bg-primary/10 rounded-xl">
                             <MaterialIcons name="calendar-month" size={24} color="#137fec" />
@@ -149,7 +149,7 @@ export default function MonthScreen() {
                         <ActivityIndicator size="large" color="#137fec" />
                     </View>
                 ) : (
-                    <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
+                    <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 100 }}>
                         {monthSummaries.map(({ month: m, income, expense, txCount }) => {
                             const isCurrent = year === currentYear && m === currentMonth;
                             const hasData = txCount > 0;
@@ -203,7 +203,7 @@ export default function MonthScreen() {
     // ========== DETAIL (Calendar + Day) ==========
     return (
         <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
-            <View className="flex-row items-center justify-between px-4 py-3">
+            <View className="flex-row items-center justify-between px-5 py-3">
                 <TouchableOpacity onPress={() => setSelectedMonth(null)} className="h-10 w-10 items-center justify-center rounded-full active:bg-slate-200 dark:active:bg-slate-800">
                     <MaterialIcons name="arrow-back-ios-new" size={20} color="#475569" />
                 </TouchableOpacity>
@@ -213,16 +213,16 @@ export default function MonthScreen() {
 
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
                 {/* Calendar */}
-                <View className="px-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+                <View className="px-5 pb-6 border-b border-slate-200 dark:border-slate-800">
                     <View className="flex-row justify-between mb-2">
                         {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(day => (
-                            <Text key={day} className="w-10 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">{day}</Text>
+                            <Text key={day} className="w-11 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">{day}</Text>
                         ))}
                     </View>
 
                     <View className="flex-row flex-wrap justify-between">
                         {prevDays.map(d => (
-                            <View key={`prev-${d}`} className="w-10 h-10 items-center justify-center opacity-30">
+                            <View key={`prev-${d}`} className="w-11 h-11 items-center justify-center opacity-30">
                                 <Text className="text-sm dark:text-white">{d}</Text>
                             </View>
                         ))}
@@ -231,7 +231,7 @@ export default function MonthScreen() {
                             const isSelected = d === selectedDay;
                             const hasTx = daysWithTx.has(d);
                             return (
-                                <TouchableOpacity key={d} onPress={() => setSelectedDay(d)} className="w-10 h-10 items-center justify-center">
+                                <TouchableOpacity key={d} onPress={() => setSelectedDay(d)} className="w-11 h-11 items-center justify-center">
                                     {isSelected && <View className="absolute inset-0 bg-primary rounded-lg" />}
                                     <Text className={`text-sm ${isSelected ? 'font-bold text-white' : 'dark:text-white'}`}>{d}</Text>
                                     {hasTx && <View className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-primary'} mt-0.5`} />}
@@ -240,13 +240,13 @@ export default function MonthScreen() {
                         })}
 
                         {Array.from({ length: padCells }, (_, i) => (
-                            <View key={`pad-${i}`} className="w-10 h-10" />
+                            <View key={`pad-${i}`} className="w-11 h-11" />
                         ))}
                     </View>
                 </View>
 
                 {/* Daily Summary */}
-                <View className="flex-1 bg-white dark:bg-slate-900/40 rounded-t-3xl mt-4 px-4 pt-6 min-h-[400px]">
+                <View className="flex-1 bg-white dark:bg-slate-900/40 rounded-t-3xl mt-4 px-5 pt-6 min-h-[400px]">
                     <View className="flex-row items-center justify-between mb-6">
                         <View>
                             <Text className="text-sm font-bold text-slate-400 uppercase tracking-wide">{dayLabel}</Text>

@@ -28,7 +28,14 @@
       "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" --data-raw '{\"\"query\"\": \"\"ALTER TABLE account_goals ADD CONSTRAINT category_goal_needs_category CHECK \\(goal_type != '\"''\"'category'\"''\"' OR category_id IS NOT NULL\\);\"\"}')",
       "Bash(printf '{\"\"query\"\": \"\"ALTER TABLE account_goals ADD CONSTRAINT category_goal_needs_category CHECK \\(goal_type != %ccategory%c OR category_id IS NOT NULL\\);\"\"}' \"''\" \"''\")",
       "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d @-)",
-      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d @\"C:/Users/joaqu/OneDrive/Escritorio/FinanzaApp/tmp_sql.json\")"
+      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d @\"C:/Users/joaqu/OneDrive/Escritorio/FinanzaApp/tmp_sql.json\")",
+      "Bash(tree:*)",
+      "Bash(timeout 15 npx expo start:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx expo start:*)",
+      "Bash(timeout 45 bash:*)",
+      "Bash(npx expo install:*)"
     ]
   }
 }

@@ -66,7 +66,6 @@ export default function PlanningScreen() {
     // Local editable state
     const [items, setItems] = useState([]);
     const [removedIds, setRemovedIds] = useState([]);
-    const [showPercent, setShowPercent] = useState(true);
     const [saving, setSaving] = useState(false);
     const [pickerVisible, setPickerVisible] = useState(false);
 
@@ -79,9 +78,7 @@ export default function PlanningScreen() {
             setItems(filtered.map(b => ({
                 ...b,
                 _local: false,
-                _fixedAmount: monthIncome > 0
-                    ? String(Math.round(monthIncome * (Number(b.percentage) || 0) / 100))
-                    : '',
+                _fixedAmount: String(Number(b.percentage) || ''),
             })));
             setRemovedIds([]);
         } else if (!loading && budgetItems.length === 0) {
@@ -105,13 +102,10 @@ export default function PlanningScreen() {
         [expenseCategories, assignedCategoryIds, selectedAccountId]
     );
 
-    const totalPercent = useMemo(() => {
-        if (!showPercent && monthIncome > 0) {
-            const totalAmt = items.reduce((s, i) => s + (Number(i._fixedAmount) || 0), 0);
-            return Math.round((totalAmt / monthIncome) * 10000) / 100;
-        }
-        return items.reduce((s, i) => s + Number(i.percentage || 0), 0);
-    }, [items, showPercent, monthIncome]);
+    const totalAmount = useMemo(
+        () => items.reduce((s, i) => s + (Number(i._fixedAmount) || 0), 0),
+        [items]
+    );
 
     const updateItem = useCallback((idx, field, value) => {
         setItems(prev => {
@@ -157,16 +151,11 @@ export default function PlanningScreen() {
             // Create/update remaining items
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
-                // If in fixed mode, convert amount to percentage before saving
-                let pct = Number(item.percentage) || 0;
-                if (!showPercent && monthIncome > 0) {
-                    const amt = Number(item._fixedAmount) || 0;
-                    pct = Math.round((amt / monthIncome) * 10000) / 100;
-                }
+                const amount = Number(item._fixedAmount) || 0;
                 const payload = {
                     category_id: item.category_id,
                     account_id: item.account_id || null,
-                    percentage: pct,
+                    percentage: amount,
                     month: selectedMonth,
                     sort_order: i,
                 };
@@ -183,7 +172,7 @@ export default function PlanningScreen() {
         } finally {
             setSaving(false);
         }
-    }, [items, removedIds, router, selectedMonth, showPercent, monthIncome]);
+    }, [items, removedIds, router, selectedMonth]);
 
     if (loading) {
         return (
@@ -243,7 +232,7 @@ export default function PlanningScreen() {
                                     <TouchableOpacity
                                         key={acc.id}
                                         onPress={() => setSelectedAccountId(acc.id)}
-                                        className={`flex-row items-center gap-2 mr-3 px-4 py-3 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-[#283039]'}`}
+                                        className={`flex-row items-center gap-2 mr-3 px-4 py-3 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-input-dark'}`}
                                     >
                                         <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={20} color={isActive ? '#137fec' : '#475569'} />
                                         <Text className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>{acc.name}</Text>
@@ -252,40 +241,6 @@ export default function PlanningScreen() {
                             })}
                         </ScrollView>
                     )}
-
-                    {/* Toggle */}
-                    <View className="bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl flex-row">
-                        <TouchableOpacity
-                            onPress={() => {
-                                // Switching to percent: sync percentages from fixed amounts
-                                if (!showPercent && monthIncome > 0) {
-                                    setItems(prev => prev.map(it => {
-                                        const amt = Number(it._fixedAmount) || 0;
-                                        return { ...it, percentage: String(Math.round((amt / monthIncome) * 10000) / 100) };
-                                    }));
-                                }
-                                setShowPercent(true);
-                            }}
-                            className={`flex-1 py-2 rounded-lg items-center ${showPercent ? 'bg-white dark:bg-slate-700 shadow-sm' : ''}`}
-                        >
-                            <Text className={`text-sm font-semibold ${showPercent ? 'text-primary' : 'text-slate-500'}`}>Porcentaje</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => {
-                                // Switching to fixed: sync fixed amounts from percentages
-                                setItems(prev => prev.map(it => ({
-                                    ...it,
-                                    _fixedAmount: monthIncome > 0
-                                        ? String(Math.round(monthIncome * (Number(it.percentage) || 0) / 100))
-                                        : String(it._fixedAmount ?? ''),
-                                })));
-                                setShowPercent(false);
-                            }}
-                            className={`flex-1 py-2 rounded-lg items-center ${!showPercent ? 'bg-white dark:bg-slate-700 shadow-sm' : ''}`}
-                        >
-                            <Text className={`text-sm font-semibold ${!showPercent ? 'text-primary' : 'text-slate-500'}`}>Montos fijos</Text>
-                        </TouchableOpacity>
-                    </View>
 
                     {/* Items list */}
                     {items.length === 0 && (
@@ -316,38 +271,18 @@ export default function PlanningScreen() {
                                         </Text>
 
                                         {/* Value input */}
-                                        {showPercent ? (
-                                            <View className="flex-row items-center">
-                                                <TextInput
-                                                    value={String(item.percentage ?? '')}
-                                                    onChangeText={(v) => updateItem(idx, 'percentage', v.replace(/[^0-9.]/g, ''))}
-                                                    keyboardType="numeric"
-                                                    className="w-16 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg text-center text-base font-bold text-slate-900 dark:text-white"
-                                                    maxLength={5}
-                                                />
-                                                <Text className="text-slate-400 font-bold text-base ml-1">%</Text>
-                                            </View>
-                                        ) : (
-                                            <View className="flex-row items-center">
-                                                <Text className="text-slate-400 font-bold text-base mr-1">$</Text>
-                                                <TextInput
-                                                    value={item._fixedAmount ?? ''}
-                                                    onChangeText={(v) => {
-                                                        const clean = v.replace(/[^0-9]/g, '');
-                                                        updateItem(idx, '_fixedAmount', clean);
-                                                    }}
-                                                    onBlur={() => {
-                                                        if (monthIncome > 0) {
-                                                            const num = Number(item._fixedAmount) || 0;
-                                                            const pct = Math.round((num / monthIncome) * 10000) / 100;
-                                                            updateItem(idx, 'percentage', String(pct));
-                                                        }
-                                                    }}
-                                                    keyboardType="numeric"
-                                                    className="w-24 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg text-center text-base font-bold text-slate-900 dark:text-white"
-                                                />
-                                            </View>
-                                        )}
+                                        <View className="flex-row items-center">
+                                            <Text className="text-slate-400 font-bold text-base mr-1">$</Text>
+                                            <TextInput
+                                                value={item._fixedAmount ?? ''}
+                                                onChangeText={(v) => {
+                                                    const clean = v.replace(/[^0-9]/g, '');
+                                                    updateItem(idx, '_fixedAmount', clean);
+                                                }}
+                                                keyboardType="numeric"
+                                                className="w-24 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg text-center text-base font-bold text-slate-900 dark:text-white"
+                                            />
+                                        </View>
 
                                         {/* Delete */}
                                         <TouchableOpacity onPress={() => removeItem(idx)} className="h-8 w-8 items-center justify-center rounded-full active:bg-red-100 dark:active:bg-red-500/20 ml-1">
@@ -361,35 +296,40 @@ export default function PlanningScreen() {
 
                     {/* Total bar */}
                     {items.length > 0 && (
-                        <View className={`rounded-2xl p-6 border ${Math.abs(totalPercent - 100) < 0.01 ? 'bg-primary/5 dark:bg-primary/10 border-primary/20' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-300/30'}`}>
+                        <View className={`rounded-2xl p-6 border ${monthIncome > 0 && totalAmount <= monthIncome ? 'bg-primary/5 dark:bg-primary/10 border-primary/20' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-300/30'}`}>
                             <View className="flex-row justify-between items-end mb-4">
                                 <View>
-                                    <Text className={`text-xs font-bold uppercase ${Math.abs(totalPercent - 100) < 0.01 ? 'text-primary' : 'text-amber-600'}`}>Total Asignado</Text>
-                                    <Text className={`text-3xl font-extrabold ${Math.abs(totalPercent - 100) < 0.01 ? 'text-primary' : 'text-amber-600'}`}>{totalPercent}%</Text>
+                                    <Text className={`text-xs font-bold uppercase ${monthIncome > 0 && totalAmount <= monthIncome ? 'text-primary' : 'text-amber-600'}`}>Total Asignado</Text>
+                                    <Text className={`text-3xl font-extrabold ${monthIncome > 0 && totalAmount <= monthIncome ? 'text-primary' : 'text-amber-600'}`}>{formatCurrency(totalAmount)}</Text>
                                 </View>
-                                {Math.abs(totalPercent - 100) >= 0.01 && (
-                                    <View className="flex-row items-center gap-1">
-                                        <MaterialIcons name="warning" size={16} color="#d97706" />
-                                        <Text className="text-xs font-semibold text-amber-600">
-                                            {totalPercent > 100 ? `Excede por ${(totalPercent - 100).toFixed(1)}%` : `Faltan ${(100 - totalPercent).toFixed(1)}%`}
+                                {monthIncome > 0 && (
+                                    <View className="items-end">
+                                        <Text className="text-xs font-semibold text-slate-400">
+                                            de {formatCurrency(monthIncome)}
+                                        </Text>
+                                        <Text className={`text-xs font-bold ${totalAmount > monthIncome ? 'text-amber-600' : 'text-emerald-500'}`}>
+                                            {totalAmount > monthIncome ? `Excede ${formatCurrency(totalAmount - monthIncome)}` : `Disponible ${formatCurrency(monthIncome - totalAmount)}`}
                                         </Text>
                                     </View>
                                 )}
                             </View>
-                            <View className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex-row">
-                                {items.map((item, idx) => {
-                                    const style = getCategoryStyle(item.category?.color);
-                                    const pct = Number(item.percentage) || 0;
-                                    if (pct <= 0) return null;
-                                    return (
-                                        <View
-                                            key={item.id || `bar-${idx}`}
-                                            style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: style.hex }}
-                                            className="h-full"
-                                        />
-                                    );
-                                })}
-                            </View>
+                            {monthIncome > 0 && (
+                                <View className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex-row">
+                                    {items.map((item, idx) => {
+                                        const style = getCategoryStyle(item.category?.color);
+                                        const amt = Number(item._fixedAmount) || 0;
+                                        const pct = (amt / monthIncome) * 100;
+                                        if (pct <= 0) return null;
+                                        return (
+                                            <View
+                                                key={item.id || `bar-${idx}`}
+                                                style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: style.hex }}
+                                                className="h-full"
+                                            />
+                                        );
+                                    })}
+                                </View>
+                            )}
                         </View>
                     )}
                 </View>
