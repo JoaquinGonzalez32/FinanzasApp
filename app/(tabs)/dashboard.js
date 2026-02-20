@@ -294,14 +294,10 @@ export default function DashboardScreen() {
                                 {monthLabel(distMonth)}
                             </Text>
                             <TouchableOpacity
-                                onPress={() => {
-                                    const next = shiftMonth(distMonth, 1);
-                                    if (next <= getCurrentMonth()) setDistMonth(next);
-                                }}
-                                disabled={shiftMonth(distMonth, 1) > getCurrentMonth()}
-                                className={`h-10 w-10 items-center justify-center rounded-full ${shiftMonth(distMonth, 1) > getCurrentMonth() ? 'bg-slate-50 dark:bg-slate-900' : 'bg-slate-100 dark:bg-slate-800 active:bg-slate-200'}`}
+                                onPress={() => setDistMonth(m => shiftMonth(m, 1))}
+                                className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 active:bg-slate-200"
                             >
-                                <MaterialIcons name="chevron-right" size={24} color={shiftMonth(distMonth, 1) > getCurrentMonth() ? '#cbd5e1' : '#475569'} />
+                                <MaterialIcons name="chevron-right" size={24} color="#475569" />
                             </TouchableOpacity>
                         </View>
 
