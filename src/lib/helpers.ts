@@ -144,23 +144,27 @@ export function buildDonutData(
   unassigned: number,
   total: number,
 ): DonutSlice[] {
-  if (total <= 0) return [];
+  // If income > 0, use it as denominator (shows "Sin asignar" gap).
+  // If income = 0 but there are assigned amounts, use assignedTotal as denominator.
+  const assignedSum = assignments.reduce((s, a) => s + a.amount, 0);
+  const effectiveTotal = total > 0 ? total : assignedSum;
+  if (effectiveTotal <= 0) return [];
 
   const slices: DonutSlice[] = assignments
     .filter((a) => a.amount > 0)
     .map((a) => ({
       label: a.category.name,
       amount: a.amount,
-      percentage: (a.amount / total) * 100,
+      percentage: (a.amount / effectiveTotal) * 100,
       color: CATEGORY_COLORS[a.category.color]?.hex ?? "#64748b",
       icon: a.category.icon,
     }));
 
-  if (unassigned > 0) {
+  if (unassigned > 0 && total > 0) {
     slices.push({
       label: "Sin asignar",
       amount: unassigned,
-      percentage: (unassigned / total) * 100,
+      percentage: (unassigned / effectiveTotal) * 100,
       color: "#cbd5e1",
     });
   }

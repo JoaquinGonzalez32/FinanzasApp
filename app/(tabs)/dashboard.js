@@ -65,6 +65,7 @@ export default function DashboardScreen() {
     const [removedIds, setRemovedIds] = useState([]);
     const [saving, setSaving] = useState(false);
     const [pickerVisible, setPickerVisible] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
 
     // Sync DB budget items → local assignments
     useEffect(() => {
@@ -75,6 +76,7 @@ export default function DashboardScreen() {
                 setAssignments([]);
             }
             setRemovedIds([]);
+            setIsDirty(false);
         }
     }, [distBudgetLoading, distBudgetItems]);
 
@@ -98,6 +100,7 @@ export default function DashboardScreen() {
 
     const updateAmount = useCallback((idx, value) => {
         const clean = value.replace(/[^0-9]/g, '');
+        setIsDirty(true);
         setAssignments(prev => {
             const next = [...prev];
             next[idx] = { ...next[idx], amount: Number(clean) || 0 };
@@ -106,6 +109,7 @@ export default function DashboardScreen() {
     }, []);
 
     const removeAssignment = useCallback((idx) => {
+        setIsDirty(true);
         setAssignments(prev => {
             const item = prev[idx];
             if (item.budgetItemId && !item.isLocal) {
@@ -116,6 +120,7 @@ export default function DashboardScreen() {
     }, []);
 
     const addCategory = useCallback((category) => {
+        setIsDirty(true);
         setAssignments(prev => [
             ...prev,
             {
@@ -440,20 +445,22 @@ export default function DashboardScreen() {
                                     </View>
                                 )}
 
-                                {/* Save button */}
-                                <TouchableOpacity
-                                    onPress={handleSave}
-                                    disabled={saving || isOverBudget}
-                                    className={`w-full py-4 rounded-xl shadow-lg shadow-primary/20 active:scale-95 ${saving || isOverBudget ? 'bg-slate-300 dark:bg-slate-700' : 'bg-primary'}`}
-                                >
-                                    {saving ? (
-                                        <ActivityIndicator color="white" />
-                                    ) : (
-                                        <Text className={`font-bold text-center text-lg ${saving || isOverBudget ? 'text-slate-500' : 'text-white'}`}>
-                                            Guardar Distribución
-                                        </Text>
-                                    )}
-                                </TouchableOpacity>
+                                {/* Save button — only when user has made changes */}
+                                {isDirty && (
+                                    <TouchableOpacity
+                                        onPress={handleSave}
+                                        disabled={saving || isOverBudget}
+                                        className={`w-full py-4 rounded-xl shadow-lg shadow-primary/20 active:scale-95 ${saving || isOverBudget ? 'bg-slate-300 dark:bg-slate-700' : 'bg-primary'}`}
+                                    >
+                                        {saving ? (
+                                            <ActivityIndicator color="white" />
+                                        ) : (
+                                            <Text className={`font-bold text-center text-lg ${saving || isOverBudget ? 'text-slate-500' : 'text-white'}`}>
+                                                Guardar Distribución
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                )}
                             </>
                         )}
                     </View>
