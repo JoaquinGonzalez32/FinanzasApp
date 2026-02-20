@@ -128,3 +128,19 @@ export interface AccountGoalInsert {
   target_amount: number;
   target_date?: string | null;
 }
+
+export interface CategoryAssignment {
+  budgetItemId: string | null;
+  categoryId: string;
+  category: Category;
+  amount: number;
+  isLocal: boolean;
+}
+
+export interface DonutSlice {
+  label: string;
+  amount: number;
+  percentage: number;
+  color: string;
+  icon?: string;
+}

@@ -1,4 +1,4 @@
-import type { Transaction, Category } from "../types/database";
+import type { Transaction, Category, BudgetItem, CategoryAssignment, DonutSlice } from "../types/database";
 
 export const CATEGORY_COLORS: Record<string, { bg: string; bgCircle: string; hex: string }> = {
   orange:  { bg: "bg-orange-100 dark:bg-orange-500/20",  bgCircle: "bg-orange-500/20",  hex: "#ea580c" },
@@ -90,4 +90,80 @@ export function getCurrencySymbol(currency?: string): string {
     case "EUR": return "€";
     default: return "$";
   }
+}
+
+// ── Month helpers ──────────────────────────────────────────────
+
+export function getCurrentMonth(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function parseMonth(month: string): { year: number; month: number } {
+  const [y, m] = month.split("-").map(Number);
+  return { year: y, month: m };
+}
+
+export function shiftMonth(month: string, delta: number): string {
+  const { year, month: m } = parseMonth(month);
+  const d = new Date(year, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function monthLabel(month: string): string {
+  const { month: m, year } = parseMonth(month);
+  return `${MONTHS_ES[m - 1]} ${year}`;
+}
+
+// ── Distribution helpers ───────────────────────────────────────
+
+export function getMonthIncomeTotal(transactions: Transaction[]): number {
+  return sumByType(transactions, "income");
+}
+
+export function getCategoryAssignments(budgetItems: BudgetItem[]): CategoryAssignment[] {
+  return budgetItems.map((b) => ({
+    budgetItemId: b.id,
+    categoryId: b.category_id,
+    category: b.category!,
+    amount: Number(b.percentage) || 0,
+    isLocal: false,
+  }));
+}
+
+export function getAssignedTotal(assignments: CategoryAssignment[]): number {
+  return assignments.reduce((sum, a) => sum + a.amount, 0);
+}
+
+export function getUnassigned(total: number, assigned: number): number {
+  return total - assigned;
+}
+
+export function buildDonutData(
+  assignments: CategoryAssignment[],
+  unassigned: number,
+  total: number,
+): DonutSlice[] {
+  if (total <= 0) return [];
+
+  const slices: DonutSlice[] = assignments
+    .filter((a) => a.amount > 0)
+    .map((a) => ({
+      label: a.category.name,
+      amount: a.amount,
+      percentage: (a.amount / total) * 100,
+      color: CATEGORY_COLORS[a.category.color]?.hex ?? "#64748b",
+      icon: a.category.icon,
+    }));
+
+  if (unassigned > 0) {
+    slices.push({
+      label: "Sin asignar",
+      amount: unassigned,
+      percentage: (unassigned / total) * 100,
+      color: "#cbd5e1",
+    });
+  }
+
+  return slices;
 }

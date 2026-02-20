@@ -7,30 +7,9 @@ import { useBudget } from '../src/hooks/useBudget';
 import { useCategories } from '../src/hooks/useCategories';
 import { useTransactions } from '../src/hooks/useTransactions';
 import { useAccounts } from '../src/hooks/useAccounts';
-import { formatCurrency, getCategoryStyle, MONTHS_ES } from '../src/lib/helpers';
+import { formatCurrency, getCategoryStyle, getCurrentMonth, parseMonth, shiftMonth, monthLabel } from '../src/lib/helpers';
 import { emitBudgetChange } from '../src/lib/events';
 import * as svc from '../src/services/budgetService';
-
-function getCurrentMonth() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function parseMonth(month) {
-    const [y, m] = month.split('-').map(Number);
-    return { year: y, month: m };
-}
-
-function shiftMonth(month, delta) {
-    const { year, month: m } = parseMonth(month);
-    const d = new Date(year, m - 1 + delta, 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function monthLabel(month) {
-    const { year, month: m } = parseMonth(month);
-    return `${MONTHS_ES[m - 1]} ${year}`;
-}
 
 export default function PlanningScreen() {
     const router = useRouter();
