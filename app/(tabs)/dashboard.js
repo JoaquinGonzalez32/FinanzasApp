@@ -66,7 +66,7 @@ export default function DashboardScreen() {
     const [saving, setSaving] = useState(false);
     const [pickerVisible, setPickerVisible] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
-    const [showAccounts, setShowAccounts] = useState(true);
+    const [showAccounts, setShowAccounts] = useState(false);
 
     // Sync DB budget items → local assignments
     useEffect(() => {
