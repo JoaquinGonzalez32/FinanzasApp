@@ -66,6 +66,7 @@ export default function DashboardScreen() {
     const [saving, setSaving] = useState(false);
     const [pickerVisible, setPickerVisible] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const [showAccounts, setShowAccounts] = useState(true);
 
     // Sync DB budget items → local assignments
     useEffect(() => {
@@ -204,48 +205,61 @@ export default function DashboardScreen() {
                     {/* Account Cards */}
                     {accountStats.length > 0 && (
                         <View>
-                            <Text className="text-lg font-bold text-slate-900 dark:text-white mb-3">Cuentas</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                                {accountStats.map(({ account: acc, monthIncome: accIncome, monthExpense: accExpense }) => {
-                                    const style = getCategoryStyle(acc.color);
-                                    return (
-                                        <TouchableOpacity
-                                            key={acc.id}
-                                            onPress={() => router.push({
-                                                pathname: '/account-detail',
-                                                params: {
-                                                    id: acc.id,
-                                                    name: acc.name,
-                                                    type: acc.type,
-                                                    icon: acc.icon,
-                                                    color: acc.color,
-                                                    balance: String(acc.balance),
-                                                    currency: acc.currency,
-                                                },
-                                            })}
-                                            activeOpacity={0.8}
-                                            className="p-4 rounded-2xl border bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800"
-                                            style={{ width: 170, minWidth: 160 }}
-                                        >
-                                            <View className="flex-row items-center gap-2 mb-3">
-                                                <View className={`h-8 w-8 rounded-lg items-center justify-center ${style.bg}`}>
-                                                    <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={style.hex} />
+                            <TouchableOpacity
+                                onPress={() => setShowAccounts(v => !v)}
+                                activeOpacity={0.7}
+                                className="flex-row items-center justify-between mb-3"
+                            >
+                                <Text className="text-lg font-bold text-slate-900 dark:text-white">Cuentas</Text>
+                                <MaterialIcons
+                                    name={showAccounts ? 'expand-less' : 'expand-more'}
+                                    size={24}
+                                    color="#94a3b8"
+                                />
+                            </TouchableOpacity>
+                            {showAccounts && (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                                    {accountStats.map(({ account: acc, monthIncome: accIncome, monthExpense: accExpense }) => {
+                                        const style = getCategoryStyle(acc.color);
+                                        return (
+                                            <TouchableOpacity
+                                                key={acc.id}
+                                                onPress={() => router.push({
+                                                    pathname: '/account-detail',
+                                                    params: {
+                                                        id: acc.id,
+                                                        name: acc.name,
+                                                        type: acc.type,
+                                                        icon: acc.icon,
+                                                        color: acc.color,
+                                                        balance: String(acc.balance),
+                                                        currency: acc.currency,
+                                                    },
+                                                })}
+                                                activeOpacity={0.8}
+                                                className="p-4 rounded-2xl border bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800"
+                                                style={{ width: 170, minWidth: 160 }}
+                                            >
+                                                <View className="flex-row items-center gap-2 mb-3">
+                                                    <View className={`h-8 w-8 rounded-lg items-center justify-center ${style.bg}`}>
+                                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={style.hex} />
+                                                    </View>
+                                                    <View className="flex-1">
+                                                        <Text className="text-sm font-bold text-slate-900 dark:text-white" numberOfLines={1}>{acc.name}</Text>
+                                                        <Text className="text-[10px] text-slate-400 font-medium">{acc.currency}</Text>
+                                                    </View>
+                                                    <MaterialIcons name="chevron-right" size={18} color="#94a3b8" />
                                                 </View>
-                                                <View className="flex-1">
-                                                    <Text className="text-sm font-bold text-slate-900 dark:text-white" numberOfLines={1}>{acc.name}</Text>
-                                                    <Text className="text-[10px] text-slate-400 font-medium">{acc.currency}</Text>
+                                                <Text className="text-xl font-extrabold text-slate-900 dark:text-white mb-2">{formatCurrency(acc.balance, acc.currency)}</Text>
+                                                <View className="flex-row justify-between">
+                                                    <Text className="text-xs font-semibold text-emerald-500">+{formatCurrency(accIncome, acc.currency)}</Text>
+                                                    <Text className="text-xs font-semibold text-rose-500">-{formatCurrency(accExpense, acc.currency)}</Text>
                                                 </View>
-                                                <MaterialIcons name="chevron-right" size={18} color="#94a3b8" />
-                                            </View>
-                                            <Text className="text-xl font-extrabold text-slate-900 dark:text-white mb-2">{formatCurrency(acc.balance, acc.currency)}</Text>
-                                            <View className="flex-row justify-between">
-                                                <Text className="text-xs font-semibold text-emerald-500">+{formatCurrency(accIncome, acc.currency)}</Text>
-                                                <Text className="text-xs font-semibold text-rose-500">-{formatCurrency(accExpense, acc.currency)}</Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </ScrollView>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                            )}
                         </View>
                     )}
 
