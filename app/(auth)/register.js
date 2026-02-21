@@ -26,9 +26,14 @@ export default function RegisterScreen() {
         setError('');
         try {
             await signUp(email.trim(), password.trim());
-            Alert.alert('Cuenta creada', 'Ya podés ingresar con tu cuenta', [
-                { text: 'OK', onPress: () => router.back() },
-            ]);
+            if (Platform.OS === 'web') {
+                window.alert('Cuenta creada. Ya podés ingresar con tu cuenta.');
+                router.replace('/login');
+            } else {
+                Alert.alert('Cuenta creada', 'Ya podés ingresar con tu cuenta', [
+                    { text: 'OK', onPress: () => router.replace('/login') },
+                ]);
+            }
         } catch (e) {
             setError(e.message || 'Error al crear la cuenta');
         } finally {
