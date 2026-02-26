@@ -35,7 +35,8 @@
       "Bash(taskkill:*)",
       "Bash(npx expo start:*)",
       "Bash(timeout 45 bash:*)",
-      "Bash(npx expo install:*)"
+      "Bash(npx expo install:*)",
+      "Bash(find:*)"
     ]
   }
 }
