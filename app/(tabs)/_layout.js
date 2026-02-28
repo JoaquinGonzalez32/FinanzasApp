@@ -1,7 +1,8 @@
-import { Platform, TouchableOpacity, useColorScheme } from 'react-native';
+import { TouchableOpacity, useColorScheme } from 'react-native';
 import { Tabs } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { View, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function ErrorBoundary({ error, retry }) {
     return (
@@ -30,6 +31,7 @@ const TabIcon = ({ name, color }) => (
 export default function TabLayout() {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
+    const insets = useSafeAreaInsets();
 
     return (
         <Tabs
@@ -43,7 +45,8 @@ export default function TabLayout() {
                     elevation: 0,
                     borderTopWidth: 1,
                     borderTopColor: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(226, 232, 240, 0.5)',
-                    height: 60,
+                    height: 60 + insets.bottom,
+                    paddingBottom: insets.bottom,
                     backgroundColor: isDark ? '#101922' : '#ffffff',
                 },
                 tabBarShowLabel: false,
