@@ -383,8 +383,9 @@ export default function DashboardScreen() {
                                                             <Text className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300" numberOfLines={1}>
                                                                 {slice.label}
                                                             </Text>
-                                                            <Text className="text-sm font-bold text-slate-900 dark:text-white">{slice.percentage.toFixed(1)}%</Text>
-                                                            <Text className="text-xs text-slate-400 w-20 text-right">{formatCurrency(slice.amount)}</Text>
+                                                            <Text className="text-sm font-bold text-slate-900 dark:text-white">
+                                                                {formatCurrency(actual)}<Text className="text-slate-400 font-medium">/{formatCurrency(slice.amount)}</Text>
+                                                            </Text>
                                                         </View>
                                                         <View className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden ml-6" style={{ width: '94%' }}>
                                                             <View
