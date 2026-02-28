@@ -23,11 +23,8 @@ export function ErrorBoundary({ error, retry }) {
     );
 }
 
-const TabIcon = ({ name, color, focused, label }) => (
-    <View className="items-center justify-center gap-1 mt-2">
-        <MaterialIcons name={name} size={24} color={color} />
-        <Text style={{ fontSize: 10, fontWeight: 'bold', color: color }}>{label}</Text>
-    </View>
+const TabIcon = ({ name, color }) => (
+    <MaterialIcons name={name} size={24} color={color} />
 );
 
 export default function TabLayout() {
@@ -46,7 +43,7 @@ export default function TabLayout() {
                     elevation: 0,
                     borderTopWidth: 1,
                     borderTopColor: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(226, 232, 240, 0.5)',
-                    height: 80,
+                    height: 60,
                     backgroundColor: isDark ? '#101922' : '#ffffff',
                 },
                 tabBarShowLabel: false,
@@ -55,7 +52,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="index"
                 options={{
-                    tabBarIcon: ({ color, focused }) => <TabIcon name="home" label="Inicio" color={color} focused={focused} />,
+                    tabBarIcon: ({ color, focused }) => <TabIcon name="home" color={color} focused={focused} />,
                     tabBarActiveTintColor: '#137fec',
                     tabBarInactiveTintColor: '#94a3b8',
                 }}
@@ -63,7 +60,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="dashboard"
                 options={{
-                    tabBarIcon: ({ color, focused }) => <TabIcon name="analytics" label="Análisis" color={color} focused={focused} />, // analytics icon
+                    tabBarIcon: ({ color, focused }) => <TabIcon name="analytics" color={color} focused={focused} />, // analytics icon
                     tabBarActiveTintColor: '#137fec',
                     tabBarInactiveTintColor: '#94a3b8',
                 }}
@@ -71,7 +68,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="month"
                 options={{
-                    tabBarIcon: ({ color, focused }) => <TabIcon name="calendar-today" label="Diario" color={color} focused={focused} />,
+                    tabBarIcon: ({ color, focused }) => <TabIcon name="calendar-today" color={color} focused={focused} />,
                     tabBarActiveTintColor: '#137fec',
                     tabBarInactiveTintColor: '#94a3b8',
                 }}
@@ -79,7 +76,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="settings"
                 options={{
-                    tabBarIcon: ({ color, focused }) => <TabIcon name="category" label="Gestión" color={color} focused={focused} />,
+                    tabBarIcon: ({ color, focused }) => <TabIcon name="category" color={color} focused={focused} />,
                     tabBarActiveTintColor: '#137fec',
                     tabBarInactiveTintColor: '#94a3b8',
                 }}
