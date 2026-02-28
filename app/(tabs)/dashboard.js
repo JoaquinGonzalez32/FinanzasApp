@@ -31,6 +31,14 @@ const createSlicePath = (cx, cy, r, startDeg, endDeg) => {
     return `M ${cx} ${cy} L ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y} Z`;
 };
 
+// Transitions from category color → amber → red as spending approaches/exceeds limit
+function barColor(pct, hex) {
+    if (pct >= 100) return '#ef4444';
+    if (pct >= 85)  return '#f97316';
+    if (pct >= 65)  return '#fbbf24';
+    return hex;
+}
+
 export default function DashboardScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme();
@@ -43,7 +51,6 @@ export default function DashboardScreen() {
     const monthIncome = useMemo(() => sumByType(monthTx, 'income'), [monthTx]);
     const monthExpense = useMemo(() => sumByType(monthTx, 'expense'), [monthTx]);
     const netBalance = monthIncome - monthExpense;
-
 
     const accountStats = useMemo(() => accounts.map(acc => {
         const linkedTx = monthTx.filter(t => (t.account_id ?? t.category?.account_id) === acc.id);
@@ -64,17 +71,18 @@ export default function DashboardScreen() {
     const [assignments, setAssignments] = useState([]);
     const [removedIds, setRemovedIds] = useState([]);
     const [saving, setSaving] = useState(false);
+    const [editVisible, setEditVisible] = useState(false);
     const [pickerVisible, setPickerVisible] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
 
-    // Reset local state when switching months (allows sync to re-fetch)
+    // Reset when switching months
     useEffect(() => {
         setIsDirty(false);
         setAssignments([]);
         setRemovedIds([]);
     }, [distMonth]);
 
-    // Sync DB budget items → local assignments (only when user has no unsaved edits)
+    // Sync DB → local assignments (only when no unsaved edits)
     useEffect(() => {
         if (!distBudgetLoading && !isDirty) {
             setAssignments(distBudgetItems.length > 0 ? getCategoryAssignments(distBudgetItems) : []);
@@ -82,7 +90,7 @@ export default function DashboardScreen() {
         }
     }, [distBudgetLoading, distBudgetItems, isDirty]);
 
-    // Actual expenses per category for the selected planning month
+    // Actual expenses per category for the selected month
     const actualByCategory = useMemo(() => {
         const map = {};
         for (const t of distMonthTx) {
@@ -99,7 +107,7 @@ export default function DashboardScreen() {
         [assignments, actualByCategory]
     );
 
-    // Donut: planned budget distribution by category
+    // Donut slices: planned distribution
     const donutSlices = useMemo(() => {
         if (assignedTotal <= 0) return [];
         return assignments
@@ -109,14 +117,11 @@ export default function DashboardScreen() {
                 amount: a.amount,
                 percentage: (a.amount / assignedTotal) * 100,
                 color: getCategoryStyle(a.category?.color).hex,
+                categoryId: a.categoryId,
             }));
     }, [assignments, assignedTotal]);
 
-    const assignedCategoryIds = useMemo(
-        () => new Set(assignments.map(a => a.categoryId)),
-        [assignments]
-    );
-
+    const assignedCategoryIds = useMemo(() => new Set(assignments.map(a => a.categoryId)), [assignments]);
     const availableCategories = useMemo(
         () => expenseCategories.filter(c => !assignedCategoryIds.has(c.id)),
         [expenseCategories, assignedCategoryIds]
@@ -145,16 +150,13 @@ export default function DashboardScreen() {
 
     const addCategory = useCallback((category) => {
         setIsDirty(true);
-        setAssignments(prev => [
-            ...prev,
-            {
-                budgetItemId: null,
-                categoryId: category.id,
-                category: category,
-                amount: 0,
-                isLocal: true,
-            },
-        ]);
+        setAssignments(prev => [...prev, {
+            budgetItemId: null,
+            categoryId: category.id,
+            category,
+            amount: 0,
+            isLocal: true,
+        }]);
         setPickerVisible(false);
     }, []);
 
@@ -180,6 +182,7 @@ export default function DashboardScreen() {
                 }
             }
             setIsDirty(false);
+            setEditVisible(false);
             emitBudgetChange();
             if (Platform.OS === 'web') {
                 window.alert('Planificación guardada');
@@ -203,30 +206,26 @@ export default function DashboardScreen() {
         <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
             {/* Header */}
             <View className="px-5 pb-3 pt-1">
-                <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center gap-3">
-                        <View className="p-2 bg-primary/10 rounded-xl">
-                            <MaterialIcons name="dashboard" size={24} color="#137fec" />
-                        </View>
-                        <View>
-                            <Text className="text-xl font-bold text-slate-900 dark:text-white">Dashboard</Text>
-                            <Text className="text-xs text-slate-500 font-medium">{headerLabel}</Text>
-                        </View>
+                <View className="flex-row items-center gap-3">
+                    <View className="p-2 bg-primary/10 rounded-xl">
+                        <MaterialIcons name="dashboard" size={24} color="#137fec" />
+                    </View>
+                    <View>
+                        <Text className="text-xl font-bold text-slate-900 dark:text-white">Dashboard</Text>
+                        <Text className="text-xs text-slate-500 font-medium">{headerLabel}</Text>
                     </View>
                 </View>
             </View>
 
             <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
                 <View className="px-5 space-y-6">
-                    {/* Main Balance Card */}
-                    <View className="bg-primary p-6 rounded-2xl shadow-xl shadow-primary/20 flex-col justify-between mt-2">
-                        <View>
-                            <Text className="text-white/80 text-sm font-medium mb-1">Balance Neto</Text>
-                            <Text className="text-white text-4xl font-extrabold">{formatCurrency(netBalance)}</Text>
-                        </View>
+                    {/* Balance Neto */}
+                    <View className="bg-primary p-6 rounded-2xl shadow-xl shadow-primary/20 mt-2">
+                        <Text className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-1">Balance Neto · Mes</Text>
+                        <Text className="text-white text-4xl font-extrabold">{formatCurrency(netBalance)}</Text>
                     </View>
 
-                    {/* Account Cards - always visible */}
+                    {/* Account Cards */}
                     {accountStats.length > 0 && (
                         <View>
                             <Text className="text-lg font-bold text-slate-900 dark:text-white mb-3">Cuentas</Text>
@@ -239,13 +238,9 @@ export default function DashboardScreen() {
                                             onPress={() => router.push({
                                                 pathname: '/account-detail',
                                                 params: {
-                                                    id: acc.id,
-                                                    name: acc.name,
-                                                    type: acc.type,
-                                                    icon: acc.icon,
-                                                    color: acc.color,
-                                                    balance: String(acc.balance),
-                                                    currency: acc.currency,
+                                                    id: acc.id, name: acc.name, type: acc.type,
+                                                    icon: acc.icon, color: acc.color,
+                                                    balance: String(acc.balance), currency: acc.currency,
                                                 },
                                             })}
                                             activeOpacity={0.8}
@@ -274,150 +269,85 @@ export default function DashboardScreen() {
                         </View>
                     )}
 
-                    {/* ── Planning Section ────────────────────────── */}
+                    {/* ── Planning Section ──────────────────────── */}
                     <View className="space-y-4">
-                        {/* Header */}
+                        {/* Section header row */}
                         <View className="flex-row items-center justify-between">
                             <Text className="text-lg font-bold text-slate-900 dark:text-white">Planificación de Gastos</Text>
                             <TouchableOpacity
-                                onPress={() => setPickerVisible(true)}
-                                disabled={availableCategories.length === 0}
-                                className={`h-8 w-8 items-center justify-center rounded-full ${availableCategories.length > 0 ? 'bg-primary/10' : 'bg-slate-100 dark:bg-slate-800'}`}
+                                onPress={() => setEditVisible(true)}
+                                className="h-8 w-8 items-center justify-center rounded-full bg-primary/10"
                             >
-                                <MaterialIcons name="add" size={20} color={availableCategories.length > 0 ? '#137fec' : '#94a3b8'} />
+                                <MaterialIcons name="edit" size={16} color="#137fec" />
                             </TouchableOpacity>
                         </View>
 
                         {/* Month navigator */}
                         <View className="flex-row items-center justify-center gap-4">
-                            <TouchableOpacity onPress={() => setDistMonth(m => shiftMonth(m, -1))} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 active:bg-slate-200">
-                                <MaterialIcons name="chevron-left" size={24} color="#475569" />
+                            <TouchableOpacity onPress={() => setDistMonth(m => shiftMonth(m, -1))} className="h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                                <MaterialIcons name="chevron-left" size={22} color="#475569" />
                             </TouchableOpacity>
-                            <Text className="text-base font-bold text-slate-900 dark:text-white min-w-[160px] text-center">
+                            <Text className="text-sm font-bold text-slate-700 dark:text-slate-300 min-w-[140px] text-center">
                                 {monthLabel(distMonth)}
                             </Text>
-                            <TouchableOpacity
-                                onPress={() => setDistMonth(m => shiftMonth(m, 1))}
-                                className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 active:bg-slate-200"
-                            >
-                                <MaterialIcons name="chevron-right" size={24} color="#475569" />
+                            <TouchableOpacity onPress={() => setDistMonth(m => shiftMonth(m, 1))} className="h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                                <MaterialIcons name="chevron-right" size={22} color="#475569" />
                             </TouchableOpacity>
                         </View>
 
-                        {/* Loading */}
                         {distLoading ? (
-                            <View className="items-center py-8">
+                            <View className="items-center py-10">
                                 <ActivityIndicator size="large" color="#137fec" />
                             </View>
                         ) : assignments.length === 0 ? (
-                            /* Empty state */
                             <TouchableOpacity
-                                onPress={() => setPickerVisible(true)}
-                                className="bg-white dark:bg-card-dark p-6 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 items-center"
+                                onPress={() => setEditVisible(true)}
+                                className="bg-white dark:bg-card-dark p-8 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 items-center"
                             >
-                                <MaterialIcons name="bar-chart" size={32} color="#94a3b8" />
-                                <Text className="text-slate-400 text-sm font-medium mt-2">Sin planificación configurada</Text>
-                                <Text className="text-primary text-xs font-bold mt-1">Agregar categoría</Text>
+                                <MaterialIcons name="bar-chart" size={36} color="#94a3b8" />
+                                <Text className="text-slate-400 text-sm font-medium mt-3">Sin planificación configurada</Text>
+                                <Text className="text-primary text-xs font-bold mt-1">Tocar para configurar</Text>
                             </TouchableOpacity>
                         ) : (
                             <>
-                                {/* Category budget cards */}
-                                <View className="space-y-3">
-                                    {assignments.map((a, idx) => {
-                                        const style = getCategoryStyle(a.category?.color);
-                                        const actual = actualByCategory[a.categoryId] || 0;
-                                        const isOver = a.amount > 0 && actual > a.amount;
-                                        const pct = a.amount > 0 ? Math.min((actual / a.amount) * 100, 100) : 0;
-                                        return (
-                                            <View key={a.budgetItemId || `local-${idx}`} className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-                                                {/* Top row: icon, name, planned amount input, delete */}
-                                                <View className="flex-row items-center gap-3 mb-3">
-                                                    <View className={`h-10 w-10 rounded-xl items-center justify-center ${style.bg}`}>
-                                                        <MaterialIcons name={a.category?.icon || 'category'} size={22} color={style.hex} />
-                                                    </View>
-                                                    <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white" numberOfLines={1}>
-                                                        {a.category?.name || 'Sin categoría'}
-                                                    </Text>
-                                                    <View className="flex-row items-center">
-                                                        <Text className="text-slate-400 font-bold text-base mr-1">$</Text>
-                                                        <TextInput
-                                                            value={a.amount > 0 ? String(a.amount) : ''}
-                                                            onChangeText={(v) => updateAmount(idx, v)}
-                                                            keyboardType="numeric"
-                                                            placeholder="0"
-                                                            placeholderTextColor="#94a3b8"
-                                                            className="w-24 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg text-center text-base font-bold text-slate-900 dark:text-white"
-                                                        />
-                                                    </View>
-                                                    <TouchableOpacity onPress={() => removeAssignment(idx)} className="h-8 w-8 items-center justify-center rounded-full active:bg-red-100 dark:active:bg-red-500/20 ml-1">
-                                                        <MaterialIcons name="close" size={18} color="#ef4444" />
-                                                    </TouchableOpacity>
-                                                </View>
-                                                {/* Progress row */}
-                                                <View className="flex-row items-center justify-between mb-2">
-                                                    <Text className="text-xs text-slate-500 font-medium">
-                                                        Gastado: <Text className={`font-bold ${isOver ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>{formatCurrency(actual)}</Text>
-                                                    </Text>
-                                                    {a.amount > 0 && (
-                                                        <Text className={`text-xs font-bold ${isOver ? 'text-rose-500' : 'text-slate-400'}`}>
-                                                            {isOver
-                                                                ? `+${formatCurrency(actual - a.amount)} excedido`
-                                                                : `${formatCurrency(a.amount - actual)} restante`}
-                                                        </Text>
-                                                    )}
-                                                </View>
-                                                {a.amount > 0 && (
-                                                    <View className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                                        <View
-                                                            style={{ width: `${pct}%`, backgroundColor: isOver ? '#ef4444' : style.hex }}
-                                                            className="h-full rounded-full"
-                                                        />
-                                                    </View>
-                                                )}
-                                            </View>
-                                        );
-                                    })}
-                                </View>
-
-                                {/* Summary bar */}
-                                <View className="rounded-2xl p-5 border bg-primary/5 dark:bg-primary/10 border-primary/20">
-                                    <View className="flex-row justify-between items-center mb-3">
+                                {/* Summary card */}
+                                <View className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 px-5 py-4">
+                                    <View className="flex-row justify-between items-end mb-3">
                                         <View>
-                                            <Text className="text-xs font-semibold text-slate-500 mb-0.5">Planificado</Text>
-                                            <Text className="text-lg font-extrabold text-primary">
-                                                {formatCurrency(assignedTotal)}
-                                            </Text>
+                                            <Text className="text-xs font-semibold text-slate-400 mb-0.5">Planificado</Text>
+                                            <Text className="text-xl font-extrabold text-primary">{formatCurrency(assignedTotal)}</Text>
                                         </View>
                                         <View className="items-end">
-                                            <Text className="text-xs font-semibold text-slate-500 mb-0.5">Gastado</Text>
-                                            <Text className={`text-lg font-extrabold ${totalActual > assignedTotal ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
+                                            <Text className="text-xs font-semibold text-slate-400 mb-0.5">Gastado</Text>
+                                            <Text className={`text-xl font-extrabold ${totalActual > assignedTotal ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
                                                 {formatCurrency(totalActual)}
                                             </Text>
                                         </View>
                                     </View>
-                                    {assignedTotal > 0 && (
-                                        <View className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex-row">
-                                            {assignments.map((a, idx) => {
-                                                const style = getCategoryStyle(a.category?.color);
-                                                const actual = actualByCategory[a.categoryId] || 0;
-                                                const pct = (actual / assignedTotal) * 100;
-                                                if (pct <= 0) return null;
-                                                return (
-                                                    <View
-                                                        key={a.budgetItemId || `bar-${idx}`}
-                                                        style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: style.hex }}
-                                                        className="h-full"
-                                                    />
-                                                );
-                                            })}
-                                        </View>
-                                    )}
+                                    {/* Segmented progress bar: each category's actual spend, colored by proximity to limit */}
+                                    <View className="h-3 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex-row">
+                                        {assignments.map((a, idx) => {
+                                            const style = getCategoryStyle(a.category?.color);
+                                            const actual = actualByCategory[a.categoryId] || 0;
+                                            const segPct = assignedTotal > 0 ? (actual / assignedTotal) * 100 : 0;
+                                            if (segPct <= 0) return null;
+                                            const catPct = a.amount > 0 ? (actual / a.amount) * 100 : 0;
+                                            return (
+                                                <View
+                                                    key={a.budgetItemId || `bar-${idx}`}
+                                                    style={{ width: `${Math.min(segPct, 100)}%`, backgroundColor: barColor(catPct, style.hex) }}
+                                                    className="h-full"
+                                                />
+                                            );
+                                        })}
+                                    </View>
                                 </View>
 
-                                {/* Donut chart - planned budget distribution */}
+                                {/* Donut + legend */}
                                 {donutSlices.length > 0 && (
                                     <View className="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
-                                        <View className="items-center mb-5">
+                                        {/* Donut */}
+                                        <View className="items-center mb-6">
                                             <View style={{ width: 180, height: 180 }}>
                                                 <Svg width={180} height={180} viewBox="0 0 200 200">
                                                     {(() => {
@@ -439,42 +369,127 @@ export default function DashboardScreen() {
                                                 </View>
                                             </View>
                                         </View>
-                                        <View className="space-y-3">
-                                            {donutSlices.map((slice, idx) => (
-                                                <View key={idx} className="flex-row items-center gap-3">
-                                                    <View className="h-3 w-3 rounded-full" style={{ backgroundColor: slice.color }} />
-                                                    <Text className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300" numberOfLines={1}>
-                                                        {slice.label}
-                                                    </Text>
-                                                    <Text className="text-sm font-bold text-slate-900 dark:text-white">{slice.percentage.toFixed(1)}%</Text>
-                                                    <Text className="text-xs text-slate-400 ml-1">{formatCurrency(slice.amount)}</Text>
-                                                </View>
-                                            ))}
+
+                                        {/* Legend with per-category progress bars */}
+                                        <View className="space-y-4">
+                                            {donutSlices.map((slice, idx) => {
+                                                const actual = actualByCategory[slice.categoryId] || 0;
+                                                const catPct = slice.amount > 0 ? Math.min((actual / slice.amount) * 100, 100) : 0;
+                                                const color = barColor(catPct, slice.color);
+                                                return (
+                                                    <View key={idx}>
+                                                        <View className="flex-row items-center gap-3 mb-1.5">
+                                                            <View className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: slice.color }} />
+                                                            <Text className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300" numberOfLines={1}>
+                                                                {slice.label}
+                                                            </Text>
+                                                            <Text className="text-sm font-bold text-slate-900 dark:text-white">{slice.percentage.toFixed(1)}%</Text>
+                                                            <Text className="text-xs text-slate-400 w-20 text-right">{formatCurrency(slice.amount)}</Text>
+                                                        </View>
+                                                        <View className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden ml-6" style={{ width: '94%' }}>
+                                                            <View
+                                                                style={{ width: `${catPct}%`, backgroundColor: color }}
+                                                                className="h-full rounded-full"
+                                                            />
+                                                        </View>
+                                                    </View>
+                                                );
+                                            })}
                                         </View>
                                     </View>
-                                )}
-
-                                {/* Save button — only when user has made changes */}
-                                {isDirty && (
-                                    <TouchableOpacity
-                                        onPress={handleSave}
-                                        disabled={saving}
-                                        className={`w-full py-4 rounded-xl shadow-lg shadow-primary/20 active:scale-95 ${saving ? 'bg-slate-300 dark:bg-slate-700' : 'bg-primary'}`}
-                                    >
-                                        {saving ? (
-                                            <ActivityIndicator color="white" />
-                                        ) : (
-                                            <Text className="font-bold text-center text-lg text-white">
-                                                Guardar Planificación
-                                            </Text>
-                                        )}
-                                    </TouchableOpacity>
                                 )}
                             </>
                         )}
                     </View>
                 </View>
             </ScrollView>
+
+            {/* ── Edit Planning Bottom Sheet ─────────────────── */}
+            <Modal visible={editVisible} animationType="slide" transparent>
+                <View className="flex-1 bg-black/50 justify-end">
+                    <View className="bg-background-light dark:bg-modal-dark rounded-t-3xl" style={{ maxHeight: '82%' }}>
+                        {/* Handle */}
+                        <View className="items-center pt-3 pb-1">
+                            <View className="h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-600" />
+                        </View>
+                        {/* Header */}
+                        <View className="flex-row items-center justify-between px-5 pt-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                            <Text className="text-lg font-bold text-slate-900 dark:text-white">Editar Planificación</Text>
+                            <TouchableOpacity
+                                onPress={() => setEditVisible(false)}
+                                className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
+                            >
+                                <MaterialIcons name="close" size={20} color="#64748b" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView className="px-5" contentContainerStyle={{ paddingTop: 16, paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
+                            <View className="space-y-3">
+                                {assignments.map((a, idx) => {
+                                    const style = getCategoryStyle(a.category?.color);
+                                    return (
+                                        <View key={a.budgetItemId || `local-${idx}`} className="flex-row items-center gap-3 bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 px-4 py-3">
+                                            <View className={`h-9 w-9 rounded-xl items-center justify-center ${style.bg}`}>
+                                                <MaterialIcons name={a.category?.icon || 'category'} size={20} color={style.hex} />
+                                            </View>
+                                            <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" numberOfLines={1}>
+                                                {a.category?.name || 'Sin categoría'}
+                                            </Text>
+                                            <View className="flex-row items-center bg-slate-100 dark:bg-slate-800 rounded-lg px-2">
+                                                <Text className="text-slate-400 font-bold text-sm">$</Text>
+                                                <TextInput
+                                                    value={a.amount > 0 ? String(a.amount) : ''}
+                                                    onChangeText={(v) => updateAmount(idx, v)}
+                                                    keyboardType="numeric"
+                                                    placeholder="0"
+                                                    placeholderTextColor="#94a3b8"
+                                                    className="w-20 h-9 text-center text-sm font-bold text-slate-900 dark:text-white"
+                                                />
+                                            </View>
+                                            <TouchableOpacity
+                                                onPress={() => removeAssignment(idx)}
+                                                className="h-7 w-7 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-500/10"
+                                            >
+                                                <MaterialIcons name="close" size={16} color="#ef4444" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+
+                            {/* Add category */}
+                            <TouchableOpacity
+                                onPress={() => setPickerVisible(true)}
+                                disabled={availableCategories.length === 0}
+                                className={`flex-row items-center justify-center gap-2 mt-4 py-3 rounded-xl border border-dashed ${availableCategories.length > 0 ? 'border-primary/40 bg-primary/5 dark:bg-primary/10' : 'border-slate-200 dark:border-slate-700'}`}
+                            >
+                                <MaterialIcons name="add" size={18} color={availableCategories.length > 0 ? '#137fec' : '#94a3b8'} />
+                                <Text className={`text-sm font-bold ${availableCategories.length > 0 ? 'text-primary' : 'text-slate-400'}`}>
+                                    Agregar categoría
+                                </Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+
+                        {/* Save */}
+                        {isDirty && (
+                            <View className="px-5 pt-3 pb-2 border-t border-slate-100 dark:border-slate-800">
+                                <TouchableOpacity
+                                    onPress={handleSave}
+                                    disabled={saving}
+                                    className={`w-full py-3.5 rounded-xl ${saving ? 'bg-slate-300 dark:bg-slate-700' : 'bg-primary'}`}
+                                >
+                                    {saving ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : (
+                                        <Text className="font-bold text-center text-base text-white">Guardar</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                        <SafeAreaView edges={['bottom']} />
+                    </View>
+                </View>
+            </Modal>
 
             {/* Category Picker Modal */}
             <Modal visible={pickerVisible} animationType="slide" transparent>
