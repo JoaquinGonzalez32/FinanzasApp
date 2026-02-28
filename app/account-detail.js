@@ -46,7 +46,7 @@ export default function AccountDetailScreen() {
             await deleteAccountGoal(deleteGoal.id);
             emitAccountGoalsChange();
         } catch (e) {
-            console.log('Delete goal error:', e.message);
+            if (__DEV__) console.log('Delete goal error:', e.message);
         } finally {
             setDeleteGoal(null);
         }

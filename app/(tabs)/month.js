@@ -28,7 +28,7 @@ export default function MonthScreen() {
             const data = await getYearTransactions(year);
             setYearTx(data);
         } catch (e) {
-            console.error(e);
+            if (__DEV__) console.error(e);
         } finally {
             setLoading(false);
         }

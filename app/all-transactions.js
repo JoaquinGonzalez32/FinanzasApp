@@ -52,7 +52,7 @@ export default function AllTransactionsScreen() {
             await deleteTransaction(deleteTx.id);
             emitTransactionsChange();
         } catch (e) {
-            console.log('Delete error:', e.message);
+            if (__DEV__) console.log('Delete error:', e.message);
         } finally {
             setDeleteTx(null);
         }
