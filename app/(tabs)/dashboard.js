@@ -44,6 +44,7 @@ export default function DashboardScreen() {
     const monthExpense = useMemo(() => sumByType(monthTx, 'expense'), [monthTx]);
     const netBalance = monthIncome - monthExpense;
 
+
     const accountStats = useMemo(() => accounts.map(acc => {
         const linkedTx = monthTx.filter(t => (t.account_id ?? t.category?.account_id) === acc.id);
         return {
@@ -272,28 +273,6 @@ export default function DashboardScreen() {
                             </ScrollView>
                         </View>
                     )}
-
-                    {/* Income/Expense Cards */}
-                    <View className="flex-row gap-4">
-                        <View className="flex-1 bg-white dark:bg-card-dark p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
-                            <View className="flex-row items-center gap-2 mb-3">
-                                <View className="h-8 w-8 rounded-lg bg-emerald-500/10 items-center justify-center">
-                                    <MaterialIcons name="arrow-downward" size={20} color="#10b981" />
-                                </View>
-                                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ingresos</Text>
-                            </View>
-                            <Text className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(monthIncome)}</Text>
-                        </View>
-                        <View className="flex-1 bg-white dark:bg-card-dark p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
-                            <View className="flex-row items-center gap-2 mb-3">
-                                <View className="h-8 w-8 rounded-lg bg-rose-500/10 items-center justify-center">
-                                    <MaterialIcons name="arrow-upward" size={20} color="#f43f5e" />
-                                </View>
-                                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gastos</Text>
-                            </View>
-                            <Text className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(monthExpense)}</Text>
-                        </View>
-                    </View>
 
                     {/* ── Planning Section ────────────────────────── */}
                     <View className="space-y-4">
