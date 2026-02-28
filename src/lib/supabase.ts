@@ -1,12 +1,14 @@
 import "react-native-url-polyfill/auto";
 import { createClient } from "@supabase/supabase-js";
+import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 
 // SecureStore has a 2048-byte limit per key. Supabase sessions can exceed this,
 // so we split large values across multiple keyed chunks.
 const CHUNK_SIZE = 1900;
 
-const ExpoSecureStoreAdapter = {
+const SecureStoreAdapter = {
   getItem: async (key: string): Promise<string | null> => {
     const countStr = await SecureStore.getItemAsync(`${key}_count`);
     if (countStr !== null) {
@@ -49,6 +51,10 @@ const ExpoSecureStoreAdapter = {
     await SecureStore.deleteItemAsync(key);
   },
 };
+
+// SecureStore is not available on web — fall back to AsyncStorage
+const ExpoSecureStoreAdapter =
+  Platform.OS === "web" ? AsyncStorage : SecureStoreAdapter;
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
