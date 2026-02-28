@@ -128,6 +128,7 @@ export function getCategoryAssignments(budgetItems: BudgetItem[]): CategoryAssig
     category: b.category!,
     amount: Number(b.percentage) || 0,
     isLocal: false,
+    account_id: b.account_id,
   }));
 }
 

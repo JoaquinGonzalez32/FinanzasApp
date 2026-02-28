@@ -47,29 +47,37 @@ export default function PlanningScreen() {
     const [removedIds, setRemovedIds] = useState([]);
     const [saving, setSaving] = useState(false);
     const [pickerVisible, setPickerVisible] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
 
-    // Sync DB items to local state when account changes or items load
+    // Sync DB items → local state (only when user has no unsaved edits)
     useEffect(() => {
-        if (!loading && budgetItems.length > 0) {
-            const filtered = budgetItems.filter(b =>
-                !b.account_id || b.account_id === selectedAccountId
-            );
-            setItems(filtered.map(b => ({
+        if (!loading && !isDirty) {
+            setItems(budgetItems.map(b => ({
                 ...b,
                 _local: false,
-                _fixedAmount: String(Number(b.percentage) || ''),
+                _fixedAmount: b.percentage > 0 ? String(b.percentage) : '',
             })));
             setRemovedIds([]);
-        } else if (!loading && budgetItems.length === 0) {
-            setItems([]);
-            setRemovedIds([]);
         }
-    }, [loading, budgetItems, selectedAccountId]);
+    }, [loading, budgetItems, isDirty]);
 
-    // Category IDs already assigned
+    // Reset dirty flag and local state when month changes (unblocks sync for new month)
+    useEffect(() => {
+        setIsDirty(false);
+        setItems([]);
+        setRemovedIds([]);
+    }, [selectedMonth]);
+
+    // Visible items: all items filtered by selected account
+    const visibleItems = useMemo(
+        () => items.filter(item => !item.account_id || item.account_id === selectedAccountId),
+        [items, selectedAccountId]
+    );
+
+    // Category IDs already assigned (from visible items)
     const assignedCategoryIds = useMemo(
-        () => new Set(items.map(i => i.category_id)),
-        [items]
+        () => new Set(visibleItems.map(i => i.category_id)),
+        [visibleItems]
     );
 
     // Available categories (not yet assigned + matching or unlinked account)
@@ -82,29 +90,27 @@ export default function PlanningScreen() {
     );
 
     const totalAmount = useMemo(
-        () => items.reduce((s, i) => s + (Number(i._fixedAmount) || 0), 0),
-        [items]
+        () => visibleItems.reduce((s, i) => s + (Number(i._fixedAmount) || 0), 0),
+        [visibleItems]
     );
 
-    const updateItem = useCallback((idx, field, value) => {
-        setItems(prev => {
-            const next = [...prev];
-            next[idx] = { ...next[idx], [field]: value };
-            return next;
-        });
-    }, []);
+    const updateItem = useCallback((visibleIdx, field, value) => {
+        setIsDirty(true);
+        const target = visibleItems[visibleIdx];
+        setItems(prev => prev.map(it => it === target ? { ...it, [field]: value } : it));
+    }, [visibleItems]);
 
-    const removeItem = useCallback((idx) => {
-        setItems(prev => {
-            const item = prev[idx];
-            if (item.id && !item._local) {
-                setRemovedIds(r => [...r, item.id]);
-            }
-            return prev.filter((_, i) => i !== idx);
-        });
-    }, []);
+    const removeItem = useCallback((visibleIdx) => {
+        const target = visibleItems[visibleIdx];
+        if (target.id && !target._local) {
+            setRemovedIds(r => [...r, target.id]);
+        }
+        setItems(prev => prev.filter(it => it !== target));
+        setIsDirty(true);
+    }, [visibleItems]);
 
     const addCategory = useCallback((category) => {
+        setIsDirty(true);
         setItems(prev => [
             ...prev,
             {
@@ -127,9 +133,9 @@ export default function PlanningScreen() {
             for (const id of removedIds) {
                 await svc.deleteBudgetItem(id);
             }
-            // Create/update remaining items
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i];
+            // Create/update visible items
+            for (let i = 0; i < visibleItems.length; i++) {
+                const item = visibleItems[i];
                 const amount = Number(item._fixedAmount) || 0;
                 const payload = {
                     category_id: item.category_id,
@@ -151,7 +157,7 @@ export default function PlanningScreen() {
         } finally {
             setSaving(false);
         }
-    }, [items, removedIds, router, selectedMonth]);
+    }, [visibleItems, removedIds, router, selectedMonth]);
 
     if (loading) {
         return (
@@ -218,7 +224,7 @@ export default function PlanningScreen() {
                     )}
 
                     {/* Items list */}
-                    {items.length === 0 && (
+                    {visibleItems.length === 0 && (
                         <View className="items-center py-12">
                             <MaterialIcons name="pie-chart-outline" size={48} color="#94a3b8" />
                             <Text className="text-slate-400 text-base font-medium mt-4">Sin distribución configurada</Text>
@@ -229,7 +235,7 @@ export default function PlanningScreen() {
                     )}
 
                     <View className="space-y-4">
-                        {items.map((item, idx) => {
+                        {visibleItems.map((item, idx) => {
                             const cat = item.category;
                             const style = getCategoryStyle(cat?.color);
                             return (
@@ -270,7 +276,7 @@ export default function PlanningScreen() {
                     </View>
 
                     {/* Total bar */}
-                    {items.length > 0 && (
+                    {visibleItems.length > 0 && (
                         <View className={`rounded-2xl p-6 border ${monthIncome > 0 && totalAmount <= monthIncome ? 'bg-primary/5 dark:bg-primary/10 border-primary/20' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-300/30'}`}>
                             <View className="flex-row justify-between items-end mb-4">
                                 <View>
@@ -290,7 +296,7 @@ export default function PlanningScreen() {
                             </View>
                             {monthIncome > 0 && (
                                 <View className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex-row">
-                                    {items.map((item, idx) => {
+                                    {visibleItems.map((item, idx) => {
                                         const style = getCategoryStyle(item.category?.color);
                                         const amt = Number(item._fixedAmount) || 0;
                                         const pct = (amt / monthIncome) * 100;
@@ -311,7 +317,7 @@ export default function PlanningScreen() {
             </ScrollView>
 
             {/* Footer */}
-            {items.length > 0 && (
+            {visibleItems.length > 0 && (
                 <View className="p-6 bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-slate-800">
                     <SafeAreaView edges={['bottom']}>
                         <TouchableOpacity

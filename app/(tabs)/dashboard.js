@@ -68,18 +68,17 @@ export default function DashboardScreen() {
     const [isDirty, setIsDirty] = useState(false);
     const [showAccounts, setShowAccounts] = useState(false);
 
-    // Sync DB budget items → local assignments
+    // Sync DB budget items → local assignments (only when user has no unsaved edits)
     useEffect(() => {
-        if (!distBudgetLoading) {
+        if (!distBudgetLoading && !isDirty) {
             if (distBudgetItems.length > 0) {
                 setAssignments(getCategoryAssignments(distBudgetItems));
             } else {
                 setAssignments([]);
             }
             setRemovedIds([]);
-            setIsDirty(false);
         }
-    }, [distBudgetLoading, distBudgetItems]);
+    }, [distBudgetLoading, distBudgetItems, isDirty]);
 
     const assignedTotal = useMemo(() => getAssignedTotal(assignments), [assignments]);
     const unassigned = useMemo(() => getUnassigned(distIncome, assignedTotal), [distIncome, assignedTotal]);
@@ -145,7 +144,7 @@ export default function DashboardScreen() {
                 const a = assignments[i];
                 const payload = {
                     category_id: a.categoryId,
-                    account_id: null,
+                    account_id: a.account_id ?? null,
                     percentage: a.amount,
                     month: distMonth,
                     sort_order: i,
@@ -156,6 +155,7 @@ export default function DashboardScreen() {
                     await budgetSvc.updateBudgetItem(a.budgetItemId, payload);
                 }
             }
+            setIsDirty(false);
             emitBudgetChange();
             if (Platform.OS === 'web') {
                 window.alert('Distribución guardada');

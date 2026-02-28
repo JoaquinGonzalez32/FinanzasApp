@@ -135,6 +135,7 @@ export interface CategoryAssignment {
   category: Category;
   amount: number;
   isLocal: boolean;
+  account_id?: string | null;
 }
 
 export interface DonutSlice {
