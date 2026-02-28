@@ -11,9 +11,9 @@ import { useCategories } from '../../src/hooks/useCategories';
 import { emitBudgetChange } from '../../src/lib/events';
 import * as budgetSvc from '../../src/services/budgetService';
 import {
-    formatCurrency, getCategoryStyle, sumByType, groupByCategory, MONTHS_ES,
+    formatCurrency, getCategoryStyle, sumByType, MONTHS_ES,
     getCurrentMonth, parseMonth, shiftMonth, monthLabel,
-    getMonthIncomeTotal, getCategoryAssignments, getAssignedTotal, getUnassigned, buildDonutData,
+    getCategoryAssignments, getAssignedTotal,
 } from '../../src/lib/helpers';
 
 const polarToCartesian = (cx, cy, r, deg) => {
@@ -43,6 +43,7 @@ export default function DashboardScreen() {
     const monthIncome = useMemo(() => sumByType(monthTx, 'income'), [monthTx]);
     const monthExpense = useMemo(() => sumByType(monthTx, 'expense'), [monthTx]);
     const netBalance = monthIncome - monthExpense;
+
     const accountStats = useMemo(() => accounts.map(acc => {
         const linkedTx = monthTx.filter(t => (t.account_id ?? t.category?.account_id) === acc.id);
         return {
@@ -52,41 +53,63 @@ export default function DashboardScreen() {
         };
     }), [accounts, monthTx]);
 
-    // ── Distribution state ─────────────────────────────────────
+    // ── Planning state ─────────────────────────────────────────
     const [distMonth, setDistMonth] = useState(getCurrentMonth);
     const { year: distYear, month: distMo } = parseMonth(distMonth);
     const { transactions: distMonthTx, loading: distTxLoading } = useTransactions({ mode: 'month', year: distYear, month: distMo });
     const { budgetItems: distBudgetItems, loading: distBudgetLoading } = useBudget(distMonth);
     const { categories: expenseCategories } = useCategories('expense');
 
-    const distIncome = useMemo(() => getMonthIncomeTotal(distMonthTx), [distMonthTx]);
-
     const [assignments, setAssignments] = useState([]);
     const [removedIds, setRemovedIds] = useState([]);
     const [saving, setSaving] = useState(false);
     const [pickerVisible, setPickerVisible] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
-    const [showAccounts, setShowAccounts] = useState(false);
+
+    // Reset local state when switching months (allows sync to re-fetch)
+    useEffect(() => {
+        setIsDirty(false);
+        setAssignments([]);
+        setRemovedIds([]);
+    }, [distMonth]);
 
     // Sync DB budget items → local assignments (only when user has no unsaved edits)
     useEffect(() => {
         if (!distBudgetLoading && !isDirty) {
-            if (distBudgetItems.length > 0) {
-                setAssignments(getCategoryAssignments(distBudgetItems));
-            } else {
-                setAssignments([]);
-            }
+            setAssignments(distBudgetItems.length > 0 ? getCategoryAssignments(distBudgetItems) : []);
             setRemovedIds([]);
         }
     }, [distBudgetLoading, distBudgetItems, isDirty]);
 
+    // Actual expenses per category for the selected planning month
+    const actualByCategory = useMemo(() => {
+        const map = {};
+        for (const t of distMonthTx) {
+            if (t.type !== 'expense' || !t.category_id) continue;
+            map[t.category_id] = (map[t.category_id] || 0) + Number(t.amount);
+        }
+        return map;
+    }, [distMonthTx]);
+
     const assignedTotal = useMemo(() => getAssignedTotal(assignments), [assignments]);
-    const unassigned = useMemo(() => getUnassigned(distIncome, assignedTotal), [distIncome, assignedTotal]);
-    const isOverBudget = assignedTotal > distIncome && distIncome > 0;
-    const donutSlices = useMemo(
-        () => buildDonutData(assignments, Math.max(unassigned, 0), distIncome),
-        [assignments, unassigned, distIncome]
+
+    const totalActual = useMemo(
+        () => assignments.reduce((sum, a) => sum + (actualByCategory[a.categoryId] || 0), 0),
+        [assignments, actualByCategory]
     );
+
+    // Donut: planned budget distribution by category
+    const donutSlices = useMemo(() => {
+        if (assignedTotal <= 0) return [];
+        return assignments
+            .filter(a => a.amount > 0)
+            .map(a => ({
+                label: a.category?.name || 'Sin categoría',
+                amount: a.amount,
+                percentage: (a.amount / assignedTotal) * 100,
+                color: getCategoryStyle(a.category?.color).hex,
+            }));
+    }, [assignments, assignedTotal]);
 
     const assignedCategoryIds = useMemo(
         () => new Set(assignments.map(a => a.categoryId)),
@@ -158,9 +181,9 @@ export default function DashboardScreen() {
             setIsDirty(false);
             emitBudgetChange();
             if (Platform.OS === 'web') {
-                window.alert('Distribución guardada');
+                window.alert('Planificación guardada');
             } else {
-                Alert.alert('Listo', 'Distribución guardada');
+                Alert.alert('Listo', 'Planificación guardada');
             }
         } catch (e) {
             if (Platform.OS === 'web') {
@@ -202,64 +225,51 @@ export default function DashboardScreen() {
                         </View>
                     </View>
 
-                    {/* Account Cards */}
+                    {/* Account Cards - always visible */}
                     {accountStats.length > 0 && (
                         <View>
-                            <TouchableOpacity
-                                onPress={() => setShowAccounts(v => !v)}
-                                activeOpacity={0.7}
-                                className="flex-row items-center justify-between mb-3"
-                            >
-                                <Text className="text-lg font-bold text-slate-900 dark:text-white">Cuentas</Text>
-                                <MaterialIcons
-                                    name={showAccounts ? 'expand-less' : 'expand-more'}
-                                    size={24}
-                                    color="#94a3b8"
-                                />
-                            </TouchableOpacity>
-                            {showAccounts && (
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                                    {accountStats.map(({ account: acc, monthIncome: accIncome, monthExpense: accExpense }) => {
-                                        const style = getCategoryStyle(acc.color);
-                                        return (
-                                            <TouchableOpacity
-                                                key={acc.id}
-                                                onPress={() => router.push({
-                                                    pathname: '/account-detail',
-                                                    params: {
-                                                        id: acc.id,
-                                                        name: acc.name,
-                                                        type: acc.type,
-                                                        icon: acc.icon,
-                                                        color: acc.color,
-                                                        balance: String(acc.balance),
-                                                        currency: acc.currency,
-                                                    },
-                                                })}
-                                                activeOpacity={0.8}
-                                                className="p-4 rounded-2xl border bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800"
-                                                style={{ width: 170, minWidth: 160 }}
-                                            >
-                                                <View className="flex-row items-center gap-2 mb-3">
-                                                    <View className={`h-8 w-8 rounded-lg items-center justify-center ${style.bg}`}>
-                                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={style.hex} />
-                                                    </View>
-                                                    <View className="flex-1">
-                                                        <Text className="text-sm font-bold text-slate-900 dark:text-white" numberOfLines={1}>{acc.name}</Text>
-                                                        <Text className="text-[10px] text-slate-400 font-medium">{acc.currency}</Text>
-                                                    </View>
-                                                    <MaterialIcons name="chevron-right" size={18} color="#94a3b8" />
+                            <Text className="text-lg font-bold text-slate-900 dark:text-white mb-3">Cuentas</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                                {accountStats.map(({ account: acc, monthIncome: accIncome, monthExpense: accExpense }) => {
+                                    const style = getCategoryStyle(acc.color);
+                                    return (
+                                        <TouchableOpacity
+                                            key={acc.id}
+                                            onPress={() => router.push({
+                                                pathname: '/account-detail',
+                                                params: {
+                                                    id: acc.id,
+                                                    name: acc.name,
+                                                    type: acc.type,
+                                                    icon: acc.icon,
+                                                    color: acc.color,
+                                                    balance: String(acc.balance),
+                                                    currency: acc.currency,
+                                                },
+                                            })}
+                                            activeOpacity={0.8}
+                                            className="p-4 rounded-2xl border bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800"
+                                            style={{ width: 170, minWidth: 160 }}
+                                        >
+                                            <View className="flex-row items-center gap-2 mb-3">
+                                                <View className={`h-8 w-8 rounded-lg items-center justify-center ${style.bg}`}>
+                                                    <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={style.hex} />
                                                 </View>
-                                                <Text className="text-xl font-extrabold text-slate-900 dark:text-white mb-2">{formatCurrency(acc.balance, acc.currency)}</Text>
-                                                <View className="flex-row justify-between">
-                                                    <Text className="text-xs font-semibold text-emerald-500">+{formatCurrency(accIncome, acc.currency)}</Text>
-                                                    <Text className="text-xs font-semibold text-rose-500">-{formatCurrency(accExpense, acc.currency)}</Text>
+                                                <View className="flex-1">
+                                                    <Text className="text-sm font-bold text-slate-900 dark:text-white" numberOfLines={1}>{acc.name}</Text>
+                                                    <Text className="text-[10px] text-slate-400 font-medium">{acc.currency}</Text>
                                                 </View>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </ScrollView>
-                            )}
+                                                <MaterialIcons name="chevron-right" size={18} color="#94a3b8" />
+                                            </View>
+                                            <Text className="text-xl font-extrabold text-slate-900 dark:text-white mb-2">{formatCurrency(acc.balance, acc.currency)}</Text>
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-xs font-semibold text-emerald-500">+{formatCurrency(accIncome, acc.currency)}</Text>
+                                                <Text className="text-xs font-semibold text-rose-500">-{formatCurrency(accExpense, acc.currency)}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
                         </View>
                     )}
 
@@ -285,11 +295,11 @@ export default function DashboardScreen() {
                         </View>
                     </View>
 
-                    {/* ── Distribution Section ────────────────────────── */}
+                    {/* ── Planning Section ────────────────────────── */}
                     <View className="space-y-4">
                         {/* Header */}
                         <View className="flex-row items-center justify-between">
-                            <Text className="text-lg font-bold text-slate-900 dark:text-white">Distribución del Ingreso</Text>
+                            <Text className="text-lg font-bold text-slate-900 dark:text-white">Planificación de Gastos</Text>
                             <TouchableOpacity
                                 onPress={() => setPickerVisible(true)}
                                 disabled={availableCategories.length === 0}
@@ -315,14 +325,6 @@ export default function DashboardScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Income banner */}
-                        <View className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 flex-row items-center gap-2">
-                            <MaterialIcons name="arrow-downward" size={18} color="#10b981" />
-                            <Text className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                                Ingreso total del mes: {formatCurrency(distIncome)}
-                            </Text>
-                        </View>
-
                         {/* Loading */}
                         {distLoading ? (
                             <View className="items-center py-8">
@@ -334,19 +336,23 @@ export default function DashboardScreen() {
                                 onPress={() => setPickerVisible(true)}
                                 className="bg-white dark:bg-card-dark p-6 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 items-center"
                             >
-                                <MaterialIcons name="pie-chart-outline" size={32} color="#94a3b8" />
-                                <Text className="text-slate-400 text-sm font-medium mt-2">Sin distribución configurada</Text>
+                                <MaterialIcons name="bar-chart" size={32} color="#94a3b8" />
+                                <Text className="text-slate-400 text-sm font-medium mt-2">Sin planificación configurada</Text>
                                 <Text className="text-primary text-xs font-bold mt-1">Agregar categoría</Text>
                             </TouchableOpacity>
                         ) : (
                             <>
-                                {/* Editable category cards */}
+                                {/* Category budget cards */}
                                 <View className="space-y-3">
                                     {assignments.map((a, idx) => {
                                         const style = getCategoryStyle(a.category?.color);
+                                        const actual = actualByCategory[a.categoryId] || 0;
+                                        const isOver = a.amount > 0 && actual > a.amount;
+                                        const pct = a.amount > 0 ? Math.min((actual / a.amount) * 100, 100) : 0;
                                         return (
                                             <View key={a.budgetItemId || `local-${idx}`} className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-                                                <View className="flex-row items-center gap-3">
+                                                {/* Top row: icon, name, planned amount input, delete */}
+                                                <View className="flex-row items-center gap-3 mb-3">
                                                     <View className={`h-10 w-10 rounded-xl items-center justify-center ${style.bg}`}>
                                                         <MaterialIcons name={a.category?.icon || 'category'} size={22} color={style.hex} />
                                                     </View>
@@ -368,40 +374,54 @@ export default function DashboardScreen() {
                                                         <MaterialIcons name="close" size={18} color="#ef4444" />
                                                     </TouchableOpacity>
                                                 </View>
+                                                {/* Progress row */}
+                                                <View className="flex-row items-center justify-between mb-2">
+                                                    <Text className="text-xs text-slate-500 font-medium">
+                                                        Gastado: <Text className={`font-bold ${isOver ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>{formatCurrency(actual)}</Text>
+                                                    </Text>
+                                                    {a.amount > 0 && (
+                                                        <Text className={`text-xs font-bold ${isOver ? 'text-rose-500' : 'text-slate-400'}`}>
+                                                            {isOver
+                                                                ? `+${formatCurrency(actual - a.amount)} excedido`
+                                                                : `${formatCurrency(a.amount - actual)} restante`}
+                                                        </Text>
+                                                    )}
+                                                </View>
+                                                {a.amount > 0 && (
+                                                    <View className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                        <View
+                                                            style={{ width: `${pct}%`, backgroundColor: isOver ? '#ef4444' : style.hex }}
+                                                            className="h-full rounded-full"
+                                                        />
+                                                    </View>
+                                                )}
                                             </View>
                                         );
                                     })}
                                 </View>
 
                                 {/* Summary bar */}
-                                <View className={`rounded-2xl p-5 border ${isOverBudget ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-300/30' : 'bg-primary/5 dark:bg-primary/10 border-primary/20'}`}>
+                                <View className="rounded-2xl p-5 border bg-primary/5 dark:bg-primary/10 border-primary/20">
                                     <View className="flex-row justify-between items-center mb-3">
                                         <View>
-                                            <Text className="text-xs font-semibold text-slate-500 mb-0.5">Asignado</Text>
-                                            <Text className={`text-lg font-extrabold ${isOverBudget ? 'text-rose-500' : 'text-primary'}`}>
+                                            <Text className="text-xs font-semibold text-slate-500 mb-0.5">Planificado</Text>
+                                            <Text className="text-lg font-extrabold text-primary">
                                                 {formatCurrency(assignedTotal)}
                                             </Text>
                                         </View>
                                         <View className="items-end">
-                                            <Text className="text-xs font-semibold text-slate-500 mb-0.5">Sin asignar</Text>
-                                            <Text className={`text-lg font-extrabold ${unassigned < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                                {formatCurrency(Math.abs(unassigned))}
+                                            <Text className="text-xs font-semibold text-slate-500 mb-0.5">Gastado</Text>
+                                            <Text className={`text-lg font-extrabold ${totalActual > assignedTotal ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
+                                                {formatCurrency(totalActual)}
                                             </Text>
                                         </View>
                                     </View>
-                                    {isOverBudget && (
-                                        <View className="flex-row items-center gap-2 mb-3 bg-rose-100 dark:bg-rose-500/20 rounded-lg px-3 py-2">
-                                            <MaterialIcons name="error-outline" size={16} color="#ef4444" />
-                                            <Text className="text-xs font-bold text-rose-500 flex-1">
-                                                Te pasaste por {formatCurrency(assignedTotal - distIncome)}
-                                            </Text>
-                                        </View>
-                                    )}
-                                    {distIncome > 0 && (
+                                    {assignedTotal > 0 && (
                                         <View className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex-row">
                                             {assignments.map((a, idx) => {
                                                 const style = getCategoryStyle(a.category?.color);
-                                                const pct = (a.amount / distIncome) * 100;
+                                                const actual = actualByCategory[a.categoryId] || 0;
+                                                const pct = (actual / assignedTotal) * 100;
                                                 if (pct <= 0) return null;
                                                 return (
                                                     <View
@@ -415,7 +435,7 @@ export default function DashboardScreen() {
                                     )}
                                 </View>
 
-                                {/* Donut chart */}
+                                {/* Donut chart - planned budget distribution */}
                                 {donutSlices.length > 0 && (
                                     <View className="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
                                         <View className="items-center mb-5">
@@ -433,9 +453,9 @@ export default function DashboardScreen() {
                                                     <Circle cx={100} cy={100} r={55} fill={colorScheme === 'dark' ? '#1c2632' : '#ffffff'} />
                                                 </Svg>
                                                 <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }}>
-                                                    <Text className="text-[10px] text-slate-400 font-medium">Ingreso</Text>
+                                                    <Text className="text-[10px] text-slate-400 font-medium">Planificado</Text>
                                                     <Text className="text-base font-extrabold text-slate-900 dark:text-white">
-                                                        {formatCurrency(distIncome)}
+                                                        {formatCurrency(assignedTotal)}
                                                     </Text>
                                                 </View>
                                             </View>
@@ -459,14 +479,14 @@ export default function DashboardScreen() {
                                 {isDirty && (
                                     <TouchableOpacity
                                         onPress={handleSave}
-                                        disabled={saving || isOverBudget}
-                                        className={`w-full py-4 rounded-xl shadow-lg shadow-primary/20 active:scale-95 ${saving || isOverBudget ? 'bg-slate-300 dark:bg-slate-700' : 'bg-primary'}`}
+                                        disabled={saving}
+                                        className={`w-full py-4 rounded-xl shadow-lg shadow-primary/20 active:scale-95 ${saving ? 'bg-slate-300 dark:bg-slate-700' : 'bg-primary'}`}
                                     >
                                         {saving ? (
                                             <ActivityIndicator color="white" />
                                         ) : (
-                                            <Text className={`font-bold text-center text-lg ${saving || isOverBudget ? 'text-slate-500' : 'text-white'}`}>
-                                                Guardar Distribución
+                                            <Text className="font-bold text-center text-lg text-white">
+                                                Guardar Planificación
                                             </Text>
                                         )}
                                     </TouchableOpacity>
