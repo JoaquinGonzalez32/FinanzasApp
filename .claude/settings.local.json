@@ -36,7 +36,9 @@
       "Bash(npx expo start:*)",
       "Bash(timeout 45 bash:*)",
       "Bash(npx expo install:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(python3:*)",
+      "Bash(xargs grep:*)"
     ]
   }
 }
