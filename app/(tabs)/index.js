@@ -10,6 +10,7 @@ import { useProfile } from '../../src/hooks/useProfile';
 import { deleteTransaction } from '../../src/services/transactionsService';
 import { emitTransactionsChange } from '../../src/lib/events';
 import { formatAmount, formatCurrency, formatTime, getCategoryStyle, toDateISO, sumByType } from '../../src/lib/helpers';
+import { useWeeklyReviewAlert } from '../../src/hooks/useWeeklyReviewAlert';
 
 function buildInsight(todayExpense, monthTx, todayStr) {
     if (monthTx.length === 0) return null;
@@ -94,6 +95,8 @@ export default function HomeScreen() {
     const todayIncome = useMemo(() => sumByType(todayTx, 'income'), [todayTx]);
 
     const insight = useMemo(() => buildInsight(todayExpense, monthTx, todayStr), [todayExpense, monthTx, todayStr]);
+
+    const weeklyAlert = useWeeklyReviewAlert(monthTx, loading);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -218,6 +221,46 @@ export default function HomeScreen() {
                                 {insight.highlight && <Text className={`${insight.highlightColor} font-bold`}>{insight.highlight}</Text>}
                                 {insight.suffix ?? ''}
                             </Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* Weekly Review Alert — visible on Mondays when categories are at risk */}
+                {weeklyAlert.visible && weeklyAlert.summary && (
+                    <View className="px-5 pb-2">
+                        <View className={`rounded-xl p-4 border ${weeklyAlert.summary.criticaCount > 0 ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-900/30' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-900/30'}`}>
+                            <View className="flex-row items-start gap-3">
+                                <View className={`p-1.5 rounded-lg mt-0.5 ${weeklyAlert.summary.criticaCount > 0 ? 'bg-red-100 dark:bg-red-500/20' : 'bg-amber-100 dark:bg-amber-500/20'}`}>
+                                    <MaterialIcons
+                                        name={weeklyAlert.summary.criticaCount > 0 ? 'error' : 'warning'}
+                                        size={18}
+                                        color={weeklyAlert.summary.criticaCount > 0 ? '#ef4444' : '#f59e0b'}
+                                    />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-sm font-bold text-slate-900 dark:text-white">Revisión semanal</Text>
+                                    <Text className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                        {[
+                                            weeklyAlert.summary.criticaCount > 0 && `${weeklyAlert.summary.criticaCount} crítica${weeklyAlert.summary.criticaCount !== 1 ? 's' : ''}`,
+                                            weeklyAlert.summary.enRiesgoCount > 0 && `${weeklyAlert.summary.enRiesgoCount} en riesgo`,
+                                        ].filter(Boolean).join(' · ')}
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={() => { weeklyAlert.dismiss(); router.push('/planning'); }}
+                                        className="mt-2 self-start"
+                                    >
+                                        <Text className={`text-xs font-bold ${weeklyAlert.summary.criticaCount > 0 ? 'text-red-500' : 'text-amber-600'}`}>
+                                            Ver planificación →
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <TouchableOpacity
+                                    onPress={weeklyAlert.dismiss}
+                                    className="h-7 w-7 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
+                                >
+                                    <MaterialIcons name="close" size={16} color="#64748b" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
                 )}
