@@ -10,6 +10,7 @@ export interface Transaction {
   note: string | null;
   date: string; // ISO date string YYYY-MM-DD
   created_at: string;
+  recurring_id?: string | null;
   // joined from categories
   category?: Category;
 }
@@ -32,6 +33,7 @@ export interface TransactionInsert {
   account_id?: string | null;
   note?: string | null;
   date: string;
+  recurring_id?: string | null;
 }
 
 export interface Profile {
@@ -144,4 +146,25 @@ export interface DonutSlice {
   percentage: number;
   color: string;
   icon?: string;
+}
+
+export interface RecurringExpense {
+  id: string;
+  user_id: string;
+  category_id: string;
+  account_id: string | null;
+  /** Fixed monthly amount */
+  amount: number;
+  /** Day of month to apply (1–28) */
+  day_of_month: number;
+  is_active: boolean;
+  created_at: string;
+  category?: Category;
+}
+
+export interface RecurringExpenseInsert {
+  category_id: string;
+  account_id?: string | null;
+  amount: number;
+  day_of_month: number;
 }

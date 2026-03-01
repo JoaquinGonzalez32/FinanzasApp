@@ -186,6 +186,24 @@ export default function SettingsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#137fec" colors={['#137fec']} />
                 }
             >
+                {/* Herramientas */}
+                <View className="px-5 pt-6 pb-2">
+                    <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Herramientas</Text>
+                    <TouchableOpacity
+                        onPress={() => router.push('/recurring')}
+                        className="flex-row items-center gap-4 p-4 bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 active:bg-slate-50 dark:active:bg-slate-800"
+                    >
+                        <View className="h-10 w-10 rounded-full bg-primary/20 items-center justify-center">
+                            <MaterialIcons name="repeat" size={20} color="#137fec" />
+                        </View>
+                        <View className="flex-1">
+                            <Text className="font-semibold text-sm text-slate-900 dark:text-white">Gastos Recurrentes</Text>
+                            <Text className="text-xs text-slate-400 mt-0.5">Alquiler, servicios, suscripciones...</Text>
+                        </View>
+                        <MaterialIcons name="chevron-right" size={20} color="#94a3b8" />
+                    </TouchableOpacity>
+                </View>
+
                 {/* Tabs Toggle */}
                 <View className="px-5 py-6">
                     <View className="bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl flex-row items-center">

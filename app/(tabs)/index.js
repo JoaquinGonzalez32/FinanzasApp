@@ -11,6 +11,7 @@ import { deleteTransaction } from '../../src/services/transactionsService';
 import { emitTransactionsChange } from '../../src/lib/events';
 import { formatAmount, formatCurrency, formatTime, getCategoryStyle, toDateISO, sumByType } from '../../src/lib/helpers';
 import { useWeeklyReviewAlert } from '../../src/hooks/useWeeklyReviewAlert';
+import { usePendingRecurringCount } from '../../src/hooks/usePendingRecurringCount';
 
 function buildInsight(todayExpense, monthTx, todayStr) {
     if (monthTx.length === 0) return null;
@@ -97,6 +98,7 @@ export default function HomeScreen() {
     const insight = useMemo(() => buildInsight(todayExpense, monthTx, todayStr), [todayExpense, monthTx, todayStr]);
 
     const weeklyAlert = useWeeklyReviewAlert(monthTx, loading);
+    const pendingRecurringCount = usePendingRecurringCount();
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -222,6 +224,27 @@ export default function HomeScreen() {
                                 {insight.suffix ?? ''}
                             </Text>
                         </View>
+                    </View>
+                )}
+
+                {/* Pending Recurring Expenses Banner */}
+                {pendingRecurringCount > 0 && (
+                    <View className="px-5 pb-2">
+                        <TouchableOpacity
+                            onPress={() => router.push('/recurring')}
+                            className="flex-row items-center gap-3 bg-primary/5 dark:bg-primary/10 rounded-xl p-4 border border-primary/20"
+                        >
+                            <View className="bg-primary/20 p-1.5 rounded-lg">
+                                <MaterialIcons name="repeat" size={18} color="#137fec" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-sm font-bold text-slate-900 dark:text-white">Gastos recurrentes</Text>
+                                <Text className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                    {pendingRecurringCount} pendiente{pendingRecurringCount !== 1 ? 's' : ''} de confirmar este mes
+                                </Text>
+                            </View>
+                            <MaterialIcons name="chevron-right" size={20} color="#137fec" />
+                        </TouchableOpacity>
                     </View>
                 )}
 
