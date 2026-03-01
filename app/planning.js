@@ -10,6 +10,15 @@ import { useAccounts } from '../src/hooks/useAccounts';
 import { formatCurrency, getCategoryStyle, getCurrentMonth, parseMonth, shiftMonth, monthLabel } from '../src/lib/helpers';
 import { emitBudgetChange } from '../src/lib/events';
 import * as svc from '../src/services/budgetService';
+import { computeWeeklyReview } from '../src/lib/weeklyReview';
+
+const REVIEW_STATUS_CFG = {
+    en_ritmo:    { label: 'En ritmo',   pillBg: 'bg-emerald-50 dark:bg-emerald-500/10', pillText: 'text-emerald-600', barColor: '#10b981' },
+    en_riesgo:   { label: 'En riesgo',  pillBg: 'bg-amber-50 dark:bg-amber-500/10',     pillText: 'text-amber-600',   barColor: '#f59e0b' },
+    critica:     { label: 'Crítica',    pillBg: 'bg-red-50 dark:bg-red-500/10',         pillText: 'text-red-500',     barColor: '#ef4444' },
+    no_evaluable:{ label: 'Dato único', pillBg: 'bg-slate-100 dark:bg-slate-800',       pillText: 'text-slate-500',   barColor: '#94a3b8' },
+    sin_datos:   { label: 'Sin datos',  pillBg: 'bg-slate-100 dark:bg-slate-800',       pillText: 'text-slate-400',   barColor: '#94a3b8' },
+};
 
 export default function PlanningScreen() {
     const router = useRouter();
@@ -93,6 +102,16 @@ export default function PlanningScreen() {
         () => visibleItems.reduce((s, i) => s + (Number(i._fixedAmount) || 0), 0),
         [visibleItems]
     );
+
+    const weeklyReview = useMemo(() => {
+        if (selectedMonth !== getCurrentMonth()) return null;
+        const inputs = visibleItems.map(item => ({
+            categoryId: item.category_id,
+            category: item.category,
+            plannedAmount: Number(item._fixedAmount) || 0,
+        }));
+        return computeWeeklyReview(inputs, transactions, selectedMonth, selectedAccountId);
+    }, [visibleItems, transactions, selectedMonth, selectedAccountId]);
 
     const updateItem = useCallback((visibleIdx, field, value) => {
         setIsDirty(true);
@@ -311,6 +330,84 @@ export default function PlanningScreen() {
                                     })}
                                 </View>
                             )}
+                        </View>
+                    )}
+                    {/* Revisión semanal */}
+                    {weeklyReview && weeklyReview.items.some(i => i.status !== 'sin_datos') && (
+                        <View className="space-y-3">
+                            <Text className="text-base font-bold text-slate-900 dark:text-white">Revisión semanal</Text>
+
+                            {/* Summary pills */}
+                            <View className="flex-row flex-wrap gap-2">
+                                {weeklyReview.enRitmoCount > 0 && (
+                                    <View className="bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-full">
+                                        <Text className="text-emerald-600 text-xs font-bold">{weeklyReview.enRitmoCount} en ritmo</Text>
+                                    </View>
+                                )}
+                                {weeklyReview.enRiesgoCount > 0 && (
+                                    <View className="bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 rounded-full">
+                                        <Text className="text-amber-600 text-xs font-bold">{weeklyReview.enRiesgoCount} en riesgo</Text>
+                                    </View>
+                                )}
+                                {weeklyReview.criticaCount > 0 && (
+                                    <View className="bg-red-50 dark:bg-red-500/10 px-3 py-1.5 rounded-full">
+                                        <Text className="text-red-500 text-xs font-bold">{weeklyReview.criticaCount} crítica{weeklyReview.criticaCount !== 1 ? 's' : ''}</Text>
+                                    </View>
+                                )}
+                            </View>
+
+                            {/* Category cards */}
+                            {weeklyReview.items
+                                .filter(item => item.status !== 'sin_datos')
+                                .map(item => {
+                                    const catStyle = getCategoryStyle(item.category?.color);
+                                    const cfg = REVIEW_STATUS_CFG[item.status] ?? REVIEW_STATUS_CFG.en_ritmo;
+                                    const spentPct = item.planned > 0 ? Math.min((item.spent / item.planned) * 100, 100) : 0;
+                                    return (
+                                        <View key={item.categoryId} className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+                                            {/* Header row */}
+                                            <View className="flex-row items-center gap-3 mb-3">
+                                                <View className={`h-8 w-8 rounded-lg items-center justify-center ${catStyle.bg}`}>
+                                                    <MaterialIcons name={item.category.icon || 'category'} size={18} color={catStyle.hex} />
+                                                </View>
+                                                <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white" numberOfLines={1}>
+                                                    {item.category.name}
+                                                </Text>
+                                                <View className={`px-2.5 py-1 rounded-full ${cfg.pillBg}`}>
+                                                    <Text className={`text-xs font-bold ${cfg.pillText}`}>{cfg.label}</Text>
+                                                </View>
+                                            </View>
+
+                                            {item.status === 'no_evaluable' ? (
+                                                <Text className="text-xs text-slate-400">Solo 1 transacción — tendencia no evaluable</Text>
+                                            ) : (
+                                                <View className="space-y-1.5">
+                                                    <View className="flex-row justify-between">
+                                                        <Text className="text-xs text-slate-400">Presupuesto</Text>
+                                                        <Text className="text-xs font-bold text-slate-600 dark:text-slate-300">{formatCurrency(item.planned)}</Text>
+                                                    </View>
+                                                    <View className="flex-row justify-between">
+                                                        <Text className="text-xs text-slate-400">Proyección al cierre</Text>
+                                                        <Text className={`text-xs font-bold ${item.difference > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                                                            {formatCurrency(item.projection)}
+                                                        </Text>
+                                                    </View>
+                                                    <View className="flex-row justify-between">
+                                                        <Text className="text-xs text-slate-400">{item.difference > 0 ? 'Excedente est.' : 'Ahorro est.'}</Text>
+                                                        <Text className={`text-xs font-bold ${item.difference > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                                                            {item.difference > 0 ? '+' : '-'}{formatCurrency(item.difference)}
+                                                        </Text>
+                                                    </View>
+                                                    <View className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mt-1">
+                                                        <View style={{ width: `${spentPct}%`, backgroundColor: cfg.barColor }} className="h-full rounded-full" />
+                                                    </View>
+                                                    <Text className="text-[10px] text-slate-400">Gastado {formatCurrency(item.spent)} · Día {item.daysElapsed}/{item.daysInMonth}</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    );
+                                })
+                            }
                         </View>
                     )}
                 </View>

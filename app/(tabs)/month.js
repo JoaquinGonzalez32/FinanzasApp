@@ -20,7 +20,23 @@ export default function MonthScreen() {
     const [loading, setLoading] = useState(true);
 
     const { accounts } = useAccounts();
-    const primaryAccount = accounts.length > 0 ? accounts[0] : null;
+
+    const [selectedAccountId, setSelectedAccountId] = useState(null);
+
+    useEffect(() => {
+        if (accounts.length > 0 && !selectedAccountId) {
+            setSelectedAccountId(accounts[0].id);
+        }
+    }, [accounts]);
+
+    const selectedAccIdx = accounts.findIndex(a => a.id === selectedAccountId);
+    const selectedAccount = accounts[selectedAccIdx] ?? accounts[0] ?? null;
+
+    const cycleAccount = () => {
+        if (accounts.length <= 1) return;
+        const nextIdx = (selectedAccIdx + 1) % accounts.length;
+        setSelectedAccountId(accounts[nextIdx].id);
+    };
 
     const fetchYear = useCallback(async () => {
         setLoading(true);
@@ -45,8 +61,8 @@ export default function MonthScreen() {
             const mStr = String(m).padStart(2, '0');
             const prefix = `${year}-${mStr}`;
             const mTx = yearTx.filter(t => t.date.startsWith(prefix));
-            const accountTx = primaryAccount
-                ? mTx.filter(t => (t.account_id ?? t.category?.account_id) === primaryAccount.id)
+            const accountTx = selectedAccount
+                ? mTx.filter(t => (t.account_id ?? t.category?.account_id) === selectedAccount.id)
                 : mTx;
             summaries.push({
                 month: m,
@@ -56,14 +72,17 @@ export default function MonthScreen() {
             });
         }
         return summaries;
-    }, [yearTx, year, primaryAccount, currentYear, currentMonth]);
+    }, [yearTx, year, selectedAccount, currentYear, currentMonth]);
 
     // -- Detail view data --
     const monthTx = useMemo(() => {
         if (!selectedMonth) return [];
         const mStr = String(selectedMonth).padStart(2, '0');
-        return yearTx.filter(t => t.date.startsWith(`${year}-${mStr}`));
-    }, [yearTx, selectedMonth, year]);
+        const all = yearTx.filter(t => t.date.startsWith(`${year}-${mStr}`));
+        return selectedAccount
+            ? all.filter(t => (t.account_id ?? t.category?.account_id) === selectedAccount.id)
+            : all;
+    }, [yearTx, selectedMonth, year, selectedAccount]);
 
     const firstDayOfWeek = selectedMonth ? new Date(year, selectedMonth - 1, 1).getDay() : 0;
     const daysInMonth = selectedMonth ? new Date(year, selectedMonth, 0).getDate() : 0;
@@ -125,11 +144,18 @@ export default function MonthScreen() {
                         </View>
                         <Text className="text-xl font-bold text-slate-900 dark:text-white">Actividad</Text>
                     </View>
-                    {primaryAccount && (
-                        <View className="flex-row items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full">
-                            <MaterialIcons name={primaryAccount.icon || 'account-balance-wallet'} size={14} color="#64748b" />
-                            <Text className="text-xs font-bold text-slate-500">{primaryAccount.name}</Text>
-                        </View>
+                    {selectedAccount && (
+                        <TouchableOpacity
+                            onPress={cycleAccount}
+                            disabled={accounts.length <= 1}
+                            className="flex-row items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full active:bg-slate-200 dark:active:bg-slate-700"
+                        >
+                            <MaterialIcons name={selectedAccount.icon || 'account-balance-wallet'} size={14} color="#64748b" />
+                            <Text className="text-xs font-bold text-slate-500">{selectedAccount.name}</Text>
+                            {accounts.length > 1 && (
+                                <MaterialIcons name="swap-horiz" size={14} color="#94a3b8" />
+                            )}
+                        </TouchableOpacity>
                     )}
                 </View>
 
