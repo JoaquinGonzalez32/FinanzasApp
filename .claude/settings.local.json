@@ -38,7 +38,10 @@
       "Bash(npx expo install:*)",
       "Bash(find:*)",
       "Bash(python3:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(eas init:*)",
+      "Bash(eas whoami:*)",
+      "Bash(eas logout:*)"
     ]
   }
 }
