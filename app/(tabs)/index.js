@@ -9,6 +9,7 @@ import { useTransactions } from '../../src/hooks/useTransactions';
 import { useProfile } from '../../src/hooks/useProfile';
 import { deleteTransaction } from '../../src/services/transactionsService';
 import { emitTransactionsChange } from '../../src/lib/events';
+import { useAccounts } from '../../src/hooks/useAccounts';
 import { formatAmount, formatCurrency, formatTime, getCategoryStyle, toDateISO, sumByType } from '../../src/lib/helpers';
 import { useWeeklyReviewAlert } from '../../src/hooks/useWeeklyReviewAlert';
 import { usePendingRecurringCount } from '../../src/hooks/usePendingRecurringCount';
@@ -79,6 +80,7 @@ export default function HomeScreen() {
     const router = useRouter();
     const { profile } = useProfile();
     const { transactions: monthTx, loading, error, refresh } = useTransactions({ mode: 'month' });
+    const { accounts } = useAccounts();
     const [refreshing, setRefreshing] = useState(false);
     const [deleteTx, setDeleteTx] = useState(null);
 
@@ -91,10 +93,20 @@ export default function HomeScreen() {
 
     const todayTx = useMemo(() => monthTx.filter(t => t.date === todayStr), [monthTx, todayStr]);
     const yesterdayTx = useMemo(() => monthTx.filter(t => t.date === yesterdayStr), [monthTx, yesterdayStr]);
-    const monthBalance = useMemo(() => sumByType(monthTx, 'income') - sumByType(monthTx, 'expense'), [monthTx]);
-    const todayExpense = useMemo(() => sumByType(todayTx, 'expense'), [todayTx]);
-    const todayIncome = useMemo(() => sumByType(todayTx, 'income'), [todayTx]);
 
+    const accountStats = useMemo(() => accounts.map(acc => {
+        const linked = monthTx.filter(t => (t.account_id ?? t.category?.account_id) === acc.id);
+        const todayLinked = todayTx.filter(t => (t.account_id ?? t.category?.account_id) === acc.id);
+        return {
+            account: acc,
+            monthIncome: sumByType(linked, 'income'),
+            monthExpense: sumByType(linked, 'expense'),
+            todayExpense: sumByType(todayLinked, 'expense'),
+            todayIncome: sumByType(todayLinked, 'income'),
+        };
+    }), [accounts, monthTx, todayTx]);
+
+    const todayExpense = useMemo(() => sumByType(todayTx, 'expense'), [todayTx]);
     const insight = useMemo(() => buildInsight(todayExpense, monthTx, todayStr), [todayExpense, monthTx, todayStr]);
 
     const weeklyAlert = useWeeklyReviewAlert(monthTx, loading);
@@ -179,17 +191,40 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Balance Section */}
-                <View className="items-center px-5 py-8">
-                    <Text className="text-slate-500 text-sm font-medium mb-1">Balance del mes</Text>
-                    <Text className={`text-[40px] font-extrabold ${monthBalance >= 0 ? 'text-primary' : 'text-red-500'}`}>
-                        {monthBalance < 0 ? '-' : ''}{formatCurrency(Math.abs(monthBalance))}
-                    </Text>
-                    <View className="mt-4 bg-white dark:bg-slate-800/50 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700">
-                        <Text className="text-xs font-medium text-center text-slate-700 dark:text-slate-300">
-                            Hoy gastaste <Text className="text-red-500 font-bold">{formatCurrency(todayExpense)}</Text> e ingresaste <Text className="text-green-500 font-bold">{formatCurrency(todayIncome)}</Text>
-                        </Text>
-                    </View>
+                {/* Per-account Balance */}
+                <View className="px-5 py-6">
+                    <Text className="text-slate-500 text-sm font-medium mb-3">Balance del mes</Text>
+                    {accountStats.map(({ account: acc, monthIncome, monthExpense, todayExpense: tExp, todayIncome: tInc }) => {
+                        const balance = monthIncome - monthExpense;
+                        const style = getCategoryStyle(acc.color);
+                        return (
+                            <View key={acc.id} className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-4 mb-3">
+                                <View className="flex-row items-center gap-2.5 mb-2">
+                                    <View className={`h-9 w-9 rounded-xl items-center justify-center ${style.bg}`}>
+                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={20} color={style.hex} />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-sm font-bold text-slate-900 dark:text-white">{acc.name}</Text>
+                                        <Text className="text-[10px] text-slate-400 font-medium">{acc.currency}</Text>
+                                    </View>
+                                    <Text className={`text-2xl font-extrabold ${balance >= 0 ? 'text-primary' : 'text-red-500'}`}>
+                                        {balance < 0 ? '-' : ''}{formatCurrency(Math.abs(balance), acc.currency)}
+                                    </Text>
+                                </View>
+                                <View className="flex-row justify-between">
+                                    <Text className="text-xs font-semibold text-emerald-500">+{formatCurrency(monthIncome, acc.currency)}</Text>
+                                    <Text className="text-xs font-semibold text-rose-500">-{formatCurrency(monthExpense, acc.currency)}</Text>
+                                </View>
+                                {(tExp > 0 || tInc > 0) && (
+                                    <View className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                        <Text className="text-[10px] text-slate-400 font-medium">
+                                            Hoy: {tExp > 0 ? `-${formatCurrency(tExp, acc.currency)}` : ''}{tExp > 0 && tInc > 0 ? '  ·  ' : ''}{tInc > 0 ? `+${formatCurrency(tInc, acc.currency)}` : ''}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        );
+                    })}
                 </View>
 
                 {/* Actions */}

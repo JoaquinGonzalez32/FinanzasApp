@@ -7,7 +7,7 @@ import { useBudget } from '../src/hooks/useBudget';
 import { useCategories } from '../src/hooks/useCategories';
 import { useTransactions } from '../src/hooks/useTransactions';
 import { useAccounts } from '../src/hooks/useAccounts';
-import { formatCurrency, getCategoryStyle, getCurrentMonth, parseMonth, shiftMonth, monthLabel } from '../src/lib/helpers';
+import { formatCurrency, getCategoryStyle, getCurrencySymbol, getCurrentMonth, parseMonth, shiftMonth, monthLabel } from '../src/lib/helpers';
 import { emitBudgetChange } from '../src/lib/events';
 import * as svc from '../src/services/budgetService';
 import { computeWeeklyReview } from '../src/lib/weeklyReview';
@@ -97,6 +97,8 @@ export default function PlanningScreen() {
         ),
         [expenseCategories, assignedCategoryIds, selectedAccountId]
     );
+
+    const selectedCurrency = accounts.find(a => a.id === selectedAccountId)?.currency;
 
     const totalAmount = useMemo(
         () => visibleItems.reduce((s, i) => s + (Number(i._fixedAmount) || 0), 0),
@@ -272,7 +274,7 @@ export default function PlanningScreen() {
 
                                         {/* Value input */}
                                         <View className="flex-row items-center">
-                                            <Text className="text-slate-400 font-bold text-base mr-1">$</Text>
+                                            <Text className="text-slate-400 font-bold text-base mr-1">{getCurrencySymbol(selectedCurrency)}</Text>
                                             <TextInput
                                                 value={item._fixedAmount ?? ''}
                                                 onChangeText={(v) => {
@@ -300,15 +302,15 @@ export default function PlanningScreen() {
                             <View className="flex-row justify-between items-end mb-4">
                                 <View>
                                     <Text className={`text-xs font-bold uppercase ${monthIncome > 0 && totalAmount <= monthIncome ? 'text-primary' : 'text-amber-600'}`}>Total Asignado</Text>
-                                    <Text className={`text-3xl font-extrabold ${monthIncome > 0 && totalAmount <= monthIncome ? 'text-primary' : 'text-amber-600'}`}>{formatCurrency(totalAmount)}</Text>
+                                    <Text className={`text-3xl font-extrabold ${monthIncome > 0 && totalAmount <= monthIncome ? 'text-primary' : 'text-amber-600'}`}>{formatCurrency(totalAmount, selectedCurrency)}</Text>
                                 </View>
                                 {monthIncome > 0 && (
                                     <View className="items-end">
                                         <Text className="text-xs font-semibold text-slate-400">
-                                            de {formatCurrency(monthIncome)}
+                                            de {formatCurrency(monthIncome, selectedCurrency)}
                                         </Text>
                                         <Text className={`text-xs font-bold ${totalAmount > monthIncome ? 'text-amber-600' : 'text-emerald-500'}`}>
-                                            {totalAmount > monthIncome ? `Excede ${formatCurrency(totalAmount - monthIncome)}` : `Disponible ${formatCurrency(monthIncome - totalAmount)}`}
+                                            {totalAmount > monthIncome ? `Excede ${formatCurrency(totalAmount - monthIncome, selectedCurrency)}` : `Disponible ${formatCurrency(monthIncome - totalAmount, selectedCurrency)}`}
                                         </Text>
                                     </View>
                                 )}
@@ -384,24 +386,24 @@ export default function PlanningScreen() {
                                                 <View className="space-y-1.5">
                                                     <View className="flex-row justify-between">
                                                         <Text className="text-xs text-slate-400">Presupuesto</Text>
-                                                        <Text className="text-xs font-bold text-slate-600 dark:text-slate-300">{formatCurrency(item.planned)}</Text>
+                                                        <Text className="text-xs font-bold text-slate-600 dark:text-slate-300">{formatCurrency(item.planned, selectedCurrency)}</Text>
                                                     </View>
                                                     <View className="flex-row justify-between">
                                                         <Text className="text-xs text-slate-400">Proyección al cierre</Text>
                                                         <Text className={`text-xs font-bold ${item.difference > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                                                            {formatCurrency(item.projection)}
+                                                            {formatCurrency(item.projection, selectedCurrency)}
                                                         </Text>
                                                     </View>
                                                     <View className="flex-row justify-between">
                                                         <Text className="text-xs text-slate-400">{item.difference > 0 ? 'Excedente est.' : 'Ahorro est.'}</Text>
                                                         <Text className={`text-xs font-bold ${item.difference > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                                                            {item.difference > 0 ? '+' : '-'}{formatCurrency(item.difference)}
+                                                            {item.difference > 0 ? '+' : '-'}{formatCurrency(item.difference, selectedCurrency)}
                                                         </Text>
                                                     </View>
                                                     <View className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mt-1">
                                                         <View style={{ width: `${spentPct}%`, backgroundColor: cfg.barColor }} className="h-full rounded-full" />
                                                     </View>
-                                                    <Text className="text-[10px] text-slate-400">Gastado {formatCurrency(item.spent)} · Día {item.daysElapsed}/{item.daysInMonth}</Text>
+                                                    <Text className="text-[10px] text-slate-400">Gastado {formatCurrency(item.spent, selectedCurrency)} · Día {item.daysElapsed}/{item.daysInMonth}</Text>
                                                 </View>
                                             )}
                                         </View>

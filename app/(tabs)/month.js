@@ -205,13 +205,13 @@ export default function MonthScreen() {
                                                 <View className="h-5 w-5 rounded-md bg-emerald-500/10 items-center justify-center">
                                                     <MaterialIcons name="arrow-downward" size={12} color="#10b981" />
                                                 </View>
-                                                <Text className="text-sm font-bold text-emerald-500">{formatCurrency(income)}</Text>
+                                                <Text className="text-sm font-bold text-emerald-500">{formatCurrency(income, selectedAccount?.currency)}</Text>
                                             </View>
                                             <View className="flex-row items-center gap-1.5">
                                                 <View className="h-5 w-5 rounded-md bg-rose-500/10 items-center justify-center">
                                                     <MaterialIcons name="arrow-upward" size={12} color="#f43f5e" />
                                                 </View>
-                                                <Text className="text-sm font-bold text-rose-500">{formatCurrency(expense)}</Text>
+                                                <Text className="text-sm font-bold text-rose-500">{formatCurrency(expense, selectedAccount?.currency)}</Text>
                                             </View>
                                         </View>
                                     ) : (
@@ -280,9 +280,9 @@ export default function MonthScreen() {
                         </View>
                         <View className="items-end">
                             {dayIncome > 0 && (
-                                <Text className="text-sm font-bold text-emerald-500">+{formatCurrency(dayIncome)}</Text>
+                                <Text className="text-sm font-bold text-emerald-500">+{formatCurrency(dayIncome, selectedAccount?.currency)}</Text>
                             )}
-                            <Text className="text-xl font-bold text-red-500">-{formatCurrency(dayExpense)}</Text>
+                            <Text className="text-xl font-bold text-red-500">-{formatCurrency(dayExpense, selectedAccount?.currency)}</Text>
                         </View>
                     </View>
 

@@ -11,7 +11,7 @@ import { useCategories } from '../../src/hooks/useCategories';
 import { emitBudgetChange } from '../../src/lib/events';
 import * as budgetSvc from '../../src/services/budgetService';
 import {
-    formatCurrency, getCategoryStyle, sumByType, MONTHS_ES,
+    formatCurrency, getCategoryStyle, getCurrencySymbol, sumByType, MONTHS_ES,
     getCurrentMonth, parseMonth, shiftMonth, monthLabel,
     getCategoryAssignments, getAssignedTotal,
 } from '../../src/lib/helpers';
@@ -505,7 +505,7 @@ export default function DashboardScreen() {
                                                 {a.category?.name || 'Sin categoría'}
                                             </Text>
                                             <View className="flex-row items-center bg-slate-100 dark:bg-slate-800 rounded-lg px-2">
-                                                <Text className="text-slate-400 font-bold text-sm">$</Text>
+                                                <Text className="text-slate-400 font-bold text-sm">{getCurrencySymbol(selectedAccount?.currency)}</Text>
                                                 <TextInput
                                                     value={a.amount > 0 ? String(a.amount) : ''}
                                                     onChangeText={(v) => updateAmount(idx, v)}

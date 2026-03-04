@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FinanzaApp",
-    "slug": "finanzas-app",
+    "slug": "financeuy-dzvotxww-jopctnzi6vp2",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -75,7 +75,7 @@
         "projectId": "40b0996a-ff6f-4322-8a90-246fcc68abc4"
       }
     },
-    "owner": "joaquingonzalezexpo",
+    "owner": "joaquingonzalezexpos-organization",
     "privacyPolicyUrl": "https://joaquingonzalez32.github.io/FinanzasApp/privacy-policy.html"
   }
 }
