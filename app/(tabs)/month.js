@@ -2,13 +2,16 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'rea
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useRouter } from 'expo-router';
 import TransactionItem from '../../components/TransactionItem';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useAccounts } from '../../src/hooks/useAccounts';
-import { getYearTransactions } from '../../src/services/transactionsService';
-import { onTransactionsChange } from '../../src/lib/events';
+import { getYearTransactions, deleteTransaction } from '../../src/services/transactionsService';
+import { onTransactionsChange, emitTransactionsChange } from '../../src/lib/events';
 import { formatAmount, formatCurrency, formatTime, getCategoryStyle, sumByType, MONTHS_ES, DAYS_ES } from '../../src/lib/helpers';
 
 export default function MonthScreen() {
+    const router = useRouter();
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
@@ -18,6 +21,7 @@ export default function MonthScreen() {
     const [selectedDay, setSelectedDay] = useState(1);
     const [yearTx, setYearTx] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [deleteTx, setDeleteTx] = useState(null);
 
     const { accounts } = useAccounts();
 
@@ -118,6 +122,33 @@ export default function MonthScreen() {
     const dayIncome = useMemo(() => sumByType(dayTx, 'income'), [dayTx]);
     const dayOfWeek = selectedMonth ? new Date(year, selectedMonth - 1, selectedDay).getDay() : 0;
     const dayLabel = selectedMonth ? `${DAYS_ES[dayOfWeek]}, ${selectedDay} de ${MONTHS_ES[selectedMonth - 1]}` : '';
+
+    const handleEditTx = (tx) => {
+        router.push({
+            pathname: '/add-transaction',
+            params: {
+                type: tx.type,
+                editId: tx.id,
+                editAmount: String(tx.amount),
+                editCategoryId: tx.category_id || '',
+                editAccountId: tx.account_id || '',
+                editNote: tx.note || '',
+                editDate: tx.date,
+            },
+        });
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteTx) return;
+        try {
+            await deleteTransaction(deleteTx.id);
+            emitTransactionsChange();
+        } catch (e) {
+            if (__DEV__) console.log('Delete error:', e.message);
+        } finally {
+            setDeleteTx(null);
+        }
+    };
 
     const openMonth = (m) => {
         setSelectedMonth(m);
@@ -301,16 +332,25 @@ export default function MonthScreen() {
                                     icon={tx.category?.icon ?? "payments"}
                                     label={tx.category?.name ?? "Sin categoría"}
                                     sub={tx.note ? `${tx.note} • ${formatTime(tx.created_at)}` : formatTime(tx.created_at)}
-                                    amount={formatAmount(tx.amount, tx.type)}
+                                    amount={formatAmount(tx.amount, tx.type, selectedAccount?.currency)}
                                     colorClass={tx.type === 'income' ? 'text-emerald-500' : 'text-slate-900 dark:text-white'}
                                     iconBg={style.bg}
                                     iconColor={style.hex}
+                                    onPress={() => handleEditTx(tx)}
+                                    onDelete={() => setDeleteTx(tx)}
                                 />
                             );
                         })}
                     </View>
                 </View>
             </ScrollView>
+            <ConfirmModal
+                visible={!!deleteTx}
+                title="Eliminar transacción"
+                message={deleteTx ? `¿Eliminar "${deleteTx.category?.name ?? 'Sin categoría'}" por ${formatCurrency(deleteTx.amount, selectedAccount?.currency)}?` : ''}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteTx(null)}
+            />
         </SafeAreaView>
     );
 }
