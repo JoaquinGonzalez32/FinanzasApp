@@ -125,7 +125,7 @@ export default function AddTransactionScreen() {
                     <View className="w-full bg-slate-50 dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-700/50 px-5 py-5 items-center">
                         <Text className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Monto</Text>
                         <View className="flex-row items-center justify-center">
-                            <Text className="text-3xl font-bold text-slate-400 mr-1">{getCurrencySymbol(accounts.find(a => a.id === selectedAccount)?.currency)}</Text>
+                            <Text className="text-3xl font-bold text-slate-400 dark:text-slate-300 mr-1">{getCurrencySymbol(accounts.find(a => a.id === selectedAccount)?.currency)}</Text>
                             <TextInput
                                 className="text-slate-900 dark:text-white text-[48px] font-extrabold leading-tight p-0 min-w-[80px] text-center"
                                 placeholder="0.00"
