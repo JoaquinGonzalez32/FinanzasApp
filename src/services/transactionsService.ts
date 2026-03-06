@@ -1,10 +1,10 @@
 import { supabase } from "../lib/supabase";
 import type { Transaction, TransactionInsert } from "../types/database";
-import { adjustAccountBalance, getAccountBalance } from "./accountsService";
 import { emitAccountsChange } from "../lib/events";
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function monthRange(year: number, month: number) {
@@ -81,65 +81,46 @@ export async function getTransactionsByDate(
 export async function createTransaction(
   tx: TransactionInsert
 ): Promise<Transaction> {
-  // Pre-check: resolve account for balance validation
-  let preAccountId = tx.account_id ?? null;
-  if (!preAccountId && tx.category_id) {
-    const { data: cat } = await supabase
-      .from("categories")
-      .select("account_id")
-      .eq("id", tx.category_id)
-      .single();
-    preAccountId = cat?.account_id ?? null;
-  }
-
-  // Check sufficient balance for expenses
-  if (preAccountId && tx.type === "expense") {
-    const balance = await getAccountBalance(preAccountId);
-    if (balance < tx.amount) {
-      throw new Error(
-        `Saldo insuficiente. Disponible: $${balance.toLocaleString()}, Gasto: $${tx.amount.toLocaleString()}`
-      );
+  const { data: txId, error: rpcErr } = await supabase.rpc(
+    "create_transaction_atomic",
+    {
+      p_amount: tx.amount,
+      p_type: tx.type,
+      p_category_id: tx.category_id ?? null,
+      p_account_id: tx.account_id ?? null,
+      p_note: tx.note ?? null,
+      p_date: tx.date,
+      p_recurring_id: tx.recurring_id ?? null,
     }
-  }
+  );
+  if (rpcErr) throw rpcErr;
 
-  const { data, error } = await supabase
+  // Follow-up SELECT to get full row with category join for UI
+  const { data, error: fetchErr } = await supabase
     .from("transactions")
-    .insert(tx)
     .select("*, category:categories(*)")
+    .eq("id", txId)
     .single();
+  if (fetchErr) throw fetchErr;
 
-  if (error) throw error;
-
-  // Auto-adjust account balance: prefer explicit account_id, fallback to category's account
   const accountId = data.account_id ?? data.category?.account_id;
-  if (accountId) {
-    const delta = data.type === "income" ? data.amount : -data.amount;
-    await adjustAccountBalance(accountId, delta);
-    emitAccountsChange();
-  }
-
+  if (accountId) emitAccountsChange();
   return data;
 }
 
+export async function updateTransaction(
+  id: string,
+  tx: TransactionInsert
+): Promise<Transaction> {
+  // Atomic: delete old transaction (reverts balance) then create new one (adjusts balance)
+  await deleteTransaction(id);
+  return createTransaction(tx);
+}
+
 export async function deleteTransaction(id: string): Promise<void> {
-  // Fetch transaction with category to check for linked account
-  const { data: tx, error: fetchErr } = await supabase
-    .from("transactions")
-    .select("*, category:categories(*)")
-    .eq("id", id)
-    .single();
-
-  if (fetchErr) throw fetchErr;
-
-  // Revert account balance: prefer explicit account_id, fallback to category's account
-  const accountId = tx.account_id ?? tx.category?.account_id;
-  if (accountId) {
-    // Reverse: expense was -amount, so revert with +amount; income vice versa
-    const delta = tx.type === "income" ? -tx.amount : tx.amount;
-    await adjustAccountBalance(accountId, delta);
-    emitAccountsChange();
-  }
-
-  const { error } = await supabase.from("transactions").delete().eq("id", id);
+  const { error } = await supabase.rpc("delete_transaction_atomic", {
+    p_transaction_id: id,
+  });
   if (error) throw error;
+  emitAccountsChange();
 }

@@ -1,10 +1,11 @@
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert, Pressable } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
-import { createTransaction } from '../src/services/transactionsService';
+import { createTransaction, updateTransaction } from '../src/services/transactionsService';
 import { emitTransactionsChange } from '../src/lib/events';
 import { toDateISO, MONTHS_ES, getCurrencySymbol } from '../src/lib/helpers';
 
@@ -12,20 +13,25 @@ export default function AddTransactionScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
 
+    const isEdit = !!params.editId;
+
     const now = new Date();
     const todayStr = toDateISO(now);
 
+    const initialDate = params.editDate || todayStr;
+    const initialDateParts = initialDate.split('-').map(Number);
+
     const [type, setType] = useState(params.type === 'income' ? 'income' : 'expense');
-    const [amount, setAmount] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState(null);
-    const [selectedAccount, setSelectedAccount] = useState(null);
-    const [note, setNote] = useState('');
+    const [amount, setAmount] = useState(params.editAmount || '');
+    const [selectedCategory, setSelectedCategory] = useState(params.editCategoryId || null);
+    const [selectedAccount, setSelectedAccount] = useState(params.editAccountId || null);
+    const [note, setNote] = useState(params.editNote || '');
     const [submitting, setSubmitting] = useState(false);
-    const [selectedDate, setSelectedDate] = useState(todayStr);
+    const [selectedDate, setSelectedDate] = useState(initialDate);
 
     // Calendar state
-    const [calYear, setCalYear] = useState(now.getFullYear());
-    const [calMonth, setCalMonth] = useState(now.getMonth() + 1);
+    const [calYear, setCalYear] = useState(initialDateParts[0] || now.getFullYear());
+    const [calMonth, setCalMonth] = useState(initialDateParts[1] || now.getMonth() + 1);
 
     const { categories, loading: loadingCats } = useCategories(type);
     const { accounts } = useAccounts();
@@ -77,18 +83,23 @@ export default function AddTransactionScreen() {
         }
         setSubmitting(true);
         try {
-            await createTransaction({
+            const payload = {
                 amount: numAmount,
                 type,
                 category_id: selectedCategory || null,
                 account_id: selectedAccount || null,
                 note: note.trim() || null,
                 date: selectedDate,
-            });
+            };
+            if (isEdit) {
+                await updateTransaction(params.editId, payload);
+            } else {
+                await createTransaction(payload);
+            }
             emitTransactionsChange();
             router.back();
         } catch (e) {
-            Alert.alert('Error', e.message ?? 'No se pudo crear la transacción.');
+            showError(e);
         } finally {
             setSubmitting(false);
         }
@@ -103,7 +114,7 @@ export default function AddTransactionScreen() {
                 <Pressable onPress={() => router.back()} style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 }}>
                     <MaterialIcons name="arrow-back-ios-new" size={20} color="#475569" />
                 </Pressable>
-                <Text className="text-base font-bold text-slate-900 dark:text-white">Nueva Transacción</Text>
+                <Text className="text-base font-bold text-slate-900 dark:text-white">{isEdit ? 'Editar Transacción' : 'Nueva Transacción'}</Text>
                 <View className="w-10" />
             </View>
 
@@ -122,7 +133,8 @@ export default function AddTransactionScreen() {
                                 value={amount}
                                 onChangeText={setAmount}
                                 keyboardType="decimal-pad"
-                                autoFocus
+                                autoFocus={!isEdit}
+                                maxLength={15}
                             />
                         </View>
                     </View>
@@ -260,6 +272,7 @@ export default function AddTransactionScreen() {
                         placeholderTextColor="#94a3b8"
                         value={note}
                         onChangeText={setNote}
+                        maxLength={500}
                     />
                 </View>
 
@@ -276,7 +289,7 @@ export default function AddTransactionScreen() {
                             <>
                                 <MaterialIcons name="check-circle" size={24} color="white" />
                                 <Text className="text-white font-bold text-base">
-                                    Confirmar {type === 'expense' ? 'Gasto' : 'Ingreso'}
+                                    {isEdit ? 'Guardar cambios' : `Confirmar ${type === 'expense' ? 'Gasto' : 'Ingreso'}`}
                                 </Text>
                             </>
                         )}

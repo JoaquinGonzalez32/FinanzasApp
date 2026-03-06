@@ -10,11 +10,11 @@ import { useProfile } from '../../src/hooks/useProfile';
 import { deleteTransaction } from '../../src/services/transactionsService';
 import { emitTransactionsChange } from '../../src/lib/events';
 import { useAccounts } from '../../src/hooks/useAccounts';
-import { formatAmount, formatCurrency, formatTime, getCategoryStyle, toDateISO, sumByType } from '../../src/lib/helpers';
+import { formatAmount, formatCurrency, formatTime, getCategoryStyle, toDateISO, sumByType, getCurrencySymbol } from '../../src/lib/helpers';
 import { useWeeklyReviewAlert } from '../../src/hooks/useWeeklyReviewAlert';
 import { usePendingRecurringCount } from '../../src/hooks/usePendingRecurringCount';
 
-function buildInsight(todayExpense, monthTx, todayStr) {
+function buildInsight(todayExpense, monthTx, todayStr, currency) {
     if (monthTx.length === 0) return null;
 
     const dayTotals = {};
@@ -37,7 +37,7 @@ function buildInsight(todayExpense, monthTx, todayStr) {
             icon: 'savings',
             iconColor: '#10b981',
             iconBg: 'bg-emerald-500/20',
-            text: `No gastaste nada hoy. Tu promedio diario es ${formatCurrency(avgDaily)}.`,
+            text: `No gastaste nada hoy. Tu promedio diario es ${formatCurrency(avgDaily, currency)}.`,
         };
     }
 
@@ -106,8 +106,23 @@ export default function HomeScreen() {
         };
     }), [accounts, monthTx, todayTx]);
 
-    const todayExpense = useMemo(() => sumByType(todayTx, 'expense'), [todayTx]);
-    const insight = useMemo(() => buildInsight(todayExpense, monthTx, todayStr), [todayExpense, monthTx, todayStr]);
+    const accMap = useMemo(() => {
+        const m = {};
+        accounts.forEach(a => { m[a.id] = a; });
+        return m;
+    }, [accounts]);
+    const txAccount = (tx) => accMap[tx.account_id ?? tx.category?.account_id];
+
+    const primaryAccount = useMemo(() => accounts[0] ?? null, [accounts]);
+    const primaryMonthTx = useMemo(() => {
+        if (!primaryAccount) return [];
+        return monthTx.filter(t => (t.account_id ?? t.category?.account_id) === primaryAccount.id);
+    }, [monthTx, primaryAccount]);
+    const primaryTodayExpense = useMemo(() => {
+        if (!primaryAccount) return 0;
+        return sumByType(primaryMonthTx.filter(t => t.date === todayStr), 'expense');
+    }, [primaryMonthTx, todayStr, primaryAccount]);
+    const insight = useMemo(() => buildInsight(primaryTodayExpense, primaryMonthTx, todayStr, primaryAccount?.currency), [primaryTodayExpense, primaryMonthTx, todayStr, primaryAccount]);
 
     const weeklyAlert = useWeeklyReviewAlert(monthTx, loading);
     const pendingRecurringCount = usePendingRecurringCount();
@@ -116,6 +131,21 @@ export default function HomeScreen() {
         setRefreshing(true);
         try { await refresh(); } finally { setRefreshing(false); }
     }, [refresh]);
+
+    const handleEditTx = (tx) => {
+        router.push({
+            pathname: '/add-transaction',
+            params: {
+                type: tx.type,
+                editId: tx.id,
+                editAmount: String(tx.amount),
+                editCategoryId: tx.category_id || '',
+                editAccountId: tx.account_id || '',
+                editNote: tx.note || '',
+                editDate: tx.date,
+            },
+        });
+    };
 
     const handleDeleteTx = (tx) => setDeleteTx(tx);
 
@@ -138,16 +168,18 @@ export default function HomeScreen() {
 
     const renderTx = (tx) => {
         const style = getCategoryStyle(tx.category?.color);
+        const currency = txAccount(tx)?.currency;
         return (
             <TransactionItem
                 key={tx.id}
                 icon={tx.category?.icon ?? "payments"}
                 label={tx.category?.name ?? "Sin categoría"}
                 sub={tx.note ? `${tx.note} • ${formatTime(tx.created_at)}` : formatTime(tx.created_at)}
-                amount={formatAmount(tx.amount, tx.type)}
+                amount={formatAmount(tx.amount, tx.type, currency)}
                 colorClass={tx.type === 'expense' ? 'text-red-500' : 'text-green-500'}
                 iconBg={style.bg}
                 iconColor={style.hex}
+                onPress={() => handleEditTx(tx)}
                 onDelete={() => handleDeleteTx(tx)}
             />
         );
@@ -192,39 +224,41 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Per-account Balance */}
-                <View className="px-5 py-6">
-                    <Text className="text-slate-500 text-sm font-medium mb-3">Balance del mes</Text>
-                    {accountStats.map(({ account: acc, monthIncome, monthExpense, todayExpense: tExp, todayIncome: tInc }) => {
-                        const balance = monthIncome - monthExpense;
-                        const style = getCategoryStyle(acc.color);
-                        return (
-                            <View key={acc.id} className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-4 mb-3">
-                                <View className="flex-row items-center gap-2.5 mb-2">
-                                    <View className={`h-9 w-9 rounded-xl items-center justify-center ${style.bg}`}>
-                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={20} color={style.hex} />
+                <View className="py-6">
+                    <Text className="text-slate-500 text-sm font-medium mb-3 px-5">Balance del mes</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+                        {accountStats.map(({ account: acc, monthIncome, monthExpense, todayExpense: tExp, todayIncome: tInc }) => {
+                            const balance = monthIncome - monthExpense;
+                            const style = getCategoryStyle(acc.color);
+                            return (
+                                <View key={acc.id} className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-4" style={{ width: 280 }}>
+                                    <View className="flex-row items-center gap-2.5 mb-2">
+                                        <View className={`h-9 w-9 rounded-xl items-center justify-center ${style.bg}`}>
+                                            <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={20} color={style.hex} />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="text-sm font-bold text-slate-900 dark:text-white">{acc.name}</Text>
+                                            <Text className="text-[10px] text-slate-400 font-medium">{acc.currency}</Text>
+                                        </View>
                                     </View>
-                                    <View className="flex-1">
-                                        <Text className="text-sm font-bold text-slate-900 dark:text-white">{acc.name}</Text>
-                                        <Text className="text-[10px] text-slate-400 font-medium">{acc.currency}</Text>
-                                    </View>
-                                    <Text className={`text-2xl font-extrabold ${balance >= 0 ? 'text-primary' : 'text-red-500'}`}>
+                                    <Text className={`text-2xl font-extrabold ${balance >= 0 ? 'text-primary' : 'text-red-500'} mb-2`}>
                                         {balance < 0 ? '-' : ''}{formatCurrency(Math.abs(balance), acc.currency)}
                                     </Text>
-                                </View>
-                                <View className="flex-row justify-between">
-                                    <Text className="text-xs font-semibold text-emerald-500">+{formatCurrency(monthIncome, acc.currency)}</Text>
-                                    <Text className="text-xs font-semibold text-rose-500">-{formatCurrency(monthExpense, acc.currency)}</Text>
-                                </View>
-                                {(tExp > 0 || tInc > 0) && (
-                                    <View className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <Text className="text-[10px] text-slate-400 font-medium">
-                                            Hoy: {tExp > 0 ? `-${formatCurrency(tExp, acc.currency)}` : ''}{tExp > 0 && tInc > 0 ? '  ·  ' : ''}{tInc > 0 ? `+${formatCurrency(tInc, acc.currency)}` : ''}
-                                        </Text>
+                                    <View className="flex-row justify-between">
+                                        <Text className="text-xs font-semibold text-emerald-500">+{formatCurrency(monthIncome, acc.currency)}</Text>
+                                        <Text className="text-xs font-semibold text-rose-500">-{formatCurrency(monthExpense, acc.currency)}</Text>
                                     </View>
-                                )}
-                            </View>
-                        );
-                    })}
+                                    {(tExp > 0 || tInc > 0) && (
+                                        <View className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                            <Text className="text-[10px] text-slate-400 font-medium">
+                                                Hoy: {tExp > 0 ? `-${formatCurrency(tExp, acc.currency)}` : ''}{tExp > 0 && tInc > 0 ? '  ·  ' : ''}{tInc > 0 ? `+${formatCurrency(tInc, acc.currency)}` : ''}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            );
+                        })}
+                    </ScrollView>
                 </View>
 
                 {/* Actions */}
@@ -355,14 +389,44 @@ export default function HomeScreen() {
                         </View>
                     )}
 
-                    {todayTx.map(renderTx)}
+                    {accounts.map(acc => {
+                        const accTodayTx = todayTx.filter(t => (t.account_id ?? t.category?.account_id) === acc.id);
+                        if (accTodayTx.length === 0) return null;
+                        const accStyle = getCategoryStyle(acc.color);
+                        return (
+                            <View key={acc.id} className="mb-2">
+                                <View className="flex-row items-center gap-2 mb-2">
+                                    <View className={`h-5 w-5 rounded-md items-center justify-center ${accStyle.bg}`}>
+                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={12} color={accStyle.hex} />
+                                    </View>
+                                    <Text className="text-xs font-bold text-slate-500 dark:text-slate-400">{acc.name}</Text>
+                                </View>
+                                {accTodayTx.map(renderTx)}
+                            </View>
+                        );
+                    })}
 
                     {yesterdayTx.length > 0 && (
                         <>
                             <View className="pt-4 flex-row items-center justify-between mb-4">
                                 <Text className="text-lg font-bold text-slate-900 dark:text-white">Ayer</Text>
                             </View>
-                            {yesterdayTx.map(renderTx)}
+                            {accounts.map(acc => {
+                                const accYestTx = yesterdayTx.filter(t => (t.account_id ?? t.category?.account_id) === acc.id);
+                                if (accYestTx.length === 0) return null;
+                                const accStyle = getCategoryStyle(acc.color);
+                                return (
+                                    <View key={acc.id} className="mb-2">
+                                        <View className="flex-row items-center gap-2 mb-2">
+                                            <View className={`h-5 w-5 rounded-md items-center justify-center ${accStyle.bg}`}>
+                                                <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={12} color={accStyle.hex} />
+                                            </View>
+                                            <Text className="text-xs font-bold text-slate-500 dark:text-slate-400">{acc.name}</Text>
+                                        </View>
+                                        {accYestTx.map(renderTx)}
+                                    </View>
+                                );
+                            })}
                         </>
                     )}
                 </View>
@@ -370,7 +434,7 @@ export default function HomeScreen() {
             <ConfirmModal
                 visible={!!deleteTx}
                 title="Eliminar transacción"
-                message={deleteTx ? `¿Eliminar "${deleteTx.category?.name ?? 'Sin categoría'}" por ${formatCurrency(deleteTx.amount)}?` : ''}
+                message={deleteTx ? `¿Eliminar "${deleteTx.category?.name ?? 'Sin categoría'}" por ${formatCurrency(deleteTx.amount, accounts.find(a => a.id === (deleteTx.account_id ?? deleteTx.category?.account_id))?.currency)}?` : ''}
                 onConfirm={confirmDelete}
                 onCancel={() => setDeleteTx(null)}
             />

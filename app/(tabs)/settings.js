@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { showError } from '../../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -51,11 +52,11 @@ export default function SettingsScreen() {
 
     const handleDeleteCategory = async (cat) => {
         const confirmed = typeof window !== 'undefined' && window.confirm
-            ? window.confirm(`¿Seguro que querés eliminar "${cat.name}"? Las transacciones asociadas no se eliminarán.`)
+            ? window.confirm(`¿Seguro que querés eliminar "${cat.name}"? Las transacciones quedarán sin categoría y la planificación asociada se eliminará.`)
             : await new Promise((resolve) =>
                 Alert.alert(
                     'Eliminar categoría',
-                    `¿Seguro que querés eliminar "${cat.name}"? Las transacciones asociadas no se eliminarán.`,
+                    `¿Seguro que querés eliminar "${cat.name}"? Las transacciones quedarán sin categoría y la planificación asociada se eliminará.`,
                     [
                         { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
                         { text: 'Eliminar', onPress: () => resolve(true), style: 'destructive' },
@@ -68,7 +69,7 @@ export default function SettingsScreen() {
             await deleteCategory(cat.id);
             emitCategoriesChange();
         } catch (e) {
-            Alert.alert('Error', e?.message ?? String(e));
+            showError(e);
         }
     };
 
@@ -106,7 +107,7 @@ export default function SettingsScreen() {
             await deleteAccount(acc.id);
             emitAccountsChange();
         } catch (e) {
-            Alert.alert('Error', e?.message ?? String(e));
+            showError(e);
         }
     };
 
@@ -292,11 +293,7 @@ export default function SettingsScreen() {
                     <>
                         {accsLoading && !refreshing && <ActivityIndicator color="#137fec" style={{ margin: 20 }} />}
 
-                        {accsError && renderErrorState(
-                            accsError.includes('relation') || accsError.includes('does not exist')
-                                ? 'La tabla "accounts" no existe en Supabase. Creala con el SQL del archivo accountsService.ts.'
-                                : accsError
-                        )}
+                        {accsError && renderErrorState('No se pudieron cargar las cuentas. Intentá de nuevo.')}
 
                         {!accsLoading && !accsError && (
                             <>
@@ -310,7 +307,7 @@ export default function SettingsScreen() {
                                                     <MaterialIcons name="account-balance-wallet" size={16} color="#137fec" />
                                                 </View>
                                                 <Text className="text-xl font-extrabold text-slate-900 dark:text-white">
-                                                    {formatCurrency(accountsTotalUYU)}
+                                                    {formatCurrency(accountsTotalUYU, 'UYU')}
                                                 </Text>
                                             </View>
                                             {accountsTotalUSD > 0 && (
@@ -319,7 +316,7 @@ export default function SettingsScreen() {
                                                         <MaterialIcons name="attach-money" size={16} color="#10b981" />
                                                     </View>
                                                     <Text className="text-xl font-extrabold text-slate-900 dark:text-white">
-                                                        US{formatCurrency(accountsTotalUSD)}
+                                                        {formatCurrency(accountsTotalUSD, 'USD')}
                                                     </Text>
                                                 </View>
                                             )}
@@ -348,7 +345,7 @@ export default function SettingsScreen() {
                                         <View className="bg-white dark:bg-surface-dark mx-5 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
                                             {accounts.map((acc, i) => {
                                                 const style = getCategoryStyle(acc.color);
-                                                const currSymbol = (acc.currency ?? 'UYU') === 'USD' ? 'US' : '';
+                                                const accCurrency = acc.currency ?? 'UYU';
                                                 return (
                                                     <TouchableOpacity
                                                         key={acc.id}
@@ -371,7 +368,7 @@ export default function SettingsScreen() {
                                                             </Text>
                                                         </View>
                                                         <Text className="font-bold text-sm text-slate-900 dark:text-white">
-                                                            {currSymbol}{formatCurrency(acc.balance)}
+                                                            {formatCurrency(acc.balance, accCurrency)}
                                                         </Text>
                                                         {!editing && (
                                                             <MaterialIcons name="chevron-right" size={20} color="#94a3b8" />

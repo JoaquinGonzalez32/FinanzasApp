@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -55,7 +56,7 @@ export default function AddAccountGoalScreen() {
             emitAccountGoalsChange();
             router.back();
         } catch (e) {
-            Alert.alert('Error', e.message || 'No se pudo guardar');
+            showError(e);
         } finally {
             setSaving(false);
         }
@@ -136,6 +137,7 @@ export default function AddAccountGoalScreen() {
                                 keyboardType="numeric"
                                 placeholder="0.00"
                                 placeholderTextColor="#94a3b8"
+                                maxLength={15}
                                 className="flex-1 py-4 text-xl font-bold text-slate-900 dark:text-white"
                             />
                         </View>

@@ -1,4 +1,5 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -73,7 +74,7 @@ export default function AddCategoryScreen() {
             emitCategoriesChange();
             router.back();
         } catch (e) {
-            Alert.alert('Error', e?.message ?? String(e));
+            showError(e);
         } finally {
             setSubmitting(false);
         }
@@ -124,6 +125,7 @@ export default function AddCategoryScreen() {
                             onChangeText={setName}
                             placeholder="Ej: Comida, Gym..."
                             placeholderTextColor="#94a3b8"
+                            maxLength={100}
                             className="text-base text-slate-900 dark:text-white font-medium"
                         />
                     </View>

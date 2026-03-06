@@ -25,8 +25,8 @@ export function formatCurrency(amount: number | string, currency?: string): stri
   return `${getCurrencySymbol(currency)}${parts.join(".")}`;
 }
 
-export function formatAmount(amount: number | string, type: "expense" | "income"): string {
-  const formatted = formatCurrency(amount);
+export function formatAmount(amount: number | string, type: "expense" | "income", currency?: string): string {
+  const formatted = formatCurrency(amount, currency);
   return type === "expense" ? `-${formatted}` : `+${formatted}`;
 }
 

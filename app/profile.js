@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, Platform } from 'react-native';
+import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -34,23 +35,29 @@ export default function ProfileScreen() {
             });
             Alert.alert('Listo', 'Perfil actualizado');
         } catch (e) {
-            Alert.alert('Error', e.message);
+            showError(e);
         } finally {
             setSaving(false);
         }
     };
 
     const handleSignOut = async () => {
-        Alert.alert('Cerrar sesión', '¿Estás seguro?', [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Salir',
-                style: 'destructive',
-                onPress: async () => {
-                    await signOut();
+        if (Platform.OS === 'web') {
+            if (window.confirm('¿Estás seguro que querés cerrar sesión?')) {
+                await signOut();
+            }
+        } else {
+            Alert.alert('Cerrar sesión', '¿Estás seguro?', [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Salir',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await signOut();
+                    },
                 },
-            },
-        ]);
+            ]);
+        }
     };
 
     const avatarUri = profile?.avatar_url || null;
@@ -105,6 +112,7 @@ export default function ProfileScreen() {
                             onChangeText={setFullName}
                             placeholder="Tu nombre"
                             placeholderTextColor="#94a3b8"
+                            maxLength={100}
                             className="text-base text-slate-900 dark:text-white font-medium"
                         />
                     </View>
@@ -118,6 +126,7 @@ export default function ProfileScreen() {
                             placeholder="@usuario"
                             placeholderTextColor="#94a3b8"
                             autoCapitalize="none"
+                            maxLength={50}
                             className="text-base text-slate-900 dark:text-white font-medium"
                         />
                     </View>

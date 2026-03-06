@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
+import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -174,7 +175,7 @@ export default function PlanningScreen() {
             emitBudgetChange();
             router.back();
         } catch (e) {
-            Alert.alert('Error', e.message || 'No se pudo guardar');
+            showError(e);
         } finally {
             setSaving(false);
         }
@@ -282,6 +283,7 @@ export default function PlanningScreen() {
                                                     updateItem(idx, '_fixedAmount', clean);
                                                 }}
                                                 keyboardType="numeric"
+                                                maxLength={15}
                                                 className="w-24 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg text-center text-base font-bold text-slate-900 dark:text-white"
                                             />
                                         </View>

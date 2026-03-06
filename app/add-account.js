@@ -1,4 +1,5 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, Switch } from 'react-native';
+import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -83,7 +84,7 @@ export default function AddAccountScreen() {
             emitAccountsChange();
             router.back();
         } catch (e) {
-            Alert.alert('Error', e.message);
+            showError(e);
         } finally {
             setSubmitting(false);
         }
@@ -134,6 +135,7 @@ export default function AddAccountScreen() {
                             onChangeText={setName}
                             placeholder="Ej: Banco Nación, Efectivo..."
                             placeholderTextColor="#94a3b8"
+                            maxLength={100}
                             className="text-base text-slate-900 dark:text-white font-medium"
                         />
                     </View>
@@ -180,6 +182,7 @@ export default function AddAccountScreen() {
                             placeholder="0.00"
                             placeholderTextColor="#94a3b8"
                             keyboardType="decimal-pad"
+                            maxLength={15}
                             className="flex-1 text-base text-slate-900 dark:text-white font-medium"
                         />
                     </View>

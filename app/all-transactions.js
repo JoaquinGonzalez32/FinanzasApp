@@ -6,6 +6,7 @@ import { useMemo, useState, useCallback } from 'react';
 import TransactionItem from '../components/TransactionItem';
 import ConfirmModal from '../components/ConfirmModal';
 import { useTransactions } from '../src/hooks/useTransactions';
+import { useAccounts } from '../src/hooks/useAccounts';
 import { deleteTransaction } from '../src/services/transactionsService';
 import { emitTransactionsChange } from '../src/lib/events';
 import { formatAmount, formatCurrency, getCategoryStyle, formatTime, sumByType, MONTHS_ES, DAYS_ES } from '../src/lib/helpers';
@@ -21,8 +22,16 @@ function formatDateLabel(dateStr) {
 export default function AllTransactionsScreen() {
     const router = useRouter();
     const { transactions: monthTx, loading, error, refresh } = useTransactions({ mode: 'month' });
+    const { accounts } = useAccounts();
     const [refreshing, setRefreshing] = useState(false);
     const [deleteTx, setDeleteTx] = useState(null);
+
+    const accMap = useMemo(() => {
+        const m = {};
+        accounts.forEach(a => { m[a.id] = a.currency; });
+        return m;
+    }, [accounts]);
+    const txCurrency = (tx) => accMap[tx.account_id ?? tx.category?.account_id] ?? undefined;
 
     const now = new Date();
     const monthLabel = `${MONTHS_ES[now.getMonth()]} ${now.getFullYear()}`;
@@ -43,6 +52,21 @@ export default function AllTransactionsScreen() {
         setRefreshing(true);
         try { await refresh(); } finally { setRefreshing(false); }
     }, [refresh]);
+
+    const handleEditTx = (tx) => {
+        router.push({
+            pathname: '/add-transaction',
+            params: {
+                type: tx.type,
+                editId: tx.id,
+                editAmount: String(tx.amount),
+                editCategoryId: tx.category_id || '',
+                editAccountId: tx.account_id || '',
+                editNote: tx.note || '',
+                editDate: tx.date,
+            },
+        });
+    };
 
     const handleDeleteTx = (tx) => setDeleteTx(tx);
 
@@ -66,10 +90,11 @@ export default function AllTransactionsScreen() {
                 icon={tx.category?.icon ?? "payments"}
                 label={tx.category?.name ?? "Sin categoría"}
                 sub={tx.note ? `${tx.note} • ${formatTime(tx.created_at)}` : formatTime(tx.created_at)}
-                amount={formatAmount(tx.amount, tx.type)}
+                amount={formatAmount(tx.amount, tx.type, txCurrency(tx))}
                 colorClass={tx.type === 'expense' ? 'text-red-500' : 'text-green-500'}
                 iconBg={style.bg}
                 iconColor={style.hex}
+                onPress={() => handleEditTx(tx)}
                 onDelete={() => handleDeleteTx(tx)}
             />
         );
@@ -148,7 +173,7 @@ export default function AllTransactionsScreen() {
             <ConfirmModal
                 visible={!!deleteTx}
                 title="Eliminar transacción"
-                message={deleteTx ? `¿Eliminar "${deleteTx.category?.name ?? 'Sin categoría'}" por ${formatCurrency(deleteTx.amount)}?` : ''}
+                message={deleteTx ? `¿Eliminar "${deleteTx.category?.name ?? 'Sin categoría'}" por ${formatCurrency(deleteTx.amount, txCurrency(deleteTx))}?` : ''}
                 onConfirm={confirmDelete}
                 onCancel={() => setDeleteTx(null)}
             />

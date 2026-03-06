@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
+import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,7 +7,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useRecurring } from '../src/hooks/useRecurring';
 import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
-import { formatCurrency, getCategoryStyle, toDateISO } from '../src/lib/helpers';
+import { formatCurrency, getCategoryStyle, getCurrencySymbol, toDateISO } from '../src/lib/helpers';
 import { createRecurringExpense, deleteRecurringExpense } from '../src/services/recurringService';
 import { createTransaction } from '../src/services/transactionsService';
 import { emitRecurringChange, emitTransactionsChange } from '../src/lib/events';
@@ -27,6 +28,12 @@ export default function RecurringScreen() {
     const [newAmount, setNewAmount] = useState('');
     const [newDay, setNewDay] = useState('1');
     const [newAccountId, setNewAccountId] = useState(null);
+
+    const accCurrencyMap = useMemo(() => {
+        const m = {};
+        accounts.forEach(a => { m[a.id] = a.currency; });
+        return m;
+    }, [accounts]);
 
     const assignedCatIds = useMemo(
         () => new Set(templates.map(t => t.category_id)),
@@ -61,7 +68,7 @@ export default function RecurringScreen() {
             emitTransactionsChange();
             emitRecurringChange();
         } catch (e) {
-            Alert.alert('Error', e.message ?? 'No se pudo confirmar');
+            showError(e);
         } finally {
             setConfirming(false);
         }
@@ -81,7 +88,7 @@ export default function RecurringScreen() {
             await deleteRecurringExpense(id);
             emitRecurringChange();
         } catch (e) {
-            Alert.alert('Error', e.message ?? 'No se pudo eliminar');
+            showError(e);
         }
     }, []);
 
@@ -108,7 +115,7 @@ export default function RecurringScreen() {
             setAddVisible(false);
             resetAddForm();
         } catch (e) {
-            Alert.alert('Error', e.message ?? 'No se pudo guardar');
+            showError(e);
         } finally {
             setSaving(false);
         }
@@ -175,11 +182,12 @@ export default function RecurringScreen() {
                                                 <Text className="text-xs text-slate-400">Día {item.recurring.day_of_month}</Text>
                                             </View>
                                             <View className="flex-row items-center">
-                                                <Text className="text-slate-400 font-bold text-sm mr-1">$</Text>
+                                                <Text className="text-slate-400 font-bold text-sm mr-1">{getCurrencySymbol(accCurrencyMap[item.recurring.account_id])}</Text>
                                                 <TextInput
                                                     value={item.editAmount}
                                                     onChangeText={v => handleUpdateAmount(idx, v)}
                                                     keyboardType="numeric"
+                                                    maxLength={15}
                                                     className="w-24 h-9 bg-slate-100 dark:bg-slate-800 rounded-lg text-center text-sm font-bold text-slate-900 dark:text-white"
                                                 />
                                             </View>
@@ -239,7 +247,7 @@ export default function RecurringScreen() {
                                                     {cat?.name ?? 'Sin categoría'}
                                                 </Text>
                                                 <Text className="text-xs text-slate-400">
-                                                    Día {item.day_of_month} · {formatCurrency(item.amount)}
+                                                    Día {item.day_of_month} · {formatCurrency(item.amount, accCurrencyMap[item.account_id])}
                                                 </Text>
                                             </View>
                                             {isPending ? (
@@ -314,13 +322,14 @@ export default function RecurringScreen() {
                                     <View className="flex-1">
                                         <Text className="text-xs font-bold text-slate-500 uppercase mb-2">Monto</Text>
                                         <View className="flex-row items-center bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 px-4 h-14">
-                                            <Text className="text-slate-400 font-bold mr-1">$</Text>
+                                            <Text className="text-slate-400 font-bold mr-1">{getCurrencySymbol(accCurrencyMap[newAccountId])}</Text>
                                             <TextInput
                                                 value={newAmount}
                                                 onChangeText={v => setNewAmount(v.replace(/[^0-9]/g, ''))}
                                                 keyboardType="numeric"
                                                 placeholder="0"
                                                 placeholderTextColor="#94a3b8"
+                                                maxLength={15}
                                                 className="flex-1 text-base font-bold text-slate-900 dark:text-white"
                                             />
                                         </View>
@@ -334,6 +343,7 @@ export default function RecurringScreen() {
                                                 keyboardType="numeric"
                                                 placeholder="1"
                                                 placeholderTextColor="#94a3b8"
+                                                maxLength={2}
                                                 className="flex-1 text-base font-bold text-slate-900 dark:text-white text-center"
                                             />
                                         </View>

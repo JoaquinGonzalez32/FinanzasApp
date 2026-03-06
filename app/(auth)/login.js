@@ -51,6 +51,7 @@ export default function LoginScreen() {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoComplete="email"
+                        maxLength={254}
                         className="text-base text-slate-900 dark:text-white font-medium"
                     />
                 </View>
@@ -63,6 +64,7 @@ export default function LoginScreen() {
                         placeholder="Contraseña"
                         placeholderTextColor="#94a3b8"
                         secureTextEntry
+                        maxLength={128}
                         className="text-base text-slate-900 dark:text-white font-medium"
                     />
                 </View>

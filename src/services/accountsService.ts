@@ -67,26 +67,17 @@ export async function getAccountBalance(id: string): Promise<number> {
   return Number(data.balance);
 }
 
-/** Adjust account balance by a delta amount (+/-) */
+/** Adjust account balance atomically via Postgres RPC (+/-) */
 export async function adjustAccountBalance(
   id: string,
   delta: number
-): Promise<void> {
-  const { data: acc, error: fetchErr } = await supabase
-    .from("accounts")
-    .select("balance")
-    .eq("id", id)
-    .single();
-
-  if (fetchErr) throw fetchErr;
-
-  const newBalance = Number(acc.balance) + delta;
-  const { error: updateErr } = await supabase
-    .from("accounts")
-    .update({ balance: newBalance })
-    .eq("id", id);
-
-  if (updateErr) throw updateErr;
+): Promise<number> {
+  const { data, error } = await supabase.rpc("adjust_balance", {
+    p_account_id: id,
+    p_delta: delta,
+  });
+  if (error) throw error;
+  return Number(data);
 }
 
 export async function deleteAccount(id: string): Promise<void> {

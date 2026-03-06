@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, Platform, ActivityIndicator, useColorScheme } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, ActivityIndicator, useColorScheme } from 'react-native';
+import { showError } from '../../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -219,11 +220,7 @@ export default function DashboardScreen() {
                 Alert.alert('Listo', 'Planificación guardada');
             }
         } catch (e) {
-            if (Platform.OS === 'web') {
-                window.alert(e.message || 'No se pudo guardar');
-            } else {
-                Alert.alert('Error', e.message || 'No se pudo guardar');
-            }
+            showError(e);
         } finally {
             setSaving(false);
         }
@@ -512,6 +509,7 @@ export default function DashboardScreen() {
                                                     keyboardType="numeric"
                                                     placeholder="0"
                                                     placeholderTextColor="#94a3b8"
+                                                    maxLength={15}
                                                     className="w-20 h-9 text-center text-sm font-bold text-slate-900 dark:text-white"
                                                 />
                                             </View>

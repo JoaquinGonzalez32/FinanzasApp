@@ -41,14 +41,15 @@ export function useWeeklyReviewAlert(
 
   useEffect(() => {
     if (!isReady || hasChecked.current) return;
-    hasChecked.current = true;
 
-    if (!isMondayToday()) return;
+    if (!isMondayToday()) { hasChecked.current = true; return; }
+    if (budgetItems.length === 0) return;
+
+    hasChecked.current = true;
 
     AsyncStorage.getItem(STORAGE_KEY).then((lastShown) => {
       // Already shown this Monday
       if (lastShown === toDateISO()) return;
-      if (budgetItems.length === 0) return;
 
       const inputs = budgetItems
         .filter((b) => b.category && Number(b.percentage) > 0)
