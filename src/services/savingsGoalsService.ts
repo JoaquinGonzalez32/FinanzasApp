@@ -26,6 +26,17 @@ export async function getAllActiveGoals(): Promise<SavingsGoal[]> {
   return data ?? [];
 }
 
+export async function getAllGoals(): Promise<SavingsGoal[]> {
+  const { data, error } = await supabase
+    .from("savings_goals")
+    .select("*")
+    .order("priority", { ascending: true })
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getGoal(id: string): Promise<SavingsGoal> {
   const { data, error } = await supabase
     .from("savings_goals")

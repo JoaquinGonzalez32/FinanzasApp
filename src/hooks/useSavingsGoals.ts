@@ -10,7 +10,7 @@ interface UseSavingsGoalsResult {
   refresh: () => Promise<void>;
 }
 
-export function useSavingsGoals(accountId?: string | null): UseSavingsGoalsResult {
+export function useSavingsGoals(accountId?: string | null, mode?: "active" | "all"): UseSavingsGoalsResult {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,16 +19,21 @@ export function useSavingsGoals(accountId?: string | null): UseSavingsGoalsResul
     setLoading(true);
     setError(null);
     try {
-      const data = accountId
-        ? await svc.getGoalsByAccount(accountId)
-        : await svc.getAllActiveGoals();
+      let data: SavingsGoal[];
+      if (accountId) {
+        data = await svc.getGoalsByAccount(accountId);
+      } else if (mode === "all") {
+        data = await svc.getAllGoals();
+      } else {
+        data = await svc.getAllActiveGoals();
+      }
       setGoals(data);
     } catch (e: any) {
       setError(e.message ?? "Error loading goals");
     } finally {
       setLoading(false);
     }
-  }, [accountId]);
+  }, [accountId, mode]);
 
   useEffect(() => {
     fetch();

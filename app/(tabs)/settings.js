@@ -89,6 +89,18 @@ export default function SettingsScreen() {
         } catch (e) { showError(e); }
     };
 
+    const handleViewAccount = (acc) => {
+        router.push({
+            pathname: '/account-detail',
+            params: {
+                id: acc.id, name: acc.name, type: acc.type,
+                icon: acc.icon, color: acc.color,
+                balance: String(acc.balance),
+                currency: acc.currency ?? 'UYU',
+            },
+        });
+    };
+
     const handleEditAccount = (acc) => {
         router.push({
             pathname: '/add-account',
@@ -149,7 +161,7 @@ export default function SettingsScreen() {
                                 return (
                                     <TouchableOpacity
                                         key={acc.id}
-                                        onPress={() => handleEditAccount(acc)}
+                                        onPress={() => handleViewAccount(acc)}
                                         onLongPress={() => handleDeleteAccount(acc)}
                                         activeOpacity={0.7}
                                         className={`flex-row items-center gap-3 px-4 py-3.5 ${i < accounts.length - 1 ? 'border-b border-stone-50 dark:border-slate-800' : ''}`}

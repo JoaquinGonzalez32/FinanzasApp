@@ -393,7 +393,7 @@ export default function HomeScreen() {
                         <View className="px-5 pt-3">
                             <GoalsSummaryWidget
                                 goals={activeGoals.slice(0, 3)}
-                                onPress={() => router.push({ pathname: '/(tabs)/settings' })}
+                                onPress={() => router.push({ pathname: '/(tabs)/goals' })}
                             />
                         </View>
                     </FadeIn>

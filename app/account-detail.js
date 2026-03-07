@@ -51,7 +51,15 @@ export default function AccountDetailScreen() {
                         <MaterialIcons name="arrow-back-ios-new" size={20} color="#475569" />
                     </TouchableOpacity>
                     <Text className="text-lg font-bold text-stone-900 dark:text-white">Detalle de Cuenta</Text>
-                    <View className="h-10 w-10" />
+                    <TouchableOpacity
+                        onPress={() => router.push({
+                            pathname: '/add-account',
+                            params: { id, name, type, icon, color, balance, currency },
+                        })}
+                        className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200 dark:active:bg-slate-800"
+                    >
+                        <MaterialIcons name="edit" size={20} color="#137fec" />
+                    </TouchableOpacity>
                 </SafeAreaView>
             </View>
 
