@@ -1,78 +1,88 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { Button } from '../components/ui';
-import { createCategory, updateCategory } from '../src/services/categoriesService';
-import { emitCategoriesChange } from '../src/lib/events';
-import { CATEGORY_COLORS, getCategoryStyle } from '../src/lib/helpers';
-import { useAccounts } from '../src/hooks/useAccounts';
+import { createGoal, updateGoal } from '../src/services/savingsGoalsService';
+import { emitSavingsGoalsChange } from '../src/lib/events';
+import { CATEGORY_COLORS, getCategoryStyle, getCurrencySymbol } from '../src/lib/helpers';
 
 const ICON_OPTIONS = [
-    'restaurant', 'directions-car', 'shopping-bag', 'house',
-    'medical-services', 'movie', 'school', 'fitness-center',
-    'pets', 'phone-android', 'flight', 'local-cafe',
-    'payments', 'computer', 'work', 'card-giftcard',
-    'savings', 'trending-up', 'store', 'build',
+    'flag', 'savings', 'flight', 'home', 'school', 'directions-car',
+    'shopping-bag', 'favorite', 'fitness-center', 'beach-access', 'laptop', 'star',
 ];
 
-const COLOR_KEYS = Object.keys(CATEGORY_COLORS).filter(k => k !== 'primary' && k !== 'slate');
+const COLOR_KEYS = Object.keys(CATEGORY_COLORS).filter(k => k !== 'slate');
 
-export default function AddCategoryScreen() {
+export default function AddGoalScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
 
     const isEditing = !!params.id;
+    const accountId = params.account_id;
+    const accountCurrency = params.currency || 'UYU';
 
-    const getInitial = (key, fallback) => (typeof params[key] === 'string' ? params[key] : fallback);
-
-    const [name, setName] = useState(isEditing ? getInitial('name', '') : '');
-    const [type, setType] = useState(isEditing ? getInitial('catType', 'expense') : (params.type === 'income' ? 'income' : 'expense'));
-    const [selectedIcon, setSelectedIcon] = useState(getInitial('icon', 'restaurant'));
-    const [selectedColor, setSelectedColor] = useState(getInitial('color', 'orange'));
-    const [selectedAccount, setSelectedAccount] = useState(getInitial('account_id', '') || null);
+    const [name, setName] = useState('');
+    const [targetAmount, setTargetAmount] = useState('');
+    const [deadline, setDeadline] = useState('');
+    const [selectedIcon, setSelectedIcon] = useState('flag');
+    const [selectedColor, setSelectedColor] = useState('primary');
     const [submitting, setSubmitting] = useState(false);
-
-    const { accounts } = useAccounts();
 
     useEffect(() => {
         if (isEditing) {
-            setName(getInitial('name', ''));
-            setType(getInitial('catType', 'expense'));
-            setSelectedIcon(getInitial('icon', 'restaurant'));
-            setSelectedColor(getInitial('color', 'orange'));
-            setSelectedAccount(getInitial('account_id', '') || null);
+            setName(typeof params.name === 'string' ? params.name : '');
+            setTargetAmount(typeof params.target_amount === 'string' ? params.target_amount : '');
+            setDeadline(typeof params.deadline === 'string' ? params.deadline : '');
+            setSelectedIcon(typeof params.icon === 'string' ? params.icon : 'flag');
+            setSelectedColor(typeof params.color === 'string' ? params.color : 'primary');
         }
-    }, [params.id]);
+    }, [isEditing]);
 
     const handleSubmit = async () => {
         if (!name.trim()) {
-            Alert.alert('Error', 'Ingresa un nombre para la categoria');
+            Alert.alert('Error', 'Ingresa un nombre para la meta');
             return;
         }
+        const amount = Number(targetAmount);
+        if (!amount || amount <= 0) {
+            Alert.alert('Error', 'El monto objetivo debe ser mayor a 0');
+            return;
+        }
+        if (isEditing && params.current_amount) {
+            const current = Number(params.current_amount);
+            if (amount < current) {
+                Alert.alert('Error', 'El objetivo no puede ser menor al monto actual');
+                return;
+            }
+        }
+        if (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
+            Alert.alert('Error', 'Formato de fecha invalido (YYYY-MM-DD)');
+            return;
+        }
+
         setSubmitting(true);
         try {
             if (isEditing && typeof params.id === 'string') {
-                await updateCategory(params.id, {
+                await updateGoal(params.id, {
                     name: name.trim(),
+                    target_amount: amount,
+                    deadline: deadline || null,
                     icon: selectedIcon,
                     color: selectedColor,
-                    type,
-                    account_id: selectedAccount,
                 });
             } else {
-                await createCategory({
+                await createGoal({
+                    account_id: accountId,
                     name: name.trim(),
+                    target_amount: amount,
+                    currency: accountCurrency,
+                    deadline: deadline || null,
                     icon: selectedIcon,
                     color: selectedColor,
-                    type,
-                    sort_order: 99,
-                    account_id: selectedAccount,
-                    created_at: new Date().toISOString(),
                 });
             }
-            emitCategoriesChange();
+            emitSavingsGoalsChange();
             router.back();
         } catch (e) {
             showError(e);
@@ -97,11 +107,11 @@ export default function AddCategoryScreen() {
                     <Text className="text-primary font-medium text-base">Cancelar</Text>
                 </TouchableOpacity>
                 <Text className="text-base font-bold text-stone-900 dark:text-white">
-                    {isEditing ? 'Editar Categoria' : 'Nueva Categoria'}
+                    {isEditing ? 'Editar Meta' : 'Nueva Meta'}
                 </Text>
                 <TouchableOpacity onPress={handleSubmit} disabled={submitting}>
                     <Text className={`text-primary font-bold text-base ${submitting ? 'opacity-50' : ''}`}>
-                        {submitting ? 'Guardando' : isEditing ? 'Guardar' : 'Crear'}
+                        {submitting ? 'Guardando' : 'Guardar'}
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -113,7 +123,7 @@ export default function AddCategoryScreen() {
                         <MaterialIcons name={selectedIcon} size={32} color={previewStyle.hex} />
                     </View>
                     <Text className="mt-2 text-base font-bold text-stone-900 dark:text-white">
-                        {name || 'Nombre'}
+                        {name || 'Nombre de la meta'}
                     </Text>
                 </View>
 
@@ -124,7 +134,7 @@ export default function AddCategoryScreen() {
                         <TextInput
                             value={name}
                             onChangeText={setName}
-                            placeholder="Ej: Comida, Gym..."
+                            placeholder="Ej: Viaje, Auto nuevo..."
                             placeholderTextColor="#a8a29e"
                             maxLength={100}
                             className="text-base text-stone-900 dark:text-white font-medium"
@@ -132,54 +142,37 @@ export default function AddCategoryScreen() {
                     </View>
                 </View>
 
-                {/* Type Toggle */}
+                {/* Target amount */}
                 <View className="px-6 mb-6">
-                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Tipo</Text>
-                    <View className="flex-row h-12 w-full items-center justify-center rounded-xl bg-frost dark:bg-input-dark p-1.5">
-                        <TouchableOpacity
-                            onPress={() => setType('expense')}
-                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'expense' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
-                        >
-                            <Text className={`text-sm font-bold ${type === 'expense' ? 'text-red-500' : 'text-stone-500'}`}>Gasto</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => setType('income')}
-                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'income' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
-                        >
-                            <Text className={`text-sm font-bold ${type === 'income' ? 'text-emerald-500' : 'text-stone-500'}`}>Ingreso</Text>
-                        </TouchableOpacity>
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Monto Objetivo</Text>
+                    <View className="bg-frost dark:bg-input-dark rounded-xl px-4 h-12 flex-row items-center">
+                        <Text className="text-stone-500 text-base font-bold mr-2">{getCurrencySymbol(accountCurrency)}</Text>
+                        <TextInput
+                            value={targetAmount}
+                            onChangeText={(v) => setTargetAmount(v.replace(/[^0-9.]/g, ''))}
+                            placeholder="0.00"
+                            placeholderTextColor="#a8a29e"
+                            keyboardType="decimal-pad"
+                            maxLength={15}
+                            className="flex-1 text-base text-stone-900 dark:text-white font-medium"
+                        />
                     </View>
                 </View>
 
-                {/* Linked Account */}
-                {accounts.length > 0 && (
-                    <View className="px-6 mb-6">
-                        <Text className="text-sm font-bold text-stone-900 dark:text-white mb-1">Cuenta vinculada</Text>
-                        <Text className="text-stone-500 text-xs mb-3">Las transacciones ajustaran el saldo de esta cuenta</Text>
-                        <View className="flex-row flex-wrap gap-2">
-                            <TouchableOpacity
-                                onPress={() => setSelectedAccount(null)}
-                                className={`px-4 h-10 rounded-xl items-center justify-center ${selectedAccount === null ? 'bg-primary' : 'bg-frost dark:bg-input-dark'}`}
-                            >
-                                <Text className={`text-sm font-semibold ${selectedAccount === null ? 'text-white' : 'text-stone-600 dark:text-slate-300'}`}>Ninguna</Text>
-                            </TouchableOpacity>
-                            {accounts.map((acc) => {
-                                const isActive = selectedAccount === acc.id;
-                                const style = getCategoryStyle(acc.color);
-                                return (
-                                    <TouchableOpacity
-                                        key={acc.id}
-                                        onPress={() => setSelectedAccount(acc.id)}
-                                        className={`flex-row items-center gap-2 px-4 h-10 rounded-xl ${isActive ? 'bg-primary' : 'bg-frost dark:bg-input-dark'}`}
-                                    >
-                                        <MaterialIcons name={acc.icon} size={16} color={isActive ? 'white' : style.hex} />
-                                        <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-stone-600 dark:text-slate-300'}`}>{acc.name}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
+                {/* Deadline */}
+                <View className="px-6 mb-6">
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Fecha limite (opcional)</Text>
+                    <View className="bg-frost dark:bg-input-dark rounded-xl px-4 h-12 justify-center">
+                        <TextInput
+                            value={deadline}
+                            onChangeText={setDeadline}
+                            placeholder="YYYY-MM-DD"
+                            placeholderTextColor="#a8a29e"
+                            maxLength={10}
+                            className="text-base text-stone-900 dark:text-white font-medium"
+                        />
                     </View>
-                )}
+                </View>
 
                 {/* Icon Grid */}
                 <View className="px-6 mb-6">

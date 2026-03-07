@@ -3,6 +3,7 @@ import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
+import { Button } from '../components/ui';
 import { createAccount, updateAccount } from '../src/services/accountsService';
 import { emitAccountsChange } from '../src/lib/events';
 import { CATEGORY_COLORS, getCategoryStyle, getCurrencySymbol } from '../src/lib/helpers';
@@ -10,7 +11,7 @@ import { CATEGORY_COLORS, getCategoryStyle, getCurrencySymbol } from '../src/lib
 const ACCOUNT_TYPES = [
     { key: 'cash', label: 'Efectivo', icon: 'payments' },
     { key: 'bank', label: 'Banco', icon: 'account-balance' },
-    { key: 'credit', label: 'Crédito', icon: 'credit-card' },
+    { key: 'credit', label: 'Credito', icon: 'credit-card' },
     { key: 'savings', label: 'Ahorro', icon: 'savings' },
     { key: 'other', label: 'Otro', icon: 'account-balance-wallet' },
 ];
@@ -52,7 +53,7 @@ export default function AddAccountScreen() {
 
     const handleSubmit = async () => {
         if (!name.trim()) {
-            Alert.alert('Error', 'Ingresá un nombre para la cuenta');
+            Alert.alert('Error', 'Ingresa un nombre para la cuenta');
             return;
         }
 
@@ -98,14 +99,14 @@ export default function AddAccountScreen() {
             className="flex-1 bg-white dark:bg-modal-dark"
         >
             <View className="items-center pt-3 pb-2">
-                <View className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-[#3b4754]" />
+                <View className="h-1.5 w-12 rounded-full bg-stone-300 dark:bg-slate-600" />
             </View>
 
             <View className="flex-row items-center justify-between px-4 py-2">
                 <TouchableOpacity onPress={() => router.back()}>
                     <Text className="text-primary font-medium text-base">Cancelar</Text>
                 </TouchableOpacity>
-                <Text className="text-base font-bold text-slate-900 dark:text-white">
+                <Text className="text-base font-bold text-stone-900 dark:text-white">
                     {isEditing ? 'Editar Cuenta' : 'Nueva Cuenta'}
                 </Text>
                 <TouchableOpacity onPress={handleSubmit} disabled={submitting}>
@@ -118,50 +119,47 @@ export default function AddAccountScreen() {
             <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
                 {/* Preview */}
                 <View className="items-center py-6">
-                    <View className={`h-16 w-16 rounded-full ${previewStyle.bgCircle} items-center justify-center`}>
+                    <View className={`h-16 w-16 rounded-2xl ${previewStyle.bgCircle} items-center justify-center`}>
                         <MaterialIcons name={selectedIcon} size={32} color={previewStyle.hex} />
                     </View>
-                    <Text className="mt-2 text-base font-bold text-slate-900 dark:text-white">
+                    <Text className="mt-2 text-base font-bold text-stone-900 dark:text-white">
                         {name || 'Nombre'}
                     </Text>
                 </View>
 
                 {/* Name */}
                 <View className="px-6 mb-6">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Nombre</Text>
-                    <View className="bg-slate-100 dark:bg-input-dark rounded-xl px-4 h-12 justify-center">
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Nombre</Text>
+                    <View className="bg-frost dark:bg-input-dark rounded-xl px-4 h-12 justify-center">
                         <TextInput
                             value={name}
                             onChangeText={setName}
-                            placeholder="Ej: Banco Nación, Efectivo..."
-                            placeholderTextColor="#94a3b8"
+                            placeholder="Ej: Banco Nacion, Efectivo..."
+                            placeholderTextColor="#a8a29e"
                             maxLength={100}
-                            className="text-base text-slate-900 dark:text-white font-medium"
+                            className="text-base text-stone-900 dark:text-white font-medium"
                         />
                     </View>
                 </View>
 
                 {/* Currency */}
                 <View className="px-6 mb-6">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Moneda</Text>
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Moneda</Text>
                     <View className="flex-row gap-3">
                         {[
-                            { key: 'UYU', label: 'UYU', symbol: '$U', desc: 'Pesos Uruguayos' },
-                            { key: 'USD', label: 'USD', symbol: 'US$', desc: 'Dólares' },
-                            { key: 'EUR', label: 'EUR', symbol: '€', desc: 'Euros' },
+                            { key: 'UYU', symbol: '$U', desc: 'Pesos' },
+                            { key: 'USD', symbol: 'US$', desc: 'Dolares' },
+                            { key: 'EUR', symbol: 'E', desc: 'Euros' },
                         ].map((cur) => {
                             const isActive = currency === cur.key;
                             return (
                                 <TouchableOpacity
                                     key={cur.key}
                                     onPress={() => setCurrency(cur.key)}
-                                    className={`flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl ${isActive ? 'bg-primary' : 'bg-slate-100 dark:bg-input-dark'}`}
+                                    className={`flex-1 items-center justify-center py-3 rounded-xl ${isActive ? 'bg-primary' : 'bg-frost dark:bg-input-dark'}`}
                                 >
-                                    <Text className={`text-sm font-bold ${isActive ? 'text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                                        {cur.symbol}
-                                    </Text>
-                                    <Text className={`text-sm font-bold ${isActive ? 'text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                                        {cur.desc}
+                                    <Text className={`text-sm font-bold ${isActive ? 'text-white' : 'text-stone-600 dark:text-slate-400'}`}>
+                                        {cur.symbol} {cur.desc}
                                     </Text>
                                 </TouchableOpacity>
                             );
@@ -171,34 +169,34 @@ export default function AddAccountScreen() {
 
                 {/* Balance */}
                 <View className="px-6 mb-6">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">
                         {isEditing ? 'Saldo actual' : 'Saldo inicial'}
                     </Text>
-                    <View className="bg-slate-100 dark:bg-input-dark rounded-xl px-4 h-12 flex-row items-center">
-                        <Text className="text-slate-500 text-base font-bold mr-2">{getCurrencySymbol(currency)}</Text>
+                    <View className="bg-frost dark:bg-input-dark rounded-xl px-4 h-12 flex-row items-center">
+                        <Text className="text-stone-500 text-base font-bold mr-2">{getCurrencySymbol(currency)}</Text>
                         <TextInput
                             value={balance}
                             onChangeText={setBalance}
                             placeholder="0.00"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor="#a8a29e"
                             keyboardType="decimal-pad"
                             maxLength={15}
-                            className="flex-1 text-base text-slate-900 dark:text-white font-medium"
+                            className="flex-1 text-base text-stone-900 dark:text-white font-medium"
                         />
                     </View>
                 </View>
 
                 {/* Include in Total */}
                 <View className="px-6 mb-6">
-                    <View className="flex-row items-center justify-between bg-slate-100 dark:bg-input-dark rounded-xl px-4 h-14">
+                    <View className="flex-row items-center justify-between bg-frost dark:bg-input-dark rounded-xl px-4 h-14">
                         <View className="flex-row items-center gap-3">
                             <MaterialIcons name="functions" size={20} color="#64748b" />
-                            <Text className="text-base font-medium text-slate-900 dark:text-white">Incluir en saldo total</Text>
+                            <Text className="text-sm font-medium text-stone-900 dark:text-white">Incluir en saldo total</Text>
                         </View>
                         <Switch
                             value={includeInTotal}
                             onValueChange={setIncludeInTotal}
-                            trackColor={{ false: '#cbd5e1', true: '#137fec' }}
+                            trackColor={{ false: '#d6d3d1', true: '#137fec' }}
                             thumbColor="white"
                         />
                     </View>
@@ -206,7 +204,7 @@ export default function AddAccountScreen() {
 
                 {/* Account Type */}
                 <View className="px-6 mb-6">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Tipo de cuenta</Text>
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Tipo de cuenta</Text>
                     <View className="flex-row flex-wrap gap-2">
                         {ACCOUNT_TYPES.map((at) => {
                             const isActive = accountType === at.key;
@@ -217,10 +215,10 @@ export default function AddAccountScreen() {
                                         setAccountType(at.key);
                                         setSelectedIcon(at.icon);
                                     }}
-                                    className={`flex-row items-center gap-2 px-4 py-2.5 rounded-xl ${isActive ? 'bg-primary' : 'bg-slate-100 dark:bg-input-dark'}`}
+                                    className={`flex-row items-center gap-2 px-4 py-2.5 rounded-xl ${isActive ? 'bg-primary' : 'bg-frost dark:bg-input-dark'}`}
                                 >
                                     <MaterialIcons name={at.icon} size={18} color={isActive ? 'white' : '#64748b'} />
-                                    <Text className={`text-sm font-bold ${isActive ? 'text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                                    <Text className={`text-sm font-bold ${isActive ? 'text-white' : 'text-stone-600 dark:text-slate-400'}`}>
                                         {at.label}
                                     </Text>
                                 </TouchableOpacity>
@@ -231,7 +229,7 @@ export default function AddAccountScreen() {
 
                 {/* Icon Grid */}
                 <View className="px-6 mb-6">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Icono</Text>
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Icono</Text>
                     <View className="flex-row flex-wrap gap-3">
                         {ICON_OPTIONS.map((icon) => {
                             const isActive = selectedIcon === icon;
@@ -239,7 +237,7 @@ export default function AddAccountScreen() {
                                 <TouchableOpacity
                                     key={icon}
                                     onPress={() => setSelectedIcon(icon)}
-                                    className={`h-12 w-12 rounded-xl items-center justify-center ${isActive ? 'bg-primary' : 'bg-slate-100 dark:bg-input-dark'}`}
+                                    className={`h-12 w-12 rounded-xl items-center justify-center ${isActive ? 'bg-primary' : 'bg-frost dark:bg-input-dark'}`}
                                 >
                                     <MaterialIcons name={icon} size={24} color={isActive ? 'white' : '#64748b'} />
                                 </TouchableOpacity>
@@ -250,7 +248,7 @@ export default function AddAccountScreen() {
 
                 {/* Color Grid */}
                 <View className="px-6 mb-8">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Color</Text>
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Color</Text>
                     <View className="flex-row flex-wrap gap-3">
                         {COLOR_KEYS.map((colorKey) => {
                             const style = getCategoryStyle(colorKey);
@@ -259,7 +257,7 @@ export default function AddAccountScreen() {
                                 <TouchableOpacity
                                     key={colorKey}
                                     onPress={() => setSelectedColor(colorKey)}
-                                    className={`h-12 w-12 rounded-xl items-center justify-center ${isActive ? 'border-2 border-slate-900 dark:border-white' : ''}`}
+                                    className={`h-12 w-12 rounded-xl items-center justify-center ${isActive ? 'border-2 border-stone-900 dark:border-white' : ''}`}
                                     style={{ backgroundColor: style.hex + '30' }}
                                 >
                                     <View className="h-6 w-6 rounded-full" style={{ backgroundColor: style.hex }} />

@@ -1,9 +1,10 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { showError } from '../../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState, useMemo, useCallback } from 'react';
+import { SkeletonLoader, useToast, FadeIn, ScalePress, FrostBackground } from '../../components/ui';
 import { useCategories } from '../../src/hooks/useCategories';
 import { useAccounts } from '../../src/hooks/useAccounts';
 import { deleteCategory } from '../../src/services/categoriesService';
@@ -14,75 +15,54 @@ import { getCategoryStyle, formatCurrency } from '../../src/lib/helpers';
 const ACCOUNT_TYPE_LABELS = {
     cash: 'Efectivo',
     bank: 'Banco',
-    credit: 'Crédito',
+    credit: 'Credito',
     savings: 'Ahorro',
     other: 'Otro',
 };
 
 export default function SettingsScreen() {
     const router = useRouter();
-    const { categories, loading: catsLoading, error: catsError, refresh: refreshCats } = useCategories();
-    const { accounts, loading: accsLoading, error: accsError, refresh: refreshAccs } = useAccounts();
-
-    const [activeTab, setActiveTab] = useState('categories');
-    const [editing, setEditing] = useState(false);
+    const { categories, loading: catsLoading, refresh: refreshCats } = useCategories();
+    const { accounts, loading: accsLoading, refresh: refreshAccs } = useAccounts();
+    const { show: showToast, ToastComponent } = useToast();
     const [refreshing, setRefreshing] = useState(false);
 
     const expenseCats = categories.filter(c => c.type === 'expense');
     const incomeCats = categories.filter(c => c.type === 'income');
 
-    const accountsTotalUYU = useMemo(
-        () => accounts.filter(a => a.include_in_total !== false && (a.currency ?? 'UYU') === 'UYU').reduce((s, a) => s + Number(a.balance), 0),
-        [accounts]
-    );
-    const accountsTotalUSD = useMemo(
-        () => accounts.filter(a => a.include_in_total !== false && a.currency === 'USD').reduce((s, a) => s + Number(a.balance), 0),
-        [accounts]
-    );
-
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        try {
-            if (activeTab === 'categories') await refreshCats();
-            else await refreshAccs();
-        } finally {
-            setRefreshing(false);
-        }
-    }, [activeTab, refreshCats, refreshAccs]);
+        try { await Promise.all([refreshCats(), refreshAccs()]); }
+        finally { setRefreshing(false); }
+    }, [refreshCats, refreshAccs]);
 
     const handleDeleteCategory = async (cat) => {
         const confirmed = typeof window !== 'undefined' && window.confirm
-            ? window.confirm(`¿Seguro que querés eliminar "${cat.name}"? Las transacciones quedarán sin categoría y la planificación asociada se eliminará.`)
+            ? window.confirm(`Seguro que queres eliminar "${cat.name}"?`)
             : await new Promise((resolve) =>
                 Alert.alert(
-                    'Eliminar categoría',
-                    `¿Seguro que querés eliminar "${cat.name}"? Las transacciones quedarán sin categoría y la planificación asociada se eliminará.`,
+                    'Eliminar categoria',
+                    `Seguro que queres eliminar "${cat.name}"? Las transacciones quedaran sin categoria.`,
                     [
                         { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
                         { text: 'Eliminar', onPress: () => resolve(true), style: 'destructive' },
                     ]
                 )
             );
-
         if (!confirmed) return;
         try {
             await deleteCategory(cat.id);
             emitCategoriesChange();
-        } catch (e) {
-            showError(e);
-        }
+            showToast({ type: 'success', message: `"${cat.name}" eliminada` });
+        } catch (e) { showError(e); }
     };
 
     const handleEditCategory = (cat) => {
-        if (editing) return;
         router.push({
             pathname: '/add-category',
             params: {
-                id: cat.id,
-                name: cat.name,
-                catType: cat.type,
-                icon: cat.icon,
-                color: cat.color,
+                id: cat.id, name: cat.name, catType: cat.type,
+                icon: cat.icon, color: cat.color,
                 account_id: cat.account_id ?? '',
             },
         });
@@ -90,37 +70,31 @@ export default function SettingsScreen() {
 
     const handleDeleteAccount = async (acc) => {
         const confirmed = typeof window !== 'undefined' && window.confirm
-            ? window.confirm(`¿Seguro que querés eliminar "${acc.name}"?`)
+            ? window.confirm(`Seguro que queres eliminar "${acc.name}"?`)
             : await new Promise((resolve) =>
                 Alert.alert(
                     'Eliminar cuenta',
-                    `¿Seguro que querés eliminar "${acc.name}"?`,
+                    `Seguro que queres eliminar "${acc.name}"?`,
                     [
                         { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
                         { text: 'Eliminar', onPress: () => resolve(true), style: 'destructive' },
                     ]
                 )
             );
-
         if (!confirmed) return;
         try {
             await deleteAccount(acc.id);
             emitAccountsChange();
-        } catch (e) {
-            showError(e);
-        }
+            showToast({ type: 'success', message: `"${acc.name}" eliminada` });
+        } catch (e) { showError(e); }
     };
 
     const handleEditAccount = (acc) => {
-        if (editing) return;
         router.push({
             pathname: '/add-account',
             params: {
-                id: acc.id,
-                name: acc.name,
-                type: acc.type,
-                icon: acc.icon,
-                color: acc.color,
+                id: acc.id, name: acc.name, type: acc.type,
+                icon: acc.icon, color: acc.color,
                 balance: String(acc.balance),
                 currency: acc.currency ?? 'UYU',
                 include_in_total: String(acc.include_in_total !== false),
@@ -128,56 +102,11 @@ export default function SettingsScreen() {
         });
     };
 
-    const renderCategoryItem = (cat, i, list) => {
-        const style = getCategoryStyle(cat.color);
-        return (
-            <TouchableOpacity
-                key={cat.id}
-                onPress={() => handleEditCategory(cat)}
-                activeOpacity={editing ? 1 : 0.7}
-                className={`flex-row items-center gap-4 p-4 ${i < list.length - 1 ? 'border-b border-slate-100 dark:border-slate-800' : ''}`}
-            >
-                {editing && (
-                    <TouchableOpacity onPress={() => handleDeleteCategory(cat)} hitSlop={8}>
-                        <MaterialIcons name="remove-circle" size={22} color="#ef4444" />
-                    </TouchableOpacity>
-                )}
-                <View className={`h-10 w-10 rounded-full ${style.bgCircle} items-center justify-center`}>
-                    <MaterialIcons name={cat.icon} size={20} color={style.hex} />
-                </View>
-                <Text className="flex-1 font-semibold text-sm text-slate-900 dark:text-white">{cat.name}</Text>
-                {!editing && (
-                    <MaterialIcons name="chevron-right" size={20} color="#94a3b8" />
-                )}
-            </TouchableOpacity>
-        );
-    };
-
-    const renderEmptyState = (message) => (
-        <View className="py-8 items-center">
-            <MaterialIcons name="inbox" size={40} color="#94a3b8" />
-            <Text className="text-slate-400 text-sm mt-2 text-center">{message}</Text>
-        </View>
-    );
-
-    const renderErrorState = (message) => (
-        <View className="py-6 items-center mx-5">
-            <MaterialIcons name="error-outline" size={36} color="#ef4444" />
-            <Text className="text-red-400 text-sm mt-2 text-center">{message}</Text>
-        </View>
-    );
-
     return (
-        <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
+        <FrostBackground edges={['top']}>
             {/* Header */}
-            <View className="flex-row items-center justify-between px-5 py-2 border-b border-slate-200 dark:border-slate-800">
-                <View style={{ width: 70 }} />
-                <Text className="text-base font-bold text-slate-900 dark:text-white">Gestión</Text>
-                <TouchableOpacity onPress={() => setEditing(!editing)} style={{ width: 70, alignItems: 'flex-end' }}>
-                    <Text className="text-primary font-bold text-base">
-                        {editing ? 'Listo' : 'Editar'}
-                    </Text>
-                </TouchableOpacity>
+            <View className="px-5 pt-2 pb-3">
+                <Text className="text-xl font-bold text-stone-900 dark:text-white">Mas</Text>
             </View>
 
             <ScrollView
@@ -187,203 +116,207 @@ export default function SettingsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#137fec" colors={['#137fec']} />
                 }
             >
-                {/* Herramientas */}
-                <View className="px-5 pt-6 pb-2">
-                    <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Herramientas</Text>
-                    <TouchableOpacity
-                        onPress={() => router.push('/recurring')}
-                        className="flex-row items-center gap-4 p-4 bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 active:bg-slate-50 dark:active:bg-slate-800"
-                    >
-                        <View className="h-10 w-10 rounded-full bg-primary/20 items-center justify-center">
-                            <MaterialIcons name="repeat" size={20} color="#137fec" />
-                        </View>
-                        <View className="flex-1">
-                            <Text className="font-semibold text-sm text-slate-900 dark:text-white">Gastos Recurrentes</Text>
-                            <Text className="text-xs text-slate-400 mt-0.5">Alquiler, servicios, suscripciones...</Text>
-                        </View>
-                        <MaterialIcons name="chevron-right" size={20} color="#94a3b8" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Tabs Toggle */}
-                <View className="px-5 py-6">
-                    <View className="bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl flex-row items-center">
+                {/* Accounts section */}
+                <FadeIn delay={50}>
+                <View className="px-5 pt-2 pb-5">
+                    <View className="flex-row items-center justify-between mb-3">
+                        <Text className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-slate-500">
+                            Cuentas ({accounts.length})
+                        </Text>
                         <TouchableOpacity
-                            onPress={() => { setActiveTab('categories'); setEditing(false); }}
-                            className={`flex-1 py-1.5 rounded-lg ${activeTab === 'categories' ? 'bg-white dark:bg-slate-700 shadow-sm' : ''}`}
+                            onPress={() => router.push('/add-account')}
+                            className="flex-row items-center gap-1"
                         >
-                            <Text className={`text-center text-sm font-bold ${activeTab === 'categories' ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-                                Categorías
-                            </Text>
+                            <MaterialIcons name="add" size={16} color="#137fec" />
+                            <Text className="text-xs font-bold text-primary">Nueva</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {accsLoading && !refreshing ? (
+                        <SkeletonLoader.Card lines={3} />
+                    ) : accounts.length === 0 ? (
+                        <TouchableOpacity
+                            onPress={() => router.push('/add-account')}
+                            className="p-6 rounded-2xl border border-dashed border-stone-300 dark:border-slate-700 items-center"
+                        >
+                            <MaterialIcons name="account-balance-wallet" size={24} color="#a8a29e" />
+                            <Text className="text-sm text-stone-400 mt-2">Agrega tu primera cuenta</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View className="bg-white/75 dark:bg-surface-dark rounded-2xl overflow-hidden border border-white/60 dark:border-slate-800 shadow-sm">
+                            {accounts.map((acc, i) => {
+                                const style = getCategoryStyle(acc.color);
+                                return (
+                                    <TouchableOpacity
+                                        key={acc.id}
+                                        onPress={() => handleEditAccount(acc)}
+                                        onLongPress={() => handleDeleteAccount(acc)}
+                                        activeOpacity={0.7}
+                                        className={`flex-row items-center gap-3 px-4 py-3.5 ${i < accounts.length - 1 ? 'border-b border-stone-50 dark:border-slate-800' : ''}`}
+                                    >
+                                        <View className={`h-9 w-9 rounded-xl items-center justify-center ${style.bg}`}>
+                                            <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={style.hex} />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="text-sm font-semibold text-stone-800 dark:text-white">{acc.name}</Text>
+                                            <Text className="text-xs text-stone-400">{ACCOUNT_TYPE_LABELS[acc.type] ?? acc.type}</Text>
+                                        </View>
+                                        <Text className="text-sm font-bold text-stone-800 dark:text-white">
+                                            {formatCurrency(acc.balance, acc.currency ?? 'UYU')}
+                                        </Text>
+                                        <MaterialIcons name="chevron-right" size={18} color="#d6d3d1" />
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    )}
+                </View>
+                </FadeIn>
+
+                {/* Tools */}
+                <FadeIn delay={150}>
+                <View className="px-5 pb-5">
+                    <Text className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-slate-500 mb-3">Herramientas</Text>
+                    <View className="bg-white/75 dark:bg-surface-dark rounded-2xl overflow-hidden border border-white/60 dark:border-slate-800 shadow-sm">
+                        <TouchableOpacity
+                            onPress={() => router.push('/recurring')}
+                            className="flex-row items-center gap-3 px-4 py-3.5 border-b border-stone-50 dark:border-slate-800"
+                        >
+                            <View className="h-9 w-9 rounded-xl bg-primary/10 items-center justify-center">
+                                <MaterialIcons name="repeat" size={18} color="#137fec" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-sm font-semibold text-stone-800 dark:text-white">Gastos Recurrentes</Text>
+                                <Text className="text-xs text-stone-400">Alquiler, servicios, suscripciones</Text>
+                            </View>
+                            <MaterialIcons name="chevron-right" size={18} color="#d6d3d1" />
                         </TouchableOpacity>
                         <TouchableOpacity
-                            onPress={() => { setActiveTab('accounts'); setEditing(false); }}
-                            className={`flex-1 py-1.5 rounded-lg ${activeTab === 'accounts' ? 'bg-white dark:bg-slate-700 shadow-sm' : ''}`}
+                            onPress={() => router.push('/planning')}
+                            className="flex-row items-center gap-3 px-4 py-3.5"
                         >
-                            <Text className={`text-center text-sm font-bold ${activeTab === 'accounts' ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-                                Cuentas
-                            </Text>
+                            <View className="h-9 w-9 rounded-xl bg-emerald-500/10 items-center justify-center">
+                                <MaterialIcons name="trending-up" size={18} color="#10b981" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-sm font-semibold text-stone-800 dark:text-white">Revision del Mes</Text>
+                                <Text className="text-xs text-stone-400">Analisis semanal y tendencias</Text>
+                            </View>
+                            <MaterialIcons name="chevron-right" size={18} color="#d6d3d1" />
                         </TouchableOpacity>
                     </View>
                 </View>
+                </FadeIn>
 
-                {/* ===== CATEGORIES TAB ===== */}
-                {activeTab === 'categories' && (
-                    <>
-                        {catsLoading && !refreshing && <ActivityIndicator color="#137fec" style={{ margin: 20 }} />}
+                {/* Categories */}
+                <FadeIn delay={250}>
+                <View className="px-5 pb-5">
+                    <View className="flex-row items-center justify-between mb-3">
+                        <Text className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-slate-500">
+                            Categorias de Gasto ({expenseCats.length})
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => router.push({ pathname: '/add-category', params: { type: 'expense' } })}
+                            className="flex-row items-center gap-1"
+                        >
+                            <MaterialIcons name="add" size={16} color="#137fec" />
+                            <Text className="text-xs font-bold text-primary">Nueva</Text>
+                        </TouchableOpacity>
+                    </View>
 
-                        {catsError && renderErrorState(catsError)}
-
-                        {!catsLoading && !catsError && (
-                            <>
-                                {/* Expense Categories */}
-                                <View className="mb-8">
-                                    <View className="flex-row items-center justify-between px-5 pb-2">
-                                        <Text className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                                            Categorías de Gastos ({expenseCats.length})
-                                        </Text>
-                                        <TouchableOpacity
-                                            onPress={() => router.push({ pathname: '/add-category', params: { type: 'expense' } })}
-                                            className="flex-row items-center gap-1"
-                                        >
-                                            <MaterialIcons name="add-circle" size={18} color="#137fec" />
-                                            <Text className="text-xs font-bold text-primary">AÑADIR</Text>
-                                        </TouchableOpacity>
-                                    </View>
-
-                                    {expenseCats.length === 0 ? (
-                                        renderEmptyState('No tenés categorías de gastos.\nCreá una para organizar tus movimientos.')
-                                    ) : (
-                                        <View className="bg-white dark:bg-surface-dark mx-5 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
-                                            {expenseCats.map((cat, i) => renderCategoryItem(cat, i, expenseCats))}
+                    {catsLoading && !refreshing ? (
+                        <SkeletonLoader.Card lines={4} />
+                    ) : expenseCats.length === 0 ? (
+                        <TouchableOpacity
+                            onPress={() => router.push({ pathname: '/add-category', params: { type: 'expense' } })}
+                            className="p-6 rounded-2xl border border-dashed border-stone-300 dark:border-slate-700 items-center"
+                        >
+                            <MaterialIcons name="category" size={24} color="#a8a29e" />
+                            <Text className="text-sm text-stone-400 mt-2">Crea tu primera categoria</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View className="bg-white/75 dark:bg-surface-dark rounded-2xl overflow-hidden border border-white/60 dark:border-slate-800 shadow-sm">
+                            {expenseCats.map((cat, i) => {
+                                const style = getCategoryStyle(cat.color);
+                                return (
+                                    <TouchableOpacity
+                                        key={cat.id}
+                                        onPress={() => handleEditCategory(cat)}
+                                        onLongPress={() => handleDeleteCategory(cat)}
+                                        activeOpacity={0.7}
+                                        className={`flex-row items-center gap-3 px-4 py-3 ${i < expenseCats.length - 1 ? 'border-b border-stone-50 dark:border-slate-800' : ''}`}
+                                    >
+                                        <View className={`h-8 w-8 rounded-lg items-center justify-center ${style.bg}`}>
+                                            <MaterialIcons name={cat.icon} size={16} color={style.hex} />
                                         </View>
-                                    )}
-                                </View>
+                                        <Text className="flex-1 text-sm font-medium text-stone-700 dark:text-white">{cat.name}</Text>
+                                        <MaterialIcons name="chevron-right" size={18} color="#d6d3d1" />
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    )}
+                </View>
+                </FadeIn>
 
-                                {/* Income Categories */}
-                                <View className="mb-8">
-                                    <View className="flex-row items-center justify-between px-5 pb-2">
-                                        <Text className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                                            Categorías de Ingresos ({incomeCats.length})
-                                        </Text>
-                                        <TouchableOpacity
-                                            onPress={() => router.push({ pathname: '/add-category', params: { type: 'income' } })}
-                                            className="flex-row items-center gap-1"
-                                        >
-                                            <MaterialIcons name="add-circle" size={18} color="#137fec" />
-                                            <Text className="text-xs font-bold text-primary">AÑADIR</Text>
-                                        </TouchableOpacity>
-                                    </View>
-
-                                    {incomeCats.length === 0 ? (
-                                        renderEmptyState('No tenés categorías de ingresos.\nCreá una para registrar lo que ganás.')
-                                    ) : (
-                                        <View className="bg-white dark:bg-surface-dark mx-5 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
-                                            {incomeCats.map((cat, i) => renderCategoryItem(cat, i, incomeCats))}
+                {/* Income categories */}
+                {incomeCats.length > 0 && (
+                    <View className="px-5 pb-5">
+                        <View className="flex-row items-center justify-between mb-3">
+                            <Text className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-slate-500">
+                                Categorias de Ingreso ({incomeCats.length})
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => router.push({ pathname: '/add-category', params: { type: 'income' } })}
+                                className="flex-row items-center gap-1"
+                            >
+                                <MaterialIcons name="add" size={16} color="#137fec" />
+                                <Text className="text-xs font-bold text-primary">Nueva</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View className="bg-white/75 dark:bg-surface-dark rounded-2xl overflow-hidden border border-white/60 dark:border-slate-800 shadow-sm">
+                            {incomeCats.map((cat, i) => {
+                                const style = getCategoryStyle(cat.color);
+                                return (
+                                    <TouchableOpacity
+                                        key={cat.id}
+                                        onPress={() => handleEditCategory(cat)}
+                                        onLongPress={() => handleDeleteCategory(cat)}
+                                        activeOpacity={0.7}
+                                        className={`flex-row items-center gap-3 px-4 py-3 ${i < incomeCats.length - 1 ? 'border-b border-stone-50 dark:border-slate-800' : ''}`}
+                                    >
+                                        <View className={`h-8 w-8 rounded-lg items-center justify-center ${style.bg}`}>
+                                            <MaterialIcons name={cat.icon} size={16} color={style.hex} />
                                         </View>
-                                    )}
-                                </View>
-                            </>
-                        )}
-                    </>
+                                        <Text className="flex-1 text-sm font-medium text-stone-700 dark:text-white">{cat.name}</Text>
+                                        <MaterialIcons name="chevron-right" size={18} color="#d6d3d1" />
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
                 )}
 
-                {/* ===== ACCOUNTS TAB ===== */}
-                {activeTab === 'accounts' && (
-                    <>
-                        {accsLoading && !refreshing && <ActivityIndicator color="#137fec" style={{ margin: 20 }} />}
-
-                        {accsError && renderErrorState('No se pudieron cargar las cuentas. Intentá de nuevo.')}
-
-                        {!accsLoading && !accsError && (
-                            <>
-                                {/* Balance Summary */}
-                                {accounts.length > 0 && (
-                                    <View className="mx-4 mb-6 bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 p-4">
-                                        <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Saldo total</Text>
-                                        <View className="flex-row items-center justify-between">
-                                            <View className="flex-row items-center gap-2">
-                                                <View className="h-8 w-8 rounded-full bg-primary/20 items-center justify-center">
-                                                    <MaterialIcons name="account-balance-wallet" size={16} color="#137fec" />
-                                                </View>
-                                                <Text className="text-xl font-extrabold text-slate-900 dark:text-white">
-                                                    {formatCurrency(accountsTotalUYU, 'UYU')}
-                                                </Text>
-                                            </View>
-                                            {accountsTotalUSD > 0 && (
-                                                <View className="flex-row items-center gap-2">
-                                                    <View className="h-8 w-8 rounded-full bg-emerald-500/20 items-center justify-center">
-                                                        <MaterialIcons name="attach-money" size={16} color="#10b981" />
-                                                    </View>
-                                                    <Text className="text-xl font-extrabold text-slate-900 dark:text-white">
-                                                        {formatCurrency(accountsTotalUSD, 'USD')}
-                                                    </Text>
-                                                </View>
-                                            )}
-                                        </View>
-                                    </View>
-                                )}
-
-                                {/* Account List */}
-                                <View className="mb-8">
-                                    <View className="flex-row items-center justify-between px-5 pb-2">
-                                        <Text className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                                            Mis Cuentas ({accounts.length})
-                                        </Text>
-                                        <TouchableOpacity
-                                            onPress={() => router.push('/add-account')}
-                                            className="flex-row items-center gap-1"
-                                        >
-                                            <MaterialIcons name="add-circle" size={18} color="#137fec" />
-                                            <Text className="text-xs font-bold text-primary">AÑADIR</Text>
-                                        </TouchableOpacity>
-                                    </View>
-
-                                    {accounts.length === 0 ? (
-                                        renderEmptyState('No tenés cuentas registradas.\nAgregá tus cuentas para un mejor seguimiento.')
-                                    ) : (
-                                        <View className="bg-white dark:bg-surface-dark mx-5 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/50">
-                                            {accounts.map((acc, i) => {
-                                                const style = getCategoryStyle(acc.color);
-                                                const accCurrency = acc.currency ?? 'UYU';
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={acc.id}
-                                                        onPress={() => handleEditAccount(acc)}
-                                                        activeOpacity={editing ? 1 : 0.7}
-                                                        className={`flex-row items-center gap-4 p-4 ${i < accounts.length - 1 ? 'border-b border-slate-100 dark:border-slate-800' : ''}`}
-                                                    >
-                                                        {editing && (
-                                                            <TouchableOpacity onPress={() => handleDeleteAccount(acc)} hitSlop={8}>
-                                                                <MaterialIcons name="remove-circle" size={22} color="#ef4444" />
-                                                            </TouchableOpacity>
-                                                        )}
-                                                        <View className={`h-10 w-10 rounded-full ${style.bgCircle} items-center justify-center`}>
-                                                            <MaterialIcons name={acc.icon} size={20} color={style.hex} />
-                                                        </View>
-                                                        <View className="flex-1">
-                                                            <Text className="font-semibold text-sm text-slate-900 dark:text-white">{acc.name}</Text>
-                                                            <Text className="text-xs text-slate-500">
-                                                                {ACCOUNT_TYPE_LABELS[acc.type] ?? acc.type}
-                                                            </Text>
-                                                        </View>
-                                                        <Text className="font-bold text-sm text-slate-900 dark:text-white">
-                                                            {formatCurrency(acc.balance, accCurrency)}
-                                                        </Text>
-                                                        {!editing && (
-                                                            <MaterialIcons name="chevron-right" size={20} color="#94a3b8" />
-                                                        )}
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
-                                        </View>
-                                    )}
-                                </View>
-                            </>
-                        )}
-                    </>
-                )}
+                {/* Profile & Preferences */}
+                <FadeIn delay={350}>
+                <View className="px-5 pb-5">
+                    <Text className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-slate-500 mb-3">Perfil</Text>
+                    <View className="bg-white/75 dark:bg-surface-dark rounded-2xl overflow-hidden border border-white/60 dark:border-slate-800 shadow-sm">
+                        <TouchableOpacity
+                            onPress={() => router.push('/profile')}
+                            className="flex-row items-center gap-3 px-4 py-3.5"
+                        >
+                            <View className="h-9 w-9 rounded-xl bg-frost dark:bg-slate-800 items-center justify-center">
+                                <MaterialIcons name="person" size={18} color="#64748b" />
+                            </View>
+                            <Text className="flex-1 text-sm font-semibold text-stone-800 dark:text-white">Mi Perfil</Text>
+                            <MaterialIcons name="chevron-right" size={18} color="#d6d3d1" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+                </FadeIn>
             </ScrollView>
-        </SafeAreaView>
+            {ToastComponent}
+        </FrostBackground>
     );
 }

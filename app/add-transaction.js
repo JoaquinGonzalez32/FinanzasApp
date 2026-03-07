@@ -1,13 +1,14 @@
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Pressable } from 'react-native';
 import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useMemo } from 'react';
+import { Button, SkeletonLoader } from '../components/ui';
 import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
 import { createTransaction, updateTransaction } from '../src/services/transactionsService';
 import { emitTransactionsChange } from '../src/lib/events';
-import { toDateISO, MONTHS_ES, getCurrencySymbol } from '../src/lib/helpers';
+import { toDateISO, MONTHS_ES, DAYS_ES, getCurrencySymbol } from '../src/lib/helpers';
 
 export default function AddTransactionScreen() {
     const router = useRouter();
@@ -28,6 +29,7 @@ export default function AddTransactionScreen() {
     const [note, setNote] = useState(params.editNote || '');
     const [submitting, setSubmitting] = useState(false);
     const [selectedDate, setSelectedDate] = useState(initialDate);
+    const [calendarExpanded, setCalendarExpanded] = useState(isEdit && initialDate !== todayStr);
 
     // Calendar state
     const [calYear, setCalYear] = useState(initialDateParts[0] || now.getFullYear());
@@ -75,12 +77,16 @@ export default function AddTransactionScreen() {
     const selYear = parseInt(selParts[0], 10);
     const isSelectedInView = selYear === calYear && selMonth === calMonth;
 
+    // Formatted date label
+    const selectedDateObj = new Date(selYear, selMonth - 1, selDay);
+    const isToday = selectedDate === todayStr;
+    const dateLabel = isToday
+        ? `Hoy, ${selDay} de ${MONTHS_ES[selMonth - 1]}`
+        : `${DAYS_ES[selectedDateObj.getDay()]}, ${selDay} de ${MONTHS_ES[selMonth - 1]}`;
+
     const handleConfirm = async () => {
         const numAmount = parseFloat(amount.replace(',', '.'));
-        if (!numAmount || numAmount <= 0) {
-            Alert.alert('Monto inválido', 'Ingresá un monto mayor a cero.');
-            return;
-        }
+        if (!numAmount || numAmount <= 0) return;
         setSubmitting(true);
         try {
             const payload = {
@@ -114,7 +120,7 @@ export default function AddTransactionScreen() {
                 <Pressable onPress={() => router.back()} style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 }}>
                     <MaterialIcons name="arrow-back-ios-new" size={20} color="#475569" />
                 </Pressable>
-                <Text className="text-base font-bold text-slate-900 dark:text-white">{isEdit ? 'Editar Transacción' : 'Nueva Transacción'}</Text>
+                <Text className="text-base font-bold text-stone-900 dark:text-white">{isEdit ? 'Editar Transaccion' : 'Nueva Transaccion'}</Text>
                 <View className="w-10" />
             </View>
 
@@ -122,14 +128,14 @@ export default function AddTransactionScreen() {
 
                 {/* Amount */}
                 <View className="px-6 pt-4 pb-6 items-center">
-                    <View className="w-full bg-slate-50 dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-700/50 px-5 py-5 items-center">
-                        <Text className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Monto</Text>
+                    <View className="w-full bg-stone-50 dark:bg-surface-dark rounded-2xl dark:border dark:border-slate-700/50 px-5 py-5 items-center">
+                        <Text className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-slate-500 mb-3">Monto</Text>
                         <View className="flex-row items-center justify-center">
-                            <Text className="text-3xl font-bold text-slate-400 dark:text-slate-300 mr-1">{getCurrencySymbol(accounts.find(a => a.id === selectedAccount)?.currency)}</Text>
+                            <Text className="text-3xl font-bold text-stone-400 dark:text-slate-300 mr-1">{getCurrencySymbol(accounts.find(a => a.id === selectedAccount)?.currency)}</Text>
                             <TextInput
-                                className="text-slate-900 dark:text-white text-[48px] font-extrabold leading-tight p-0 min-w-[80px] text-center"
+                                className="text-stone-900 dark:text-white text-[48px] font-extrabold leading-tight p-0 min-w-[80px] text-center"
                                 placeholder="0.00"
-                                placeholderTextColor="#cbd5e1"
+                                placeholderTextColor="#d6d3d1"
                                 value={amount}
                                 onChangeText={setAmount}
                                 keyboardType="decimal-pad"
@@ -141,27 +147,33 @@ export default function AddTransactionScreen() {
                 </View>
 
                 {/* Type Toggle */}
-                <View className="px-6 mb-8">
-                    <View className="flex-row h-12 w-full items-center justify-center rounded-xl bg-slate-100 dark:bg-input-dark p-1.5">
+                <View className="px-6 mb-6">
+                    <View className="flex-row h-12 w-full items-center justify-center rounded-xl bg-frost dark:bg-input-dark p-1.5">
                         <TouchableOpacity
                             onPress={() => { setType('expense'); setSelectedCategory(null); }}
                             className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'expense' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
                         >
-                            <Text className={`text-sm font-bold ${type === 'expense' ? 'text-primary' : 'text-slate-500'}`}>Gasto</Text>
+                            <Text className={`text-sm font-bold ${type === 'expense' ? 'text-red-500' : 'text-stone-500'}`}>Gasto</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => { setType('income'); setSelectedCategory(null); }}
                             className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'income' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
                         >
-                            <Text className={`text-sm font-bold ${type === 'income' ? 'text-primary' : 'text-slate-500'}`}>Ingreso</Text>
+                            <Text className={`text-sm font-bold ${type === 'income' ? 'text-emerald-500' : 'text-stone-500'}`}>Ingreso</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
 
                 {/* Category Grid */}
-                <View className="px-6 mb-8">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-4">Categoría</Text>
-                    {loadingCats && <ActivityIndicator color="#137fec" style={{ marginVertical: 10 }} />}
+                <View className="px-6 mb-6">
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Categoria</Text>
+                    {loadingCats && (
+                        <View className="flex-row flex-wrap gap-3">
+                            {Array.from({ length: 8 }).map((_, i) => (
+                                <SkeletonLoader.Pulse key={i} style={{ width: 56, height: 56, borderRadius: 16 }} />
+                            ))}
+                        </View>
+                    )}
                     <View className="flex-row flex-wrap justify-between">
                         {categories.map((cat) => {
                             const isActive = selectedCategory === cat.id;
@@ -175,17 +187,17 @@ export default function AddTransactionScreen() {
                                                 setSelectedAccount(cat.account_id);
                                             }
                                         }}
-                                        className={`h-14 w-14 rounded-2xl items-center justify-center ${isActive ? 'bg-primary shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-input-dark'}`}
+                                        className={`h-14 w-14 rounded-2xl items-center justify-center ${isActive ? 'bg-primary shadow-sm shadow-primary/20' : 'bg-frost dark:bg-input-dark'}`}
                                     >
                                         <MaterialIcons name={cat.icon} size={28} color={isActive ? 'white' : '#475569'} />
                                     </TouchableOpacity>
-                                    <Text className={`text-[11px] font-bold ${isActive ? 'text-primary' : 'text-slate-500'}`}>{cat.name}</Text>
+                                    <Text className={`text-xs font-semibold ${isActive ? 'text-primary' : 'text-stone-500'}`} numberOfLines={1}>{cat.name}</Text>
                                 </View>
                             );
                         })}
                         {!loadingCats && categories.length === 0 && (
-                            <Text className="text-slate-400 text-sm text-center py-2 w-full">
-                                Sin categorías. Crealas en Gestión.
+                            <Text className="text-stone-400 text-sm text-center py-2 w-full">
+                                Sin categorias. Crealas en Gestion.
                             </Text>
                         )}
                     </View>
@@ -193,8 +205,8 @@ export default function AddTransactionScreen() {
 
                 {/* Account */}
                 {accounts.length > 0 && (
-                    <View className="px-6 mb-8">
-                        <Text className="text-slate-900 dark:text-white text-base font-bold mb-4">Cuenta</Text>
+                    <View className="px-6 mb-6">
+                        <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Cuenta</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                             {accounts.map((acc) => {
                                 const isActive = selectedAccount === acc.id;
@@ -202,10 +214,10 @@ export default function AddTransactionScreen() {
                                     <TouchableOpacity
                                         key={acc.id}
                                         onPress={() => setSelectedAccount(isActive ? null : acc.id)}
-                                        className={`flex-row items-center gap-2 mr-3 px-4 py-3 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-input-dark'}`}
+                                        className={`flex-row items-center gap-2 mr-3 px-4 py-2.5 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-frost dark:bg-input-dark'}`}
                                     >
-                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={20} color={isActive ? '#137fec' : '#475569'} />
-                                        <Text className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>{acc.name}</Text>
+                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={isActive ? '#137fec' : '#475569'} />
+                                        <Text className={`text-sm font-semibold ${isActive ? 'text-primary' : 'text-stone-600 dark:text-slate-400'}`}>{acc.name}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -213,63 +225,89 @@ export default function AddTransactionScreen() {
                     </View>
                 )}
 
-                {/* Date Calendar */}
-                <View className="px-6 mb-8">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-4">Fecha</Text>
-                    <View className="bg-slate-50 dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-700/50 p-4">
-                        {/* Month navigation */}
-                        <View className="flex-row items-center justify-between mb-3">
-                            <TouchableOpacity onPress={prevMonth} className="p-1">
-                                <MaterialIcons name="chevron-left" size={22} color="#94a3b8" />
+                {/* Date — Collapsed by default */}
+                <View className="px-6 mb-6">
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Fecha</Text>
+
+                    {!calendarExpanded ? (
+                        <TouchableOpacity
+                            onPress={() => setCalendarExpanded(true)}
+                            className="flex-row items-center gap-3 bg-stone-50 dark:bg-surface-dark rounded-xl dark:border dark:border-slate-700/50 px-4 py-3.5"
+                        >
+                            <View className="h-9 w-9 rounded-lg bg-primary/10 items-center justify-center">
+                                <MaterialIcons name="calendar-today" size={18} color="#137fec" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-sm font-semibold text-stone-900 dark:text-white">{dateLabel}</Text>
+                                {isToday && <Text className="text-xs text-stone-400 mt-0.5">Toca para cambiar la fecha</Text>}
+                            </View>
+                            <MaterialIcons name="chevron-right" size={20} color="#a8a29e" />
+                        </TouchableOpacity>
+                    ) : (
+                        <View className="bg-stone-50 dark:bg-surface-dark rounded-2xl dark:border dark:border-slate-700/50 p-4">
+                            {/* Collapse button */}
+                            <TouchableOpacity
+                                onPress={() => setCalendarExpanded(false)}
+                                className="flex-row items-center justify-between mb-3"
+                            >
+                                <Text className="text-sm font-semibold text-primary">{dateLabel}</Text>
+                                <MaterialIcons name="keyboard-arrow-up" size={22} color="#137fec" />
                             </TouchableOpacity>
-                            <Text className="text-sm font-bold text-primary">{MONTHS_ES[calMonth - 1]} {calYear}</Text>
-                            <TouchableOpacity onPress={nextMonth} className="p-1">
-                                <MaterialIcons name="chevron-right" size={22} color="#94a3b8" />
-                            </TouchableOpacity>
+
+                            {/* Month navigation */}
+                            <View className="flex-row items-center justify-between mb-3">
+                                <TouchableOpacity onPress={prevMonth} className="p-1">
+                                    <MaterialIcons name="chevron-left" size={22} color="#a8a29e" />
+                                </TouchableOpacity>
+                                <Text className="text-sm font-bold text-stone-700 dark:text-slate-300">{MONTHS_ES[calMonth - 1]} {calYear}</Text>
+                                <TouchableOpacity onPress={nextMonth} className="p-1">
+                                    <MaterialIcons name="chevron-right" size={22} color="#a8a29e" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Day headers */}
+                            <View className="flex-row justify-between mb-1">
+                                {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'].map(d => (
+                                    <Text key={d} className="w-11 text-center text-xs font-semibold text-stone-400 uppercase">{d}</Text>
+                                ))}
+                            </View>
+
+                            {/* Grid */}
+                            <View className="flex-row flex-wrap justify-between">
+                                {prevDays.map(d => (
+                                    <View key={`p-${d}`} className="w-11 h-11 items-center justify-center opacity-25">
+                                        <Text className="text-xs dark:text-white">{d}</Text>
+                                    </View>
+                                ))}
+
+                                {currentDays.map(d => {
+                                    const isSelected = isSelectedInView && d === selDay;
+                                    const dayISO = `${calYear}-${String(calMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                                    const isDayToday = dayISO === todayStr;
+                                    return (
+                                        <TouchableOpacity key={d} onPress={() => selectDay(d)} className="w-11 h-11 items-center justify-center">
+                                            {isSelected && <View className="absolute inset-0 bg-primary rounded-lg" />}
+                                            {!isSelected && isDayToday && <View className="absolute inset-0 border border-primary/30 rounded-lg" />}
+                                            <Text className={`text-xs ${isSelected ? 'font-bold text-white' : isDayToday ? 'font-bold text-primary' : 'text-stone-700 dark:text-slate-300'}`}>{d}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+
+                                {Array.from({ length: padCells }, (_, i) => (
+                                    <View key={`e-${i}`} className="w-11 h-11" />
+                                ))}
+                            </View>
                         </View>
-
-                        {/* Day headers */}
-                        <View className="flex-row justify-between mb-1">
-                            {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'].map(d => (
-                                <Text key={d} className="w-11 text-center text-[10px] font-bold text-slate-400 uppercase">{d}</Text>
-                            ))}
-                        </View>
-
-                        {/* Grid */}
-                        <View className="flex-row flex-wrap justify-between">
-                            {prevDays.map(d => (
-                                <View key={`p-${d}`} className="w-11 h-11 items-center justify-center opacity-25">
-                                    <Text className="text-xs dark:text-white">{d}</Text>
-                                </View>
-                            ))}
-
-                            {currentDays.map(d => {
-                                const isSelected = isSelectedInView && d === selDay;
-                                const dayISO = `${calYear}-${String(calMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                                const isToday = dayISO === todayStr;
-                                return (
-                                    <TouchableOpacity key={d} onPress={() => selectDay(d)} className="w-11 h-11 items-center justify-center">
-                                        {isSelected && <View className="absolute inset-0 bg-primary rounded-lg" />}
-                                        {!isSelected && isToday && <View className="absolute inset-0 border border-primary/30 rounded-lg" />}
-                                        <Text className={`text-xs ${isSelected ? 'font-bold text-white' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-300'}`}>{d}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-
-                            {Array.from({ length: padCells }, (_, i) => (
-                                <View key={`e-${i}`} className="w-11 h-11" />
-                            ))}
-                        </View>
-                    </View>
+                    )}
                 </View>
 
                 {/* Note */}
-                <View className="px-6 mb-8">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Nota (opcional)</Text>
+                <View className="px-6 mb-6">
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Nota (opcional)</Text>
                     <TextInput
-                        className="w-full h-12 px-4 rounded-xl bg-slate-100 dark:bg-input-dark text-slate-900 dark:text-white text-sm"
-                        placeholder={type === 'expense' ? '¿En qué gastaste?' : '¿De dónde proviene?'}
-                        placeholderTextColor="#94a3b8"
+                        className="w-full h-12 px-4 rounded-xl bg-frost dark:bg-input-dark text-stone-900 dark:text-white text-sm font-medium"
+                        placeholder={type === 'expense' ? 'En que gastaste?' : 'De donde proviene?'}
+                        placeholderTextColor="#a8a29e"
                         value={note}
                         onChangeText={setNote}
                         maxLength={500}
@@ -278,22 +316,17 @@ export default function AddTransactionScreen() {
 
                 {/* Action Button */}
                 <View className="px-6 pt-2 pb-8">
-                    <TouchableOpacity
+                    <Button
+                        variant="primary"
+                        size="lg"
+                        icon="check-circle"
+                        fullWidth
+                        loading={submitting}
+                        disabled={!amount || submitting}
                         onPress={handleConfirm}
-                        disabled={submitting}
-                        className={`w-full bg-primary py-4 rounded-2xl shadow-xl shadow-primary/25 flex-row items-center justify-center gap-2 ${submitting ? 'opacity-50' : ''}`}
                     >
-                        {submitting ? (
-                            <ActivityIndicator color="white" />
-                        ) : (
-                            <>
-                                <MaterialIcons name="check-circle" size={24} color="white" />
-                                <Text className="text-white font-bold text-base">
-                                    {isEdit ? 'Guardar cambios' : `Confirmar ${type === 'expense' ? 'Gasto' : 'Ingreso'}`}
-                                </Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
+                        {isEdit ? 'Guardar cambios' : `Confirmar ${type === 'expense' ? 'Gasto' : 'Ingreso'}`}
+                    </Button>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>

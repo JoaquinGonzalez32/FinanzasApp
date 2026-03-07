@@ -109,26 +109,42 @@ export interface BudgetItemInsert {
   sort_order?: number;
 }
 
-export type AccountGoalType = "balance" | "category";
+export type GoalStatus = "active" | "completed" | "paused" | "cancelled";
 
-export interface AccountGoal {
+export interface SavingsGoal {
   id: string;
   user_id: string;
   account_id: string;
-  goal_type: AccountGoalType;
-  category_id: string | null;
+  name: string;
   target_amount: number;
-  target_date: string | null;
+  current_amount: number;
+  currency: AccountCurrency;
+  deadline: string | null;
+  status: GoalStatus;
+  icon: string;
+  color: string;
+  priority: number;
   created_at: string;
-  category?: Category;
 }
 
-export interface AccountGoalInsert {
+export interface SavingsGoalInsert {
   account_id: string;
-  goal_type: AccountGoalType;
-  category_id?: string | null;
+  name: string;
   target_amount: number;
-  target_date?: string | null;
+  currency?: AccountCurrency;
+  deadline?: string | null;
+  icon?: string;
+  color?: string;
+  priority?: number;
+}
+
+export interface GoalContribution {
+  id: string;
+  user_id: string;
+  goal_id: string;
+  amount: number;
+  note: string | null;
+  created_at: string;
 }
 
 export interface CategoryAssignment {

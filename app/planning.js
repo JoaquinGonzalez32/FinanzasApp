@@ -1,9 +1,10 @@
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Button, Card, ProgressBar, StatusBadge, SkeletonLoader, useToast } from '../components/ui';
 import { useBudget } from '../src/hooks/useBudget';
 import { useCategories } from '../src/hooks/useCategories';
 import { useTransactions } from '../src/hooks/useTransactions';
@@ -16,9 +17,9 @@ import { computeWeeklyReview } from '../src/lib/weeklyReview';
 const REVIEW_STATUS_CFG = {
     en_ritmo:    { label: 'En ritmo',   pillBg: 'bg-emerald-50 dark:bg-emerald-500/10', pillText: 'text-emerald-600', barColor: '#10b981' },
     en_riesgo:   { label: 'En riesgo',  pillBg: 'bg-amber-50 dark:bg-amber-500/10',     pillText: 'text-amber-600',   barColor: '#f59e0b' },
-    critica:     { label: 'Crítica',    pillBg: 'bg-red-50 dark:bg-red-500/10',         pillText: 'text-red-500',     barColor: '#ef4444' },
-    no_evaluable:{ label: 'Dato único', pillBg: 'bg-slate-100 dark:bg-slate-800',       pillText: 'text-slate-500',   barColor: '#94a3b8' },
-    sin_datos:   { label: 'Sin datos',  pillBg: 'bg-slate-100 dark:bg-slate-800',       pillText: 'text-slate-400',   barColor: '#94a3b8' },
+    critica:     { label: 'Critica',    pillBg: 'bg-red-50 dark:bg-red-500/10',         pillText: 'text-red-500',     barColor: '#ef4444' },
+    no_evaluable:{ label: 'Dato unico', pillBg: 'bg-frost dark:bg-slate-800',       pillText: 'text-stone-500',   barColor: '#a8a29e' },
+    sin_datos:   { label: 'Sin datos',  pillBg: 'bg-frost dark:bg-slate-800',       pillText: 'text-stone-400',   barColor: '#a8a29e' },
 };
 
 export default function PlanningScreen() {
@@ -26,6 +27,7 @@ export default function PlanningScreen() {
     const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
     const { budgetItems, loading } = useBudget(selectedMonth);
     const { categories: expenseCategories } = useCategories('expense');
+    const { show: showToast, ToastComponent } = useToast();
 
     const { year: txYear, month: txMonth } = parseMonth(selectedMonth);
     const { transactions } = useTransactions({ mode: 'month', year: txYear, month: txMonth });
@@ -33,7 +35,6 @@ export default function PlanningScreen() {
 
     const [selectedAccountId, setSelectedAccountId] = useState(null);
 
-    // Auto-select first account once loaded
     useEffect(() => {
         if (accounts.length > 0 && selectedAccountId === null) {
             setSelectedAccountId(accounts[0].id);
@@ -52,14 +53,12 @@ export default function PlanningScreen() {
         [transactions, selectedAccountId]
     );
 
-    // Local editable state
     const [items, setItems] = useState([]);
     const [removedIds, setRemovedIds] = useState([]);
     const [saving, setSaving] = useState(false);
     const [pickerVisible, setPickerVisible] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
 
-    // Sync DB items → local state (only when user has no unsaved edits)
     useEffect(() => {
         if (!loading && !isDirty) {
             setItems(budgetItems.map(b => ({
@@ -71,26 +70,22 @@ export default function PlanningScreen() {
         }
     }, [loading, budgetItems, isDirty]);
 
-    // Reset dirty flag and local state when month changes (unblocks sync for new month)
     useEffect(() => {
         setIsDirty(false);
         setItems([]);
         setRemovedIds([]);
     }, [selectedMonth]);
 
-    // Visible items: all items filtered by selected account
     const visibleItems = useMemo(
         () => items.filter(item => !item.account_id || item.account_id === selectedAccountId),
         [items, selectedAccountId]
     );
 
-    // Category IDs already assigned (from visible items)
     const assignedCategoryIds = useMemo(
         () => new Set(visibleItems.map(i => i.category_id)),
         [visibleItems]
     );
 
-    // Available categories (not yet assigned + matching or unlinked account)
     const availableCategories = useMemo(
         () => expenseCategories.filter(c =>
             !assignedCategoryIds.has(c.id) &&
@@ -151,11 +146,9 @@ export default function PlanningScreen() {
     const handleSave = useCallback(async () => {
         setSaving(true);
         try {
-            // Delete removed items
             for (const id of removedIds) {
                 await svc.deleteBudgetItem(id);
             }
-            // Create/update visible items
             for (let i = 0; i < visibleItems.length; i++) {
                 const item = visibleItems[i];
                 const amount = Number(item._fixedAmount) || 0;
@@ -183,8 +176,10 @@ export default function PlanningScreen() {
 
     if (loading) {
         return (
-            <View className="flex-1 bg-background-light dark:bg-background-dark items-center justify-center">
-                <ActivityIndicator size="large" color="#137fec" />
+            <View className="flex-1 bg-background-light dark:bg-background-dark px-5 pt-20">
+                <SkeletonLoader.Card lines={2} />
+                <View className="mt-4" />
+                <SkeletonLoader.Card lines={4} />
             </View>
         );
     }
@@ -192,35 +187,35 @@ export default function PlanningScreen() {
     return (
         <View className="flex-1 bg-background-light dark:bg-background-dark">
             {/* Header */}
-            <View className="px-4 pt-4 pb-4 bg-background-light/80 dark:bg-background-dark/80 border-b border-slate-200 dark:border-slate-800 z-10">
+            <View className="px-4 pt-4 pb-4 bg-background-light/80 dark:bg-background-dark/80 border-b border-white/40 dark:border-slate-800 z-10">
                 <SafeAreaView edges={['top']} className="flex-row items-center justify-between h-12">
-                    <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-full active:bg-slate-200 dark:active:bg-slate-800">
-                        <MaterialIcons name="arrow-back-ios-new" size={20} color="#475569" />
+                    <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-full bg-frost dark:bg-slate-800">
+                        <MaterialIcons name="arrow-back-ios-new" size={18} color="#475569" />
                     </TouchableOpacity>
-                    <Text className="text-lg font-bold text-slate-900 dark:text-white">Planificación</Text>
+                    <Text className="text-lg font-bold text-stone-900 dark:text-white">Planificacion</Text>
                     <TouchableOpacity
                         onPress={() => setPickerVisible(true)}
                         disabled={availableCategories.length === 0}
-                        className={`h-10 w-10 items-center justify-center rounded-full ${availableCategories.length > 0 ? 'bg-primary/10' : 'bg-slate-100 dark:bg-slate-800'}`}
+                        className={`h-10 w-10 items-center justify-center rounded-full ${availableCategories.length > 0 ? 'bg-primary/10' : 'bg-frost dark:bg-slate-800'}`}
                     >
-                        <MaterialIcons name="add" size={24} color={availableCategories.length > 0 ? '#137fec' : '#94a3b8'} />
+                        <MaterialIcons name="add" size={24} color={availableCategories.length > 0 ? '#137fec' : '#a8a29e'} />
                     </TouchableOpacity>
                 </SafeAreaView>
             </View>
 
             <ScrollView className="flex-1 px-5 py-6" keyboardShouldPersistTaps="handled">
-                <View className="space-y-6 pb-24">
+                <View className="gap-6 pb-24">
                     {/* Month selector */}
                     <View className="flex-row items-center justify-center gap-4">
-                        <TouchableOpacity onPress={() => setSelectedMonth(m => shiftMonth(m, -1))} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 active:bg-slate-200">
+                        <TouchableOpacity onPress={() => setSelectedMonth(m => shiftMonth(m, -1))} className="h-10 w-10 items-center justify-center rounded-full bg-frost dark:bg-slate-800">
                             <MaterialIcons name="chevron-left" size={24} color="#475569" />
                         </TouchableOpacity>
-                        <Text className="text-base font-bold text-slate-900 dark:text-white min-w-[160px] text-center">
+                        <Text className="text-base font-bold text-stone-900 dark:text-white min-w-[160px] text-center">
                             {monthLabel(selectedMonth)}
                         </Text>
                         <TouchableOpacity
                             onPress={() => setSelectedMonth(m => shiftMonth(m, 1))}
-                            className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 active:bg-slate-200"
+                            className="h-10 w-10 items-center justify-center rounded-full bg-frost dark:bg-slate-800"
                         >
                             <MaterialIcons name="chevron-right" size={24} color="#475569" />
                         </TouchableOpacity>
@@ -235,47 +230,47 @@ export default function PlanningScreen() {
                                     <TouchableOpacity
                                         key={acc.id}
                                         onPress={() => setSelectedAccountId(acc.id)}
-                                        className={`flex-row items-center gap-2 mr-3 px-4 py-3 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-input-dark'}`}
+                                        className={`flex-row items-center gap-2 mr-3 px-4 py-2.5 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-frost dark:bg-input-dark'}`}
                                     >
-                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={20} color={isActive ? '#137fec' : '#475569'} />
-                                        <Text className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>{acc.name}</Text>
+                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={isActive ? '#137fec' : '#475569'} />
+                                        <Text className={`text-sm font-semibold ${isActive ? 'text-primary' : 'text-stone-600 dark:text-slate-400'}`}>{acc.name}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
                         </ScrollView>
                     )}
 
-                    {/* Items list */}
+                    {/* Empty state */}
                     {visibleItems.length === 0 && (
                         <View className="items-center py-12">
-                            <MaterialIcons name="pie-chart-outline" size={48} color="#94a3b8" />
-                            <Text className="text-slate-400 text-base font-medium mt-4">Sin distribución configurada</Text>
-                            <TouchableOpacity onPress={() => setPickerVisible(true)} className="mt-4 bg-primary/10 px-5 py-2 rounded-full">
-                                <Text className="text-primary font-bold text-sm">Agregar categoría</Text>
+                            <View className="h-16 w-16 rounded-2xl bg-frost dark:bg-input-dark items-center justify-center mb-4">
+                                <MaterialIcons name="pie-chart-outline" size={32} color="#a8a29e" />
+                            </View>
+                            <Text className="text-stone-500 text-base font-medium">Sin distribucion configurada</Text>
+                            <TouchableOpacity onPress={() => setPickerVisible(true)} className="mt-4">
+                                <Button variant="ghost" icon="add-circle-outline" onPress={() => setPickerVisible(true)}>
+                                    Agregar categoria
+                                </Button>
                             </TouchableOpacity>
                         </View>
                     )}
 
-                    <View className="space-y-4">
+                    {/* Items */}
+                    <View className="gap-3">
                         {visibleItems.map((item, idx) => {
                             const cat = item.category;
                             const style = getCategoryStyle(cat?.color);
                             return (
-                                <View key={item.id || `local-${idx}`} className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+                                <Card key={item.id || `local-${idx}`} variant="outlined">
                                     <View className="flex-row items-center gap-3">
-                                        {/* Icon */}
                                         <View className={`h-10 w-10 rounded-xl items-center justify-center ${style.bg}`}>
                                             <MaterialIcons name={cat?.icon || 'category'} size={22} color={style.hex} />
                                         </View>
-
-                                        {/* Name */}
-                                        <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white" numberOfLines={1}>
-                                            {cat?.name || 'Sin categoría'}
+                                        <Text className="flex-1 text-sm font-bold text-stone-900 dark:text-white" numberOfLines={1}>
+                                            {cat?.name || 'Sin categoria'}
                                         </Text>
-
-                                        {/* Value input */}
                                         <View className="flex-row items-center">
-                                            <Text className="text-slate-400 font-bold text-base mr-1">{getCurrencySymbol(selectedCurrency)}</Text>
+                                            <Text className="text-stone-400 font-bold text-base mr-1">{getCurrencySymbol(selectedCurrency)}</Text>
                                             <TextInput
                                                 value={item._fixedAmount ?? ''}
                                                 onChangeText={(v) => {
@@ -284,31 +279,29 @@ export default function PlanningScreen() {
                                                 }}
                                                 keyboardType="numeric"
                                                 maxLength={15}
-                                                className="w-24 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg text-center text-base font-bold text-slate-900 dark:text-white"
+                                                className="w-24 h-10 bg-frost dark:bg-slate-800 rounded-lg text-center text-base font-bold text-stone-900 dark:text-white"
                                             />
                                         </View>
-
-                                        {/* Delete */}
-                                        <TouchableOpacity onPress={() => removeItem(idx)} className="h-8 w-8 items-center justify-center rounded-full active:bg-red-100 dark:active:bg-red-500/20 ml-1">
+                                        <TouchableOpacity onPress={() => removeItem(idx)} className="h-8 w-8 items-center justify-center rounded-full bg-red-50 dark:bg-red-500/10 ml-1">
                                             <MaterialIcons name="close" size={18} color="#ef4444" />
                                         </TouchableOpacity>
                                     </View>
-                                </View>
+                                </Card>
                             );
                         })}
                     </View>
 
                     {/* Total bar */}
                     {visibleItems.length > 0 && (
-                        <View className={`rounded-2xl p-6 border ${monthIncome > 0 && totalAmount <= monthIncome ? 'bg-primary/5 dark:bg-primary/10 border-primary/20' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-300/30'}`}>
+                        <Card variant="outlined" className={monthIncome > 0 && totalAmount <= monthIncome ? 'bg-primary/5 dark:bg-primary/10 border-primary/20' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-300/30'}>
                             <View className="flex-row justify-between items-end mb-4">
                                 <View>
-                                    <Text className={`text-xs font-bold uppercase ${monthIncome > 0 && totalAmount <= monthIncome ? 'text-primary' : 'text-amber-600'}`}>Total Asignado</Text>
+                                    <Text className={`text-xs font-semibold uppercase ${monthIncome > 0 && totalAmount <= monthIncome ? 'text-primary' : 'text-amber-600'}`}>Total Asignado</Text>
                                     <Text className={`text-3xl font-extrabold ${monthIncome > 0 && totalAmount <= monthIncome ? 'text-primary' : 'text-amber-600'}`}>{formatCurrency(totalAmount, selectedCurrency)}</Text>
                                 </View>
                                 {monthIncome > 0 && (
                                     <View className="items-end">
-                                        <Text className="text-xs font-semibold text-slate-400">
+                                        <Text className="text-xs font-semibold text-stone-400">
                                             de {formatCurrency(monthIncome, selectedCurrency)}
                                         </Text>
                                         <Text className={`text-xs font-bold ${totalAmount > monthIncome ? 'text-amber-600' : 'text-emerald-500'}`}>
@@ -318,7 +311,7 @@ export default function PlanningScreen() {
                                 )}
                             </View>
                             {monthIncome > 0 && (
-                                <View className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex-row">
+                                <View className="h-3 w-full bg-stone-200 dark:bg-slate-700 rounded-full overflow-hidden flex-row">
                                     {visibleItems.map((item, idx) => {
                                         const style = getCategoryStyle(item.category?.color);
                                         const amt = Number(item._fixedAmount) || 0;
@@ -334,33 +327,26 @@ export default function PlanningScreen() {
                                     })}
                                 </View>
                             )}
-                        </View>
+                        </Card>
                     )}
-                    {/* Revisión semanal */}
-                    {weeklyReview && weeklyReview.items.some(i => i.status !== 'sin_datos') && (
-                        <View className="space-y-3">
-                            <Text className="text-base font-bold text-slate-900 dark:text-white">Revisión semanal</Text>
 
-                            {/* Summary pills */}
+                    {/* Weekly review */}
+                    {weeklyReview && weeklyReview.items.some(i => i.status !== 'sin_datos') && (
+                        <View className="gap-3">
+                            <Text className="text-sm font-bold text-stone-900 dark:text-white">Revision semanal</Text>
+
                             <View className="flex-row flex-wrap gap-2">
                                 {weeklyReview.enRitmoCount > 0 && (
-                                    <View className="bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-full">
-                                        <Text className="text-emerald-600 text-xs font-bold">{weeklyReview.enRitmoCount} en ritmo</Text>
-                                    </View>
+                                    <StatusBadge status="optimal" label={`${weeklyReview.enRitmoCount} en ritmo`} />
                                 )}
                                 {weeklyReview.enRiesgoCount > 0 && (
-                                    <View className="bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 rounded-full">
-                                        <Text className="text-amber-600 text-xs font-bold">{weeklyReview.enRiesgoCount} en riesgo</Text>
-                                    </View>
+                                    <StatusBadge status="warning" label={`${weeklyReview.enRiesgoCount} en riesgo`} />
                                 )}
                                 {weeklyReview.criticaCount > 0 && (
-                                    <View className="bg-red-50 dark:bg-red-500/10 px-3 py-1.5 rounded-full">
-                                        <Text className="text-red-500 text-xs font-bold">{weeklyReview.criticaCount} crítica{weeklyReview.criticaCount !== 1 ? 's' : ''}</Text>
-                                    </View>
+                                    <StatusBadge status="critical" label={`${weeklyReview.criticaCount} critica${weeklyReview.criticaCount !== 1 ? 's' : ''}`} />
                                 )}
                             </View>
 
-                            {/* Category cards */}
                             {weeklyReview.items
                                 .filter(item => item.status !== 'sin_datos')
                                 .map(item => {
@@ -368,13 +354,12 @@ export default function PlanningScreen() {
                                     const cfg = REVIEW_STATUS_CFG[item.status] ?? REVIEW_STATUS_CFG.en_ritmo;
                                     const spentPct = item.planned > 0 ? Math.min((item.spent / item.planned) * 100, 100) : 0;
                                     return (
-                                        <View key={item.categoryId} className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-                                            {/* Header row */}
+                                        <Card key={item.categoryId} variant="outlined">
                                             <View className="flex-row items-center gap-3 mb-3">
                                                 <View className={`h-8 w-8 rounded-lg items-center justify-center ${catStyle.bg}`}>
                                                     <MaterialIcons name={item.category.icon || 'category'} size={18} color={catStyle.hex} />
                                                 </View>
-                                                <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white" numberOfLines={1}>
+                                                <Text className="flex-1 text-sm font-bold text-stone-900 dark:text-white" numberOfLines={1}>
                                                     {item.category.name}
                                                 </Text>
                                                 <View className={`px-2.5 py-1 rounded-full ${cfg.pillBg}`}>
@@ -383,32 +368,36 @@ export default function PlanningScreen() {
                                             </View>
 
                                             {item.status === 'no_evaluable' ? (
-                                                <Text className="text-xs text-slate-400">Solo 1 transacción — tendencia no evaluable</Text>
+                                                <Text className="text-xs text-stone-400">Solo 1 transaccion - tendencia no evaluable</Text>
                                             ) : (
-                                                <View className="space-y-1.5">
+                                                <View className="gap-1.5">
                                                     <View className="flex-row justify-between">
-                                                        <Text className="text-xs text-slate-400">Presupuesto</Text>
-                                                        <Text className="text-xs font-bold text-slate-600 dark:text-slate-300">{formatCurrency(item.planned, selectedCurrency)}</Text>
+                                                        <Text className="text-xs text-stone-400">Presupuesto</Text>
+                                                        <Text className="text-xs font-bold text-stone-600 dark:text-slate-300">{formatCurrency(item.planned, selectedCurrency)}</Text>
                                                     </View>
                                                     <View className="flex-row justify-between">
-                                                        <Text className="text-xs text-slate-400">Proyección al cierre</Text>
+                                                        <Text className="text-xs text-stone-400">Proyeccion al cierre</Text>
                                                         <Text className={`text-xs font-bold ${item.difference > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
                                                             {formatCurrency(item.projection, selectedCurrency)}
                                                         </Text>
                                                     </View>
                                                     <View className="flex-row justify-between">
-                                                        <Text className="text-xs text-slate-400">{item.difference > 0 ? 'Excedente est.' : 'Ahorro est.'}</Text>
+                                                        <Text className="text-xs text-stone-400">{item.difference > 0 ? 'Excedente est.' : 'Ahorro est.'}</Text>
                                                         <Text className={`text-xs font-bold ${item.difference > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
                                                             {item.difference > 0 ? '+' : '-'}{formatCurrency(item.difference, selectedCurrency)}
                                                         </Text>
                                                     </View>
-                                                    <View className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mt-1">
-                                                        <View style={{ width: `${spentPct}%`, backgroundColor: cfg.barColor }} className="h-full rounded-full" />
-                                                    </View>
-                                                    <Text className="text-[10px] text-slate-400">Gastado {formatCurrency(item.spent, selectedCurrency)} · Día {item.daysElapsed}/{item.daysInMonth}</Text>
+                                                    <ProgressBar
+                                                        current={item.spent}
+                                                        total={item.planned}
+                                                        height="h-1.5"
+                                                        color={cfg.barColor}
+                                                        className="mt-1"
+                                                    />
+                                                    <Text className="text-xs text-stone-400">Gastado {formatCurrency(item.spent, selectedCurrency)} · Dia {item.daysElapsed}/{item.daysInMonth}</Text>
                                                 </View>
                                             )}
-                                        </View>
+                                        </Card>
                                     );
                                 })
                             }
@@ -419,19 +408,17 @@ export default function PlanningScreen() {
 
             {/* Footer */}
             {visibleItems.length > 0 && (
-                <View className="p-6 bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-slate-800">
+                <View className="p-5 bg-background-light dark:bg-background-dark border-t border-white/40 dark:border-slate-800">
                     <SafeAreaView edges={['bottom']}>
-                        <TouchableOpacity
+                        <Button
+                            variant="primary"
+                            size="lg"
+                            fullWidth
+                            loading={saving}
                             onPress={handleSave}
-                            disabled={saving}
-                            className={`w-full py-4 rounded-xl shadow-lg shadow-primary/20 active:scale-95 ${saving ? 'bg-primary/60' : 'bg-primary'}`}
                         >
-                            {saving ? (
-                                <ActivityIndicator color="white" />
-                            ) : (
-                                <Text className="text-white font-bold text-center text-lg">Guardar Plan</Text>
-                            )}
-                        </TouchableOpacity>
+                            Guardar Plan
+                        </Button>
                     </SafeAreaView>
                 </View>
             )}
@@ -441,8 +428,8 @@ export default function PlanningScreen() {
                 <View className="flex-1 bg-black/50 justify-end">
                     <View className="bg-background-light dark:bg-background-dark rounded-t-3xl max-h-[70%]">
                         <View className="flex-row items-center justify-between px-5 pt-5 pb-3">
-                            <Text className="text-lg font-bold text-slate-900 dark:text-white">Seleccionar categoría</Text>
-                            <TouchableOpacity onPress={() => setPickerVisible(false)} className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                            <Text className="text-lg font-bold text-stone-900 dark:text-white">Seleccionar categoria</Text>
+                            <TouchableOpacity onPress={() => setPickerVisible(false)} className="h-8 w-8 items-center justify-center rounded-full bg-frost dark:bg-slate-800">
                                 <MaterialIcons name="close" size={20} color="#64748b" />
                             </TouchableOpacity>
                         </View>
@@ -451,23 +438,23 @@ export default function PlanningScreen() {
                             {availableCategories.length === 0 ? (
                                 <View className="items-center py-8">
                                     <MaterialIcons name="check-circle" size={40} color="#10b981" />
-                                    <Text className="text-slate-400 text-sm font-medium mt-3">Todas las categorías ya están asignadas</Text>
+                                    <Text className="text-stone-400 text-sm font-medium mt-3">Todas las categorias ya estan asignadas</Text>
                                 </View>
                             ) : (
-                                <View className="space-y-2 pb-8">
+                                <View className="gap-2 pb-8">
                                     {availableCategories.map(cat => {
                                         const style = getCategoryStyle(cat.color);
                                         return (
                                             <TouchableOpacity
                                                 key={cat.id}
                                                 onPress={() => addCategory(cat)}
-                                                className="flex-row items-center gap-3 p-4 bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 active:bg-slate-50 dark:active:bg-slate-800"
+                                                className="flex-row items-center gap-3 p-4 bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md"
                                             >
                                                 <View className={`h-10 w-10 rounded-xl items-center justify-center ${style.bg}`}>
                                                     <MaterialIcons name={cat.icon} size={22} color={style.hex} />
                                                 </View>
-                                                <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white">{cat.name}</Text>
-                                                <MaterialIcons name="add-circle-outline" size={22} color="#94a3b8" />
+                                                <Text className="flex-1 text-sm font-bold text-stone-900 dark:text-white">{cat.name}</Text>
+                                                <MaterialIcons name="add-circle-outline" size={22} color="#a8a29e" />
                                             </TouchableOpacity>
                                         );
                                     })}
@@ -478,6 +465,8 @@ export default function PlanningScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {ToastComponent}
         </View>
     );
 }

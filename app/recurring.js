@@ -132,18 +132,18 @@ export default function RecurringScreen() {
     return (
         <View className="flex-1 bg-background-light dark:bg-background-dark">
             {/* Header */}
-            <View className="px-4 pt-4 pb-4 bg-background-light/80 dark:bg-background-dark/80 border-b border-slate-200 dark:border-slate-800 z-10">
+            <View className="px-4 pt-4 pb-4 bg-background-light/80 dark:bg-background-dark/80 border-b border-white/40 dark:border-slate-800 z-10">
                 <SafeAreaView edges={['top']} className="flex-row items-center justify-between h-12">
-                    <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-full active:bg-slate-200 dark:active:bg-slate-800">
+                    <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200 dark:active:bg-slate-800">
                         <MaterialIcons name="arrow-back-ios-new" size={20} color="#475569" />
                     </TouchableOpacity>
-                    <Text className="text-lg font-bold text-slate-900 dark:text-white">Gastos Recurrentes</Text>
+                    <Text className="text-lg font-bold text-stone-900 dark:text-white">Gastos Recurrentes</Text>
                     <TouchableOpacity
                         onPress={() => setAddVisible(true)}
                         disabled={availableCats.length === 0}
-                        className={`h-10 w-10 items-center justify-center rounded-full ${availableCats.length > 0 ? 'bg-primary/10' : 'bg-slate-100 dark:bg-slate-800'}`}
+                        className={`h-10 w-10 items-center justify-center rounded-full ${availableCats.length > 0 ? 'bg-primary/10' : 'bg-frost dark:bg-slate-800'}`}
                     >
-                        <MaterialIcons name="add" size={24} color={availableCats.length > 0 ? '#137fec' : '#94a3b8'} />
+                        <MaterialIcons name="add" size={24} color={availableCats.length > 0 ? '#137fec' : '#a8a29e'} />
                     </TouchableOpacity>
                 </SafeAreaView>
             </View>
@@ -155,7 +155,7 @@ export default function RecurringScreen() {
                     {pendingItems.length > 0 && (
                         <View className="space-y-3">
                             <View className="flex-row items-center justify-between">
-                                <Text className="text-base font-bold text-slate-900 dark:text-white">Pendiente este mes</Text>
+                                <Text className="text-base font-bold text-stone-900 dark:text-white">Pendiente este mes</Text>
                                 <View className="bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 rounded-full">
                                     <Text className="text-amber-600 text-xs font-bold">
                                         {pendingItems.length} pendiente{pendingItems.length !== 1 ? 's' : ''}
@@ -163,32 +163,32 @@ export default function RecurringScreen() {
                                 </View>
                             </View>
 
-                            <View className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                            <View className="bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md overflow-hidden">
                                 {pendingItems.map((item, idx) => {
                                     const cat = item.recurring.category;
                                     const style = getCategoryStyle(cat?.color);
                                     return (
                                         <View
                                             key={item.recurring.id}
-                                            className={`flex-row items-center gap-3 px-4 py-3 ${idx < pendingItems.length - 1 ? 'border-b border-slate-100 dark:border-slate-800' : ''}`}
+                                            className={`flex-row items-center gap-3 px-4 py-3 ${idx < pendingItems.length - 1 ? 'border-b border-stone-100 dark:border-slate-800' : ''}`}
                                         >
                                             <View className={`h-9 w-9 rounded-xl items-center justify-center ${style.bg}`}>
                                                 <MaterialIcons name={cat?.icon || 'category'} size={18} color={style.hex} />
                                             </View>
                                             <View className="flex-1">
-                                                <Text className="text-sm font-bold text-slate-900 dark:text-white" numberOfLines={1}>
+                                                <Text className="text-sm font-bold text-stone-900 dark:text-white" numberOfLines={1}>
                                                     {cat?.name ?? 'Sin categoría'}
                                                 </Text>
-                                                <Text className="text-xs text-slate-400">Día {item.recurring.day_of_month}</Text>
+                                                <Text className="text-xs text-stone-400">Día {item.recurring.day_of_month}</Text>
                                             </View>
                                             <View className="flex-row items-center">
-                                                <Text className="text-slate-400 font-bold text-sm mr-1">{getCurrencySymbol(accCurrencyMap[item.recurring.account_id])}</Text>
+                                                <Text className="text-stone-400 font-bold text-sm mr-1">{getCurrencySymbol(accCurrencyMap[item.recurring.account_id])}</Text>
                                                 <TextInput
                                                     value={item.editAmount}
                                                     onChangeText={v => handleUpdateAmount(idx, v)}
                                                     keyboardType="numeric"
                                                     maxLength={15}
-                                                    className="w-24 h-9 bg-slate-100 dark:bg-slate-800 rounded-lg text-center text-sm font-bold text-slate-900 dark:text-white"
+                                                    className="w-24 h-9 bg-frost dark:bg-slate-800 rounded-lg text-center text-sm font-bold text-stone-900 dark:text-white"
                                                 />
                                             </View>
                                         </View>
@@ -199,7 +199,7 @@ export default function RecurringScreen() {
                             <TouchableOpacity
                                 onPress={handleConfirmAll}
                                 disabled={confirming}
-                                className={`w-full py-4 rounded-xl shadow-lg shadow-primary/20 active:scale-95 ${confirming ? 'bg-primary/60' : 'bg-primary'}`}
+                                className={`w-full py-4 rounded-xl shadow-sm shadow-primary/20 active:scale-95 ${confirming ? 'bg-primary/60' : 'bg-primary'}`}
                             >
                                 {confirming
                                     ? <ActivityIndicator color="white" />
@@ -211,7 +211,7 @@ export default function RecurringScreen() {
 
                     {/* ── All templates ── */}
                     <View className="space-y-3">
-                        <Text className="text-base font-bold text-slate-900 dark:text-white">Mis Plantillas</Text>
+                        <Text className="text-base font-bold text-stone-900 dark:text-white">Mis Plantillas</Text>
 
                         {error && (
                             <View className="bg-red-50 dark:bg-red-500/10 rounded-xl p-4 border border-red-200 dark:border-red-900/30">
@@ -221,15 +221,15 @@ export default function RecurringScreen() {
 
                         {templates.length === 0 ? (
                             <View className="items-center py-12">
-                                <MaterialIcons name="repeat" size={48} color="#94a3b8" />
-                                <Text className="text-slate-400 text-base font-medium mt-4 text-center">Sin gastos recurrentes</Text>
-                                <Text className="text-slate-400 text-sm text-center mt-1">Alquiler, servicios, suscripciones...</Text>
+                                <MaterialIcons name="repeat" size={48} color="#a8a29e" />
+                                <Text className="text-stone-400 text-base font-medium mt-4 text-center">Sin gastos recurrentes</Text>
+                                <Text className="text-stone-400 text-sm text-center mt-1">Alquiler, servicios, suscripciones...</Text>
                                 <TouchableOpacity onPress={() => setAddVisible(true)} className="mt-5 bg-primary/10 px-5 py-2.5 rounded-full">
                                     <Text className="text-primary font-bold text-sm">Agregar plantilla</Text>
                                 </TouchableOpacity>
                             </View>
                         ) : (
-                            <View className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                            <View className="bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md overflow-hidden">
                                 {templates.map((item, idx) => {
                                     const cat = item.category;
                                     const style = getCategoryStyle(cat?.color);
@@ -237,16 +237,16 @@ export default function RecurringScreen() {
                                     return (
                                         <View
                                             key={item.id}
-                                            className={`flex-row items-center gap-3 px-4 py-4 ${idx < templates.length - 1 ? 'border-b border-slate-100 dark:border-slate-800' : ''}`}
+                                            className={`flex-row items-center gap-3 px-4 py-4 ${idx < templates.length - 1 ? 'border-b border-stone-100 dark:border-slate-800' : ''}`}
                                         >
                                             <View className={`h-10 w-10 rounded-xl items-center justify-center ${style.bg}`}>
                                                 <MaterialIcons name={cat?.icon || 'category'} size={20} color={style.hex} />
                                             </View>
                                             <View className="flex-1">
-                                                <Text className="text-sm font-bold text-slate-900 dark:text-white" numberOfLines={1}>
+                                                <Text className="text-sm font-bold text-stone-900 dark:text-white" numberOfLines={1}>
                                                     {cat?.name ?? 'Sin categoría'}
                                                 </Text>
-                                                <Text className="text-xs text-slate-400">
+                                                <Text className="text-xs text-stone-400">
                                                     Día {item.day_of_month} · {formatCurrency(item.amount, accCurrencyMap[item.account_id])}
                                                 </Text>
                                             </View>
@@ -278,11 +278,11 @@ export default function RecurringScreen() {
             <Modal visible={addVisible} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
                     <View className="bg-background-light dark:bg-background-dark rounded-t-3xl">
-                        <View className="flex-row items-center justify-between px-5 pt-5 pb-4 border-b border-slate-200 dark:border-slate-800">
-                            <Text className="text-base font-bold text-slate-900 dark:text-white">Nueva plantilla</Text>
+                        <View className="flex-row items-center justify-between px-5 pt-5 pb-4 border-b border-white/40 dark:border-slate-800">
+                            <Text className="text-base font-bold text-stone-900 dark:text-white">Nueva plantilla</Text>
                             <TouchableOpacity
                                 onPress={() => { setAddVisible(false); resetAddForm(); }}
-                                className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
+                                className="h-8 w-8 items-center justify-center rounded-full bg-frost dark:bg-slate-800"
                             >
                                 <MaterialIcons name="close" size={20} color="#64748b" />
                             </TouchableOpacity>
@@ -293,68 +293,68 @@ export default function RecurringScreen() {
 
                                 {/* Category picker */}
                                 <View>
-                                    <Text className="text-xs font-bold text-slate-500 uppercase mb-2">Categoría</Text>
+                                    <Text className="text-xs font-bold text-stone-500 uppercase mb-2">Categoría</Text>
                                     <TouchableOpacity
                                         onPress={() => setCatPickerVisible(true)}
-                                        className="flex-row items-center gap-3 p-4 bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800"
+                                        className="flex-row items-center gap-3 p-4 bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md"
                                     >
                                         {newCategory ? (
                                             <>
                                                 <View className={`h-9 w-9 rounded-xl items-center justify-center ${getCategoryStyle(newCategory.color).bg}`}>
                                                     <MaterialIcons name={newCategory.icon} size={20} color={getCategoryStyle(newCategory.color).hex} />
                                                 </View>
-                                                <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white">{newCategory.name}</Text>
+                                                <Text className="flex-1 text-sm font-bold text-stone-900 dark:text-white">{newCategory.name}</Text>
                                             </>
                                         ) : (
                                             <>
-                                                <View className="h-9 w-9 rounded-xl items-center justify-center bg-slate-100 dark:bg-slate-800">
-                                                    <MaterialIcons name="category" size={20} color="#94a3b8" />
+                                                <View className="h-9 w-9 rounded-xl items-center justify-center bg-frost dark:bg-slate-800">
+                                                    <MaterialIcons name="category" size={20} color="#a8a29e" />
                                                 </View>
-                                                <Text className="flex-1 text-sm text-slate-400">Seleccionar categoría</Text>
+                                                <Text className="flex-1 text-sm text-stone-400">Seleccionar categoría</Text>
                                             </>
                                         )}
-                                        <MaterialIcons name="chevron-right" size={20} color="#94a3b8" />
+                                        <MaterialIcons name="chevron-right" size={20} color="#a8a29e" />
                                     </TouchableOpacity>
                                 </View>
 
                                 {/* Amount + Day row */}
                                 <View className="flex-row gap-3">
                                     <View className="flex-1">
-                                        <Text className="text-xs font-bold text-slate-500 uppercase mb-2">Monto</Text>
-                                        <View className="flex-row items-center bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 px-4 h-14">
-                                            <Text className="text-slate-400 font-bold mr-1">{getCurrencySymbol(accCurrencyMap[newAccountId])}</Text>
+                                        <Text className="text-xs font-bold text-stone-500 uppercase mb-2">Monto</Text>
+                                        <View className="flex-row items-center bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md px-4 h-14">
+                                            <Text className="text-stone-400 font-bold mr-1">{getCurrencySymbol(accCurrencyMap[newAccountId])}</Text>
                                             <TextInput
                                                 value={newAmount}
                                                 onChangeText={v => setNewAmount(v.replace(/[^0-9]/g, ''))}
                                                 keyboardType="numeric"
                                                 placeholder="0"
-                                                placeholderTextColor="#94a3b8"
+                                                placeholderTextColor="#a8a29e"
                                                 maxLength={15}
-                                                className="flex-1 text-base font-bold text-slate-900 dark:text-white"
+                                                className="flex-1 text-base font-bold text-stone-900 dark:text-white"
                                             />
                                         </View>
                                     </View>
                                     <View style={{ width: 120 }}>
-                                        <Text className="text-xs font-bold text-slate-500 uppercase mb-2">Día del mes</Text>
-                                        <View className="flex-row items-center justify-center bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 h-14 px-4">
+                                        <Text className="text-xs font-bold text-stone-500 uppercase mb-2">Día del mes</Text>
+                                        <View className="flex-row items-center justify-center bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md h-14 px-4">
                                             <TextInput
                                                 value={newDay}
                                                 onChangeText={v => setNewDay(v.replace(/[^0-9]/g, ''))}
                                                 keyboardType="numeric"
                                                 placeholder="1"
-                                                placeholderTextColor="#94a3b8"
+                                                placeholderTextColor="#a8a29e"
                                                 maxLength={2}
-                                                className="flex-1 text-base font-bold text-slate-900 dark:text-white text-center"
+                                                className="flex-1 text-base font-bold text-stone-900 dark:text-white text-center"
                                             />
                                         </View>
-                                        <Text className="text-[10px] text-slate-400 text-center mt-1">Entre 1 y 28</Text>
+                                        <Text className="text-[10px] text-stone-400 text-center mt-1">Entre 1 y 28</Text>
                                     </View>
                                 </View>
 
                                 {/* Account selector (optional) */}
                                 {accounts.length > 0 && (
                                     <View>
-                                        <Text className="text-xs font-bold text-slate-500 uppercase mb-2">Cuenta (opcional)</Text>
+                                        <Text className="text-xs font-bold text-stone-500 uppercase mb-2">Cuenta (opcional)</Text>
                                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                             {accounts.map(acc => {
                                                 const isActive = newAccountId === acc.id;
@@ -362,10 +362,10 @@ export default function RecurringScreen() {
                                                     <TouchableOpacity
                                                         key={acc.id}
                                                         onPress={() => setNewAccountId(isActive ? null : acc.id)}
-                                                        className={`flex-row items-center gap-2 mr-3 px-4 py-3 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-slate-100 dark:bg-input-dark'}`}
+                                                        className={`flex-row items-center gap-2 mr-3 px-4 py-3 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-frost dark:bg-input-dark'}`}
                                                     >
                                                         <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={isActive ? '#137fec' : '#475569'} />
-                                                        <Text className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>{acc.name}</Text>
+                                                        <Text className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-stone-600 dark:text-slate-400'}`}>{acc.name}</Text>
                                                     </TouchableOpacity>
                                                 );
                                             })}
@@ -396,8 +396,8 @@ export default function RecurringScreen() {
                 <View className="flex-1 bg-black/50 justify-end">
                     <View className="bg-background-light dark:bg-background-dark rounded-t-3xl max-h-[60%]">
                         <View className="flex-row items-center justify-between px-5 pt-5 pb-3">
-                            <Text className="text-lg font-bold text-slate-900 dark:text-white">Seleccionar categoría</Text>
-                            <TouchableOpacity onPress={() => setCatPickerVisible(false)} className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                            <Text className="text-lg font-bold text-stone-900 dark:text-white">Seleccionar categoría</Text>
+                            <TouchableOpacity onPress={() => setCatPickerVisible(false)} className="h-8 w-8 items-center justify-center rounded-full bg-frost dark:bg-slate-800">
                                 <MaterialIcons name="close" size={20} color="#64748b" />
                             </TouchableOpacity>
                         </View>
@@ -405,7 +405,7 @@ export default function RecurringScreen() {
                             {availableCats.length === 0 ? (
                                 <View className="items-center py-8">
                                     <MaterialIcons name="check-circle" size={40} color="#10b981" />
-                                    <Text className="text-slate-400 text-sm font-medium mt-3 text-center">
+                                    <Text className="text-stone-400 text-sm font-medium mt-3 text-center">
                                         Todas las categorías ya tienen plantilla recurrente
                                     </Text>
                                 </View>
@@ -417,13 +417,13 @@ export default function RecurringScreen() {
                                             <TouchableOpacity
                                                 key={cat.id}
                                                 onPress={() => { setNewCategory(cat); setCatPickerVisible(false); }}
-                                                className="flex-row items-center gap-3 p-4 bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 active:bg-slate-50 dark:active:bg-slate-800"
+                                                className="flex-row items-center gap-3 p-4 bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md active:bg-stone-50 dark:active:bg-slate-800"
                                             >
                                                 <View className={`h-10 w-10 rounded-xl items-center justify-center ${style.bg}`}>
                                                     <MaterialIcons name={cat.icon} size={22} color={style.hex} />
                                                 </View>
-                                                <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white">{cat.name}</Text>
-                                                <MaterialIcons name="add-circle-outline" size={22} color="#94a3b8" />
+                                                <Text className="flex-1 text-sm font-bold text-stone-900 dark:text-white">{cat.name}</Text>
+                                                <MaterialIcons name="add-circle-outline" size={22} color="#a8a29e" />
                                             </TouchableOpacity>
                                         );
                                     })}

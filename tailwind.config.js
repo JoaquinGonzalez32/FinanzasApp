@@ -1,27 +1,48 @@
 // tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-    // NOTE: Update this to include the paths to all of your component files.
     content: ["./app/**/*.{js,jsx,ts,tsx}", "./components/**/*.{js,jsx,ts,tsx}"],
     presets: [require("nativewind/preset")],
     theme: {
         extend: {
             colors: {
+                // Brand
                 "primary": "#137fec",
-                "background-light": "#f6f7f8",
-                "background-dark": "#101922",
-                "card-dark": "#1c2632",
+                "primary-light": "#4da3f7",
+                "primary-dark": "#0b5fbd",
+
+                // Surfaces — light (frost glass)
+                "background-light": "#e8edf6",
+                "card-light": "#ffffff",
+                "surface-light": "#dfe5f0",
+
+                // Frost tokens
+                "frost": "#dce3f0",
+                "frost-light": "#eaeff8",
+
+                // Surfaces — dark
+                "background-dark": "#0c1117",
+                "card-dark": "#161f2a",
                 "surface-dark": "#1a242f",
-                "input-dark": "#283039",
-                "modal-dark": "#111418",
+                "input-dark": "#232d38",
+                "modal-dark": "#0e141b",
+
+                // Semantic accents
+                "success": "#10b981",
+                "success-light": "#d1fae5",
+                "danger": "#ef4444",
+                "danger-light": "#fee2e2",
+                "warning": "#f59e0b",
+                "warning-light": "#fef3c7",
             },
             fontFamily: {
                 sans: ['Manrope_400Regular'],
                 display: ['Manrope_700Bold'],
             },
-            boxShadow: {
-                'ios': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-            }
+            borderRadius: {
+                '3xl': '24px',
+                '4xl': '32px',
+            },
         },
     },
     plugins: [],

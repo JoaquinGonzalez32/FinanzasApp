@@ -123,7 +123,15 @@ function RootNavigator() {
                 }}
             />
             <Stack.Screen
-                name="add-account-goal"
+                name="add-goal"
+                options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                    animation: 'slide_from_bottom'
+                }}
+            />
+            <Stack.Screen
+                name="goal-detail"
                 options={{
                     presentation: 'modal',
                     headerShown: false,
