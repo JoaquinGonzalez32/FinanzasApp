@@ -87,7 +87,7 @@ export default function ProfileScreen() {
             {/* Header */}
             <View className="flex-row items-center justify-between px-5 py-2 border-b border-white/40 dark:border-slate-800">
                 <TouchableOpacity onPress={() => router.back()} className="flex-row items-center">
-                    <MaterialIcons name="chevron-left" size={28} color="#137fec" />
+                    <MaterialIcons name="chevron-left" size={28} color="#6366F1" />
                     <Text className="text-primary font-medium text-base">Atras</Text>
                 </TouchableOpacity>
                 <Text className="text-base font-bold text-stone-900 dark:text-white">Mi Perfil</Text>

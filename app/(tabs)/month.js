@@ -1,15 +1,42 @@
+/**
+ * TRANSACTIONS SCREEN — "En que gaste?"
+ *
+ * LAYOUT:
+ * ┌──────────────────────────────┐
+ * │  Header: "Movimientos" · Calendar │
+ * │  Month nav: < Marzo 2026 >        │
+ * │  Account chips (cycle button)     │
+ * ├──────────────────────────────┤
+ * │  Month summary: Income · Expense  │
+ * ├──────────────────────────────┤
+ * │  DAY GROUPS                       │
+ * │  ┌ Hoy ────── 3 mov · $U520 ──┐  │
+ * │  │  Comida  -$U170            │  │
+ * │  │  Comida  -$U350 (bold)     │  │
+ * │  └────────────────────────────┘  │
+ * │  ┌ Ayer ────── 2 mov · $U200 ──┐ │
+ * │  │  ...                         │ │
+ * │  └──────────────────────────────┘ │
+ * └──────────────────────────────┘
+ *
+ * KEY CHANGES:
+ * - No "Balance del mes" dark gradient card (that's Home's job)
+ * - Day subtotals shown in each group header
+ * - Compact income/expense summary row (not duplicate of Home)
+ * - Amount magnitude differentiation via TransactionRow
+ */
 import { View, Text, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
-import TransactionItem from '../../components/TransactionItem';
+import TransactionRow from '../../components/ui/TransactionRow';
 import ConfirmModal from '../../components/ConfirmModal';
-import { SkeletonLoader, useToast, FadeIn, FrostBackground } from '../../components/ui';
-import { useAccounts } from '../../src/hooks/useAccounts';
+import { SkeletonLoader, useToast, FadeIn, FrostBackground, EmptyState } from '../../components/ui';
 import { getYearTransactions, deleteTransaction } from '../../src/services/transactionsService';
 import { onTransactionsChange, emitTransactionsChange } from '../../src/lib/events';
-import { formatCurrency, formatTime, getCategoryStyle, sumByType, MONTHS_ES, DAYS_ES } from '../../src/lib/helpers';
+import { formatCurrency, sumByType, MONTHS_ES, DAYS_ES } from '../../src/lib/helpers';
+import { useAccountContext } from '../../src/context/AccountContext';
+import AccountSwitcher from '../../src/components/AccountSwitcher';
 
 export default function MonthScreen() {
     const router = useRouter();
@@ -27,17 +54,13 @@ export default function MonthScreen() {
     const [calendarVisible, setCalendarVisible] = useState(false);
     const { show: showToast, ToastComponent } = useToast();
 
-    const { accounts } = useAccounts();
+    const { selectedAccountId, selectedAccount, accounts, isAllAccounts } = useAccountContext();
 
-    const [selectedAccountId, setSelectedAccountId] = useState(null);
-
-    useEffect(() => {
-        if (accounts.length > 0 && !selectedAccountId) {
-            setSelectedAccountId(accounts[0].id);
-        }
+    const accMap = useMemo(() => {
+        const m = {};
+        accounts.forEach(a => { m[a.id] = a; });
+        return m;
     }, [accounts]);
-
-    const selectedAccount = accounts.find(a => a.id === selectedAccountId) ?? accounts[0] ?? null;
 
     const fetchYear = useCallback(async () => {
         setLoading(true);
@@ -54,19 +77,42 @@ export default function MonthScreen() {
     useEffect(() => { fetchYear(); }, [fetchYear]);
     useEffect(() => onTransactionsChange(fetchYear), [fetchYear]);
 
-    // Filter transactions for selected month and account
     const monthTx = useMemo(() => {
         const mStr = String(selectedMonth).padStart(2, '0');
         const all = yearTx.filter(t => t.date.startsWith(`${year}-${mStr}`));
-        return selectedAccount
-            ? all.filter(t => (t.account_id ?? t.category?.account_id) === selectedAccount.id)
-            : all;
-    }, [yearTx, selectedMonth, year, selectedAccount]);
+        if (!selectedAccountId) return all;
+        return all.filter(t => (t.account_id ?? t.category?.account_id) === selectedAccountId);
+    }, [yearTx, selectedMonth, year, selectedAccountId]);
 
     const monthIncome = useMemo(() => sumByType(monthTx, 'income'), [monthTx]);
     const monthExpense = useMemo(() => sumByType(monthTx, 'expense'), [monthTx]);
 
-    // Group transactions by day
+    // Multi-currency totals for "Todas" mode
+    const incomeByCurrency = useMemo(() => {
+        if (!isAllAccounts) return null;
+        const totals = {};
+        for (const tx of monthTx) {
+            if (tx.type !== 'income') continue;
+            const accId = tx.account_id ?? tx.category?.account_id;
+            const cur = accId ? accMap[accId]?.currency ?? 'UYU' : 'UYU';
+            totals[cur] = (totals[cur] || 0) + Number(tx.amount);
+        }
+        return Object.keys(totals).length > 1 ? totals : null;
+    }, [monthTx, isAllAccounts, accMap]);
+
+    const expenseByCurrency = useMemo(() => {
+        if (!isAllAccounts) return null;
+        const totals = {};
+        for (const tx of monthTx) {
+            if (tx.type !== 'expense') continue;
+            const accId = tx.account_id ?? tx.category?.account_id;
+            const cur = accId ? accMap[accId]?.currency ?? 'UYU' : 'UYU';
+            totals[cur] = (totals[cur] || 0) + Number(tx.amount);
+        }
+        return Object.keys(totals).length > 1 ? totals : null;
+    }, [monthTx, isAllAccounts, accMap]);
+
+    // Group transactions by day with subtotals
     const groupedByDay = useMemo(() => {
         const groups = {};
         for (const tx of monthTx) {
@@ -80,6 +126,7 @@ export default function MonthScreen() {
                 transactions: txs,
                 expense: sumByType(txs, 'expense'),
                 income: sumByType(txs, 'income'),
+                total: sumByType(txs, 'expense') + sumByType(txs, 'income'),
             }));
     }, [monthTx]);
 
@@ -110,19 +157,15 @@ export default function MonthScreen() {
         return set;
     }, [monthTx]);
 
-    // Day label helper
     const getDayLabel = (dateStr) => {
         const d = new Date(dateStr + 'T00:00:00');
         const today = new Date();
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
 
-        if (dateStr === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`) {
-            return 'Hoy';
-        }
-        if (dateStr === `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`) {
-            return 'Ayer';
-        }
+        const fmt = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+        if (dateStr === fmt(today)) return 'Hoy';
+        if (dateStr === fmt(yesterday)) return 'Ayer';
         return `${DAYS_ES[d.getDay()]} ${d.getDate()}`;
     };
 
@@ -130,13 +173,9 @@ export default function MonthScreen() {
         router.push({
             pathname: '/add-transaction',
             params: {
-                type: tx.type,
-                editId: tx.id,
-                editAmount: String(tx.amount),
-                editCategoryId: tx.category_id || '',
-                editAccountId: tx.account_id || '',
-                editNote: tx.note || '',
-                editDate: tx.date,
+                type: tx.type, editId: tx.id, editAmount: String(tx.amount),
+                editCategoryId: tx.category_id || '', editAccountId: tx.account_id || '',
+                editNote: tx.note || '', editDate: tx.date,
             },
         });
     };
@@ -170,7 +209,6 @@ export default function MonthScreen() {
         setCalendarVisible(false);
     };
 
-    // Filter by selected day
     const displayGroups = useMemo(() => {
         if (!selectedDay) return groupedByDay;
         const dateStr = `${year}-${String(selectedMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
@@ -181,27 +219,12 @@ export default function MonthScreen() {
         <FrostBackground edges={['top']}>
             {/* Header */}
             <View className="flex-row items-center justify-between px-5 pt-2 pb-3">
-                <Text className="text-xl font-bold text-stone-900 dark:text-white">Movimientos</Text>
+                <Text className="text-xl font-bold text-slate-900 dark:text-white">Movimientos</Text>
                 <View className="flex-row items-center gap-2">
-                    {/* Account filter */}
-                    {accounts.length > 1 && selectedAccount && (
-                        <TouchableOpacity
-                            onPress={() => {
-                                const idx = accounts.findIndex(a => a.id === selectedAccountId);
-                                const nextIdx = (idx + 1) % accounts.length;
-                                setSelectedAccountId(accounts[nextIdx].id);
-                            }}
-                            className="flex-row items-center gap-1.5 bg-frost dark:bg-slate-800 px-2.5 py-1.5 rounded-lg"
-                        >
-                            <MaterialIcons name={selectedAccount.icon || 'account-balance-wallet'} size={12} color="#64748b" />
-                            <Text className="text-xs font-bold text-stone-500">{selectedAccount.name}</Text>
-                            <MaterialIcons name="swap-horiz" size={12} color="#a8a29e" />
-                        </TouchableOpacity>
-                    )}
-                    {/* Calendar toggle */}
+                    <AccountSwitcher />
                     <TouchableOpacity
                         onPress={() => setCalendarVisible(true)}
-                        className="h-9 w-9 items-center justify-center rounded-full bg-frost dark:bg-slate-800"
+                        className="h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
                     >
                         <MaterialIcons name="calendar-today" size={16} color="#64748b" />
                     </TouchableOpacity>
@@ -210,15 +233,15 @@ export default function MonthScreen() {
 
             {/* Month navigator */}
             <View className="flex-row items-center justify-between px-5 pb-3">
-                <TouchableOpacity onPress={() => goMonth(-1)} className="h-8 w-8 items-center justify-center rounded-full bg-frost dark:bg-slate-800">
+                <TouchableOpacity onPress={() => goMonth(-1)} className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                     <MaterialIcons name="chevron-left" size={20} color="#64748b" />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => { setSelectedDay(null); }} className="flex-row items-center gap-2">
-                    <Text className="text-sm font-bold text-stone-800 dark:text-white">
+                    <Text className="text-sm font-bold text-slate-800 dark:text-white">
                         {MONTHS_ES[selectedMonth - 1]} {year}
                     </Text>
                     {selectedDay && (
-                        <View className="bg-primary/10 px-2 py-0.5 rounded-full">
+                        <View className="bg-primary-faint dark:bg-primary/10 px-2 py-0.5 rounded-full">
                             <Text className="text-xs font-bold text-primary">Dia {selectedDay}</Text>
                         </View>
                     )}
@@ -226,56 +249,52 @@ export default function MonthScreen() {
                 <TouchableOpacity
                     onPress={() => goMonth(1)}
                     disabled={year === currentYear && selectedMonth >= currentMonth}
-                    className="h-8 w-8 items-center justify-center rounded-full bg-frost dark:bg-slate-800"
+                    className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
                 >
-                    <MaterialIcons name="chevron-right" size={20} color={year === currentYear && selectedMonth >= currentMonth ? '#d6d3d1' : '#64748b'} />
+                    <MaterialIcons name="chevron-right" size={20} color={year === currentYear && selectedMonth >= currentMonth ? '#CBD5E1' : '#64748b'} />
                 </TouchableOpacity>
             </View>
 
-            {/* Month summary */}
+            {/* Compact month summary */}
             {!loading && monthTx.length > 0 && (
-                <View className="mx-5 mb-4 gap-2.5">
-                    {/* Balance card */}
-                    <View className="rounded-2xl overflow-hidden shadow-md">
-                        <LinearGradient
-                            colors={['#0f172a', '#1e3a5f', '#0f172a']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            className="px-5 py-5"
-                        >
-                            {/* Decorative circles */}
-                            <View className="absolute -top-6 -right-6 w-24 h-24 rounded-full" style={{ backgroundColor: 'rgba(19,127,236,0.15)' }} />
-                            <View className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full" style={{ backgroundColor: 'rgba(16,185,129,0.1)' }} />
-
-                            <Text className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Balance del mes</Text>
-                            <Text className="text-2xl font-extrabold text-white">
-                                {monthIncome - monthExpense >= 0 ? '+' : ''}{formatCurrency(monthIncome - monthExpense, selectedAccount?.currency)}
-                            </Text>
-                        </LinearGradient>
-                    </View>
-
-                    {/* Income / Expense row */}
-                    <View className="flex-row gap-2.5">
-                        <View className="flex-1 flex-row items-center gap-2.5 bg-white/75 dark:bg-slate-900/50 rounded-xl border border-white/60 dark:border-slate-800/60 px-3.5 py-2.5">
-                            <View className="h-7 w-7 rounded-full bg-emerald-500/10 items-center justify-center">
-                                <MaterialIcons name="arrow-upward" size={14} color="#10b981" />
-                            </View>
-                            <View>
-                                <Text className="text-[10px] text-stone-400 dark:text-slate-500">Ingresos</Text>
-                                <Text className="text-xs font-bold text-stone-800 dark:text-white">{formatCurrency(monthIncome, selectedAccount?.currency)}</Text>
+                <FadeIn delay={100}>
+                    <View className="flex-row gap-2.5 mx-5 mb-4">
+                        <View className="flex-1 bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5">
+                            <View className="flex-row items-center gap-2.5">
+                                <View className="h-7 w-7 rounded-full bg-emerald-50 dark:bg-emerald-500/10 items-center justify-center">
+                                    <MaterialIcons name="arrow-upward" size={14} color="#10b981" />
+                                </View>
+                                <View>
+                                    <Text className="text-2xs text-slate-400 dark:text-slate-500">Ingresos</Text>
+                                    {incomeByCurrency ? (
+                                        Object.entries(incomeByCurrency).map(([cur, total]) => (
+                                            <Text key={cur} className="text-xs font-bold text-slate-800 dark:text-white">{formatCurrency(total, cur)}</Text>
+                                        ))
+                                    ) : (
+                                        <Text className="text-xs font-bold text-slate-800 dark:text-white">{formatCurrency(monthIncome, selectedAccount?.currency)}</Text>
+                                    )}
+                                </View>
                             </View>
                         </View>
-                        <View className="flex-1 flex-row items-center gap-2.5 bg-white/75 dark:bg-slate-900/50 rounded-xl border border-white/60 dark:border-slate-800/60 px-3.5 py-2.5">
-                            <View className="h-7 w-7 rounded-full bg-red-500/10 items-center justify-center">
-                                <MaterialIcons name="arrow-downward" size={14} color="#ef4444" />
-                            </View>
-                            <View>
-                                <Text className="text-[10px] text-stone-400 dark:text-slate-500">Gastos</Text>
-                                <Text className="text-xs font-bold text-stone-800 dark:text-white">{formatCurrency(monthExpense, selectedAccount?.currency)}</Text>
+                        <View className="flex-1 bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5">
+                            <View className="flex-row items-center gap-2.5">
+                                <View className="h-7 w-7 rounded-full bg-red-50 dark:bg-red-500/10 items-center justify-center">
+                                    <MaterialIcons name="arrow-downward" size={14} color="#ef4444" />
+                                </View>
+                                <View>
+                                    <Text className="text-2xs text-slate-400 dark:text-slate-500">Gastos</Text>
+                                    {expenseByCurrency ? (
+                                        Object.entries(expenseByCurrency).map(([cur, total]) => (
+                                            <Text key={cur} className="text-xs font-bold text-slate-800 dark:text-white">{formatCurrency(total, cur)}</Text>
+                                        ))
+                                    ) : (
+                                        <Text className="text-xs font-bold text-slate-800 dark:text-white">{formatCurrency(monthExpense, selectedAccount?.currency)}</Text>
+                                    )}
+                                </View>
                             </View>
                         </View>
                     </View>
-                </View>
+                </FadeIn>
             )}
 
             {/* Transaction list grouped by day */}
@@ -287,82 +306,88 @@ export default function MonthScreen() {
                 )}
 
                 {!loading && displayGroups.length === 0 && (
-                    <View className="items-center py-16">
-                        <View className="h-14 w-14 rounded-2xl bg-frost dark:bg-input-dark items-center justify-center mb-3">
-                            <MaterialIcons name="receipt-long" size={24} color="#d6d3d1" />
-                        </View>
-                        <Text className="text-stone-400 text-sm font-medium">Sin movimientos</Text>
-                        {selectedDay && (
-                            <TouchableOpacity onPress={() => setSelectedDay(null)} className="mt-2">
-                                <Text className="text-primary text-xs font-bold">Ver todo el mes</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                    <EmptyState
+                        icon="receipt-long"
+                        title="Sin movimientos"
+                        subtitle={selectedDay ? 'No hay movimientos para este dia' : 'No hay movimientos este mes'}
+                        actionLabel={selectedDay ? undefined : undefined}
+                    />
                 )}
 
                 {!loading && displayGroups.map((group, gi) => (
-                    <FadeIn key={group.date} delay={gi * 60}>
+                    <FadeIn key={group.date} delay={gi * 50}>
                         <View className="mx-5 mb-3">
-                            {/* Day header */}
+                            {/* Day header with subtotal */}
                             <View className="flex-row items-center justify-between py-2">
-                                <Text className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-slate-500">
+                                <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                                     {getDayLabel(group.date)}
                                 </Text>
-                                <Text className="text-xs font-medium text-stone-400 dark:text-slate-500">
-                                    {group.transactions.length} mov.
-                                </Text>
+                                <View className="flex-row items-center gap-2">
+                                    <Text className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                                        {group.transactions.length} mov.
+                                    </Text>
+                                    {group.expense > 0 && !isAllAccounts && (
+                                        <Text className="text-xs font-bold text-red-400">
+                                            -{formatCurrency(group.expense, selectedAccount?.currency)}
+                                        </Text>
+                                    )}
+                                </View>
                             </View>
 
                             {/* Transactions card */}
-                            <View className="bg-white/75 dark:bg-slate-900/50 rounded-2xl border border-white/60 dark:border-slate-800/60 shadow-sm overflow-hidden">
-                                {group.transactions.map((tx, ti) => {
-                                    const style = getCategoryStyle(tx.category?.color);
-                                    return (
-                                        <View key={tx.id}>
-                                            {ti > 0 && <View className="h-px bg-stone-100 dark:bg-slate-800/60 ml-14" />}
-                                            <TransactionItem
-                                                icon={tx.category?.icon ?? "payments"}
-                                                label={tx.category?.name ?? "Sin categoria"}
-                                                sub={tx.note || formatTime(tx.created_at)}
-                                                amount={`${tx.type === 'income' ? '+' : '-'} ${formatCurrency(tx.amount, selectedAccount?.currency)}`}
-                                                colorClass={tx.type === 'income' ? 'text-emerald-500' : 'text-stone-800 dark:text-white'}
-                                                iconBg={style.bg}
-                                                iconColor={style.hex}
-                                                onPress={() => handleEditTx(tx)}
-                                                onLongPress={() => setDeleteTx(tx)}
-                                            />
-                                        </View>
-                                    );
-                                })}
+                            <View className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                                {group.transactions.map((tx, ti) => (
+                                    <View key={tx.id}>
+                                        {ti > 0 && <View className="h-px bg-slate-100 dark:bg-slate-800 ml-14" />}
+                                        <TransactionRow
+                                            transaction={tx}
+                                            currency={isAllAccounts
+                                                ? accMap[tx.account_id ?? tx.category?.account_id]?.currency
+                                                : selectedAccount?.currency
+                                            }
+                                            onPress={() => handleEditTx(tx)}
+                                            onLongPress={() => setDeleteTx(tx)}
+                                        />
+                                    </View>
+                                ))}
                             </View>
                         </View>
                     </FadeIn>
                 ))}
+
+                {/* Show "Ver todo" if filtering by day */}
+                {!loading && selectedDay && (
+                    <View className="items-center pt-2">
+                        <TouchableOpacity onPress={() => setSelectedDay(null)}>
+                            <Text className="text-primary text-sm font-bold">Ver todo el mes</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </ScrollView>
 
             {/* Calendar Sheet */}
             <Modal visible={calendarVisible} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-background-light dark:bg-modal-dark rounded-t-3xl">
+                    <View className="bg-white dark:bg-modal-dark rounded-t-3xl">
                         <View className="items-center pt-3 pb-1">
-                            <View className="h-1 w-10 rounded-full bg-stone-300 dark:bg-slate-600" />
+                            <View className="h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-600" />
                         </View>
                         <View className="flex-row items-center justify-between px-5 pt-3 pb-4">
-                            <Text className="text-lg font-bold text-stone-900 dark:text-white">
+                            <Text className="text-lg font-bold text-slate-900 dark:text-white">
                                 {MONTHS_ES[selectedMonth - 1]} {year}
                             </Text>
                             <View className="flex-row items-center gap-2">
                                 {selectedDay && (
                                     <TouchableOpacity
                                         onPress={() => { setSelectedDay(null); setCalendarVisible(false); }}
-                                        className="px-3 py-1.5 rounded-lg bg-frost dark:bg-slate-800"
+                                        className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800"
                                     >
-                                        <Text className="text-xs font-bold text-stone-500">Ver todo</Text>
+                                        <Text className="text-xs font-bold text-slate-500">Ver todo</Text>
                                     </TouchableOpacity>
                                 )}
                                 <TouchableOpacity
                                     onPress={() => setCalendarVisible(false)}
-                                    className="h-8 w-8 items-center justify-center rounded-full bg-frost dark:bg-slate-800"
+                                    className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
                                 >
                                     <MaterialIcons name="close" size={20} color="#64748b" />
                                 </TouchableOpacity>
@@ -370,10 +395,9 @@ export default function MonthScreen() {
                         </View>
 
                         <View className="px-5 pb-8">
-                            {/* Day headers */}
                             <View className="flex-row justify-between mb-2">
                                 {['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map(day => (
-                                    <Text key={day} className="w-11 text-center text-xs font-semibold text-stone-400 uppercase">{day}</Text>
+                                    <Text key={day} className="w-11 text-center text-xs font-semibold text-slate-400 uppercase">{day}</Text>
                                 ))}
                             </View>
 
@@ -410,7 +434,7 @@ export default function MonthScreen() {
             <ConfirmModal
                 visible={!!deleteTx}
                 title="Eliminar transaccion"
-                message={deleteTx ? `Eliminar "${deleteTx.category?.name ?? 'Sin categoria'}" por ${formatCurrency(deleteTx.amount, selectedAccount?.currency)}?` : ''}
+                message={deleteTx ? `Eliminar "${deleteTx.category?.name ?? 'Sin categoria'}" por ${formatCurrency(deleteTx.amount, accMap[deleteTx.account_id ?? deleteTx.category?.account_id]?.currency)}?` : ''}
                 onConfirm={confirmDelete}
                 onCancel={() => setDeleteTx(null)}
             />

@@ -9,13 +9,13 @@ const VARIANTS = {
     },
     secondary: {
         container: 'bg-white dark:bg-input-dark dark:border dark:border-slate-700',
-        text: 'text-stone-900 dark:text-white',
-        iconColor: '#137fec',
+        text: 'text-slate-900 dark:text-white',
+        iconColor: '#6366F1',
     },
     ghost: {
         container: 'bg-transparent',
         text: 'text-primary',
-        iconColor: '#137fec',
+        iconColor: '#6366F1',
     },
     danger: {
         container: 'bg-red-500/10',

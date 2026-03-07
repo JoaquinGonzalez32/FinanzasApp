@@ -1,3 +1,16 @@
+/**
+ * TAB LAYOUT — 4 visible tabs + Goals hidden
+ *
+ * Structure:
+ *   Inicio | Presupuesto | Movimientos | Gestion
+ *   (Goals tab exists but hidden, accessed from Gestion)
+ *
+ * Tab Bar:
+ * - Clean white (light) / dark slate (dark)
+ * - Indigo active color
+ * - Custom TabIcon with label
+ * - No transparency gimmicks
+ */
 import { TouchableOpacity, useColorScheme, View, Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -6,17 +19,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function ErrorBoundary({ error, retry }) {
     return (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', padding: 24 }}>
-            <MaterialIcons name="error-outline" size={48} color="#ef4444" />
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#0f172a', marginTop: 16, textAlign: 'center' }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', padding: 24 }}>
+            <MaterialIcons name="error-outline" size={48} color="#EF4444" />
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#0F172A', marginTop: 16, textAlign: 'center' }}>
                 Algo salio mal
             </Text>
-            <Text style={{ fontSize: 14, color: '#64748b', marginTop: 8, textAlign: 'center' }}>
+            <Text style={{ fontSize: 14, color: '#64748B', marginTop: 8, textAlign: 'center' }}>
                 {error?.message || 'Error inesperado'}
             </Text>
             <TouchableOpacity
                 onPress={retry}
-                style={{ marginTop: 24, backgroundColor: '#137fec', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+                style={{ marginTop: 24, backgroundColor: '#6366F1', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
             >
                 <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Reintentar</Text>
             </TouchableOpacity>
@@ -55,14 +68,14 @@ export default function TabLayout() {
                     right: 0,
                     elevation: 0,
                     borderTopWidth: 1,
-                    borderTopColor: isDark ? 'rgba(51, 65, 85, 0.3)' : 'rgba(255, 255, 255, 0.4)',
+                    borderTopColor: isDark ? '#1E293B' : '#E2E8F0',
                     height: 56 + insets.bottom,
                     paddingBottom: insets.bottom,
-                    backgroundColor: isDark ? '#101922' : 'rgba(255, 255, 255, 0.65)',
+                    backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
                 },
                 tabBarShowLabel: false,
-                tabBarActiveTintColor: '#137fec',
-                tabBarInactiveTintColor: isDark ? '#475569' : '#a8a29e',
+                tabBarActiveTintColor: '#6366F1',
+                tabBarInactiveTintColor: isDark ? '#475569' : '#94A3B8',
             }}
         >
             <Tabs.Screen
@@ -85,23 +98,22 @@ export default function TabLayout() {
                 name="month"
                 options={{
                     tabBarIcon: ({ color, focused }) => (
-                        <TabIcon name="swap-vert" label="Movimientos" color={color} focused={focused} />
+                        <TabIcon name="receipt-long" label="Movimientos" color={color} focused={focused} />
                     ),
                 }}
             />
+            {/* Goals — hidden from tabs, accessed via Gestion */}
             <Tabs.Screen
                 name="goals"
                 options={{
-                    tabBarIcon: ({ color, focused }) => (
-                        <TabIcon name="flag" label="Metas" color={color} focused={focused} />
-                    ),
+                    href: null,
                 }}
             />
             <Tabs.Screen
                 name="settings"
                 options={{
                     tabBarIcon: ({ color, focused }) => (
-                        <TabIcon name="more-horiz" label="Mas" color={color} focused={focused} />
+                        <TabIcon name="tune" label="Gestion" color={color} focused={focused} />
                     ),
                 }}
             />

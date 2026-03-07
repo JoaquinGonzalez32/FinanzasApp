@@ -8,7 +8,7 @@ export const CATEGORY_COLORS: Record<string, { bg: string; bgCircle: string; hex
   emerald: { bg: "bg-emerald-100 dark:bg-emerald-500/20",bgCircle: "bg-emerald-500/20", hex: "#10b981" },
   rose:    { bg: "bg-rose-100 dark:bg-rose-500/20",      bgCircle: "bg-rose-500/20",    hex: "#f43f5e" },
   red:     { bg: "bg-red-100 dark:bg-red-500/20",        bgCircle: "bg-red-500/20",     hex: "#ef4444" },
-  primary: { bg: "bg-primary/10",                         bgCircle: "bg-primary/20",     hex: "#137fec" },
+  primary: { bg: "bg-primary/10",                         bgCircle: "bg-primary/20",     hex: "#6366F1" },
   slate:   { bg: "bg-slate-100 dark:bg-slate-500/20",    bgCircle: "bg-slate-500/20",   hex: "#64748b" },
 };
 

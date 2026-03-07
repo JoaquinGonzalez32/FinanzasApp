@@ -196,7 +196,7 @@ export default function AddAccountScreen() {
                         <Switch
                             value={includeInTotal}
                             onValueChange={setIncludeInTotal}
-                            trackColor={{ false: '#d6d3d1', true: '#137fec' }}
+                            trackColor={{ false: '#d6d3d1', true: '#6366F1' }}
                             thumbColor="white"
                         />
                     </View>

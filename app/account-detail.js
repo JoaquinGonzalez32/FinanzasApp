@@ -58,7 +58,7 @@ export default function AccountDetailScreen() {
                         })}
                         className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200 dark:active:bg-slate-800"
                     >
-                        <MaterialIcons name="edit" size={20} color="#137fec" />
+                        <MaterialIcons name="edit" size={20} color="#6366F1" />
                     </TouchableOpacity>
                 </SafeAreaView>
             </View>
@@ -87,7 +87,7 @@ export default function AccountDetailScreen() {
                             })}
                             className="bg-primary/10 px-4 py-2 rounded-full flex-row items-center gap-1"
                         >
-                            <MaterialIcons name="add" size={16} color="#137fec" />
+                            <MaterialIcons name="add" size={16} color="#6366F1" />
                             <Text className="text-xs font-bold text-primary">Agregar Meta</Text>
                         </TouchableOpacity>
                     </View>
@@ -99,7 +99,7 @@ export default function AccountDetailScreen() {
                         </Text>
                     )}
 
-                    {loading && <ActivityIndicator size="large" color="#137fec" />}
+                    {loading && <ActivityIndicator size="large" color="#6366F1" />}
 
                     {!loading && goals.length === 0 && (
                         <View className="items-center py-12">

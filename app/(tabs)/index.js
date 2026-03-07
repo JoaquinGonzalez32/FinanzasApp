@@ -1,22 +1,62 @@
+/**
+ * HOME SCREEN — "Como vengo este mes?"
+ *
+ * LAYOUT (top to bottom):
+ * ┌──────────────────────────────┐
+ * │  Header: Avatar · Month · Search  │
+ * ├──────────────────────────────┤
+ * │  Summary Card (indigo gradient)    │
+ * │  ┌─ Gastado este mes ──────────┐  │
+ * │  │  $U 1,019                   │  │
+ * │  │  ▓▓▓▓▓▓▓▓░░░░ 14.6%        │  │
+ * │  │  ~$U249/dia · 24 dias left  │  │
+ * │  └────────────────────────────┘  │
+ * ├──────────────────────────────┤
+ * │  Quick Stats: Income · Available  │
+ * ├──────────────────────────────┤
+ * │  Category Alerts (if any)         │
+ * │  Pending Recurring (if any)       │
+ * │  Savings Goals Widget (if any)    │
+ * │  Analytics Widget (if summary)    │
+ * │  Weekly Alert (if visible)        │
+ * ├──────────────────────────────┤
+ * │  RECENT TRANSACTIONS (last 7)     │
+ * │  Groups: Hoy · Ayer · Earlier     │
+ * └──────────────────────────────┘
+ * [FAB +] bottom-right
+ *
+ * KEY CHANGES FROM PREVIOUS:
+ * - No dark hero gradient — clean indigo card within the light background
+ * - "Recent" section shows last 5-7 transactions, not just today
+ * - Daily budget rate is prominent inside the summary card
+ * - Better empty state with CTA
+ * - Budget CTA moved inside summary area when no budget exists
+ */
 import { View, Text, ScrollView, Image, TouchableOpacity, RefreshControl, Animated as RNAnimated } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import TransactionItem from '../../components/TransactionItem';
+import TransactionRow from '../../components/ui/TransactionRow';
 import ConfirmModal from '../../components/ConfirmModal';
-import { SkeletonLoader, useToast, FadeIn, ScalePress, AnimatedProgressBar, FrostBackground } from '../../components/ui';
+import { SkeletonLoader, useToast, FadeIn, ScalePress, AnimatedProgressBar, ActionButton, EmptyState, FrostBackground } from '../../components/ui';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useProfile } from '../../src/hooks/useProfile';
 import { deleteTransaction } from '../../src/services/transactionsService';
 import { emitTransactionsChange } from '../../src/lib/events';
-import { useAccounts } from '../../src/hooks/useAccounts';
+// useAccounts now consumed via AccountContext
 import { useBudget } from '../../src/hooks/useBudget';
-import { formatAmount, formatCurrency, formatTime, getCategoryStyle, toDateISO, sumByType, getCurrencySymbol, getCurrentMonth, MONTHS_ES, getAssignedTotal, getCategoryAssignments } from '../../src/lib/helpers';
+import { formatCurrency, toDateISO, sumByType, getCurrencySymbol, getCurrentMonth, MONTHS_ES, getCategoryStyle, getAssignedTotal, getCategoryAssignments } from '../../src/lib/helpers';
 import { useWeeklyReviewAlert } from '../../src/hooks/useWeeklyReviewAlert';
 import { usePendingRecurringCount } from '../../src/hooks/usePendingRecurringCount';
 import { useSavingsGoals } from '../../src/hooks/useSavingsGoals';
 import GoalsSummaryWidget from '../../components/GoalsSummaryWidget';
+import AnalyticsSummaryWidget from '../../src/features/analytics/components/widgets/AnalyticsSummaryWidget';
+import { useAnalytics } from '../../src/features/analytics/hooks/useAnalytics';
+import { useInsights } from '../../src/features/analytics/hooks/useInsights';
+import { useAccountContext } from '../../src/context/AccountContext';
+import { useFilteredTransactions, useCurrencyTotals } from '../../src/hooks/useFilteredByAccount';
+import AccountSwitcher from '../../src/components/AccountSwitcher';
 
 function getDaysRemaining() {
     const now = new Date();
@@ -48,41 +88,31 @@ function AnimatedCounter({ value, currency }) {
     }, []);
 
     return (
-        <Text className="text-5xl font-extrabold text-white tracking-tight" style={{ textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+        <Text className="text-display-lg font-extrabold text-white tracking-tight">
             {formatCurrency(display, currency)}
         </Text>
     );
 }
 
-function barColor(pct) {
-    if (pct >= 100) return '#ef4444';
-    if (pct >= 85) return '#f59e0b';
-    if (pct >= 65) return '#137fec';
-    return '#10b981';
+function budgetBarColor(pct) {
+    if (pct >= 100) return '#EF4444';
+    if (pct >= 85) return '#F59E0B';
+    if (pct >= 65) return '#818CF8';
+    return '#10B981';
 }
 
 export default function HomeScreen() {
     const router = useRouter();
     const { profile } = useProfile();
-    const { transactions: monthTx, loading, error, refresh } = useTransactions({ mode: 'month' });
-    const { accounts } = useAccounts();
+    const { transactions: allMonthTx, loading, error, refresh } = useTransactions({ mode: 'month' });
+    const { selectedAccountId, selectedAccount, accounts, isAllAccounts } = useAccountContext();
     const currentMonth = useMemo(() => getCurrentMonth(), []);
     const { budgetItems } = useBudget(currentMonth);
     const [refreshing, setRefreshing] = useState(false);
     const [deleteTx, setDeleteTx] = useState(null);
     const { show: showToast, ToastComponent } = useToast();
 
-    // FAB animation
-    const fabScale = useRef(new RNAnimated.Value(0)).current;
-    useEffect(() => {
-        RNAnimated.spring(fabScale, {
-            toValue: 1,
-            delay: 500,
-            tension: 80,
-            friction: 8,
-            useNativeDriver: true,
-        }).start();
-    }, []);
+    const monthTx = useFilteredTransactions(allMonthTx);
 
     const todayStr = useMemo(() => toDateISO(), []);
     const yesterdayStr = useMemo(() => {
@@ -91,31 +121,40 @@ export default function HomeScreen() {
         return toDateISO(d);
     }, []);
 
-    const todayTx = useMemo(() => monthTx.filter(t => t.date === todayStr), [monthTx, todayStr]);
-    const yesterdayTx = useMemo(() => monthTx.filter(t => t.date === yesterdayStr), [monthTx, yesterdayStr]);
+    const primaryCurrency = selectedAccount?.currency ?? accounts[0]?.currency;
 
-    const primaryAccount = useMemo(() => accounts[0] ?? null, [accounts]);
-    const primaryCurrency = primaryAccount?.currency;
+    const accMap = useMemo(() => {
+        const m = {};
+        accounts.forEach(a => { m[a.id] = a; });
+        return m;
+    }, [accounts]);
+
+    const expenseByCurrency = useCurrencyTotals(monthTx, accMap, 'expense');
+    const incomeByCurrency = useCurrencyTotals(monthTx, accMap, 'income');
 
     const monthTotalExpense = useMemo(() => sumByType(monthTx, 'expense'), [monthTx]);
     const monthTotalIncome = useMemo(() => sumByType(monthTx, 'income'), [monthTx]);
 
+    const filteredBudgetItems = useMemo(() => {
+        if (!selectedAccountId) return budgetItems;
+        return budgetItems.filter(bi => !bi.account_id || bi.account_id === selectedAccountId);
+    }, [budgetItems, selectedAccountId]);
+
     const budgetProgress = useMemo(() => {
-        if (budgetItems.length === 0) return null;
-        const assignments = getCategoryAssignments(budgetItems);
+        if (filteredBudgetItems.length === 0) return null;
+        const assignments = getCategoryAssignments(filteredBudgetItems);
         const planned = getAssignedTotal(assignments);
         if (planned <= 0) return null;
         const daysLeft = getDaysRemaining();
-        const totalDays = getDaysInMonth();
         const remaining = planned - monthTotalExpense;
         const dailyBudget = daysLeft > 0 ? remaining / daysLeft : 0;
         const percentage = (monthTotalExpense / planned) * 100;
         return { planned, remaining, daysLeft, dailyBudget, percentage };
-    }, [budgetItems, monthTotalExpense]);
+    }, [filteredBudgetItems, monthTotalExpense]);
 
     const categoryAlerts = useMemo(() => {
-        if (budgetItems.length === 0) return [];
-        const assignments = getCategoryAssignments(budgetItems);
+        if (filteredBudgetItems.length === 0) return [];
+        const assignments = getCategoryAssignments(filteredBudgetItems);
         const alerts = [];
         for (const a of assignments) {
             const spent = monthTx
@@ -136,16 +175,42 @@ export default function HomeScreen() {
         return alerts.sort((a, b) => b.pct - a.pct).slice(0, 3);
     }, [budgetItems, monthTx]);
 
-    const accMap = useMemo(() => {
-        const m = {};
-        accounts.forEach(a => { m[a.id] = a; });
-        return m;
-    }, [accounts]);
     const txAccount = (tx) => accMap[tx.account_id ?? tx.category?.account_id];
+
+    // Recent transactions: last 7 from this month, grouped by day label
+    const recentTx = useMemo(() => {
+        const sorted = [...monthTx].sort((a, b) => {
+            const dateCmp = b.date.localeCompare(a.date);
+            if (dateCmp !== 0) return dateCmp;
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+        return sorted.slice(0, 7);
+    }, [monthTx]);
+
+    const recentGroups = useMemo(() => {
+        const groups = {};
+        for (const tx of recentTx) {
+            let label;
+            if (tx.date === todayStr) label = 'Hoy';
+            else if (tx.date === yesterdayStr) label = 'Ayer';
+            else {
+                const d = new Date(tx.date + 'T00:00:00');
+                label = `${d.getDate()}/${d.getMonth() + 1}`;
+            }
+            if (!groups[label]) groups[label] = [];
+            groups[label].push(tx);
+        }
+        return Object.entries(groups);
+    }, [recentTx, todayStr, yesterdayStr]);
 
     const weeklyAlert = useWeeklyReviewAlert(monthTx, loading);
     const pendingRecurringCount = usePendingRecurringCount();
     const { goals: activeGoals } = useSavingsGoals();
+    const { currentSummary, previousSummary } = useAnalytics();
+    const { topInsight, dismiss: dismissInsight } = useInsights(
+        currentSummary ? [currentSummary] : [],
+        primaryCurrency,
+    );
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -178,29 +243,9 @@ export default function HomeScreen() {
         }
     };
 
-    const renderTx = (tx, index) => {
-        const style = getCategoryStyle(tx.category?.color);
-        const currency = txAccount(tx)?.currency;
-        return (
-            <FadeIn key={tx.id} delay={index * 40}>
-                <TransactionItem
-                    icon={tx.category?.icon ?? "payments"}
-                    label={tx.category?.name ?? "Sin categoria"}
-                    sub={tx.note ? `${tx.note} · ${formatTime(tx.created_at)}` : formatTime(tx.created_at)}
-                    amount={formatAmount(tx.amount, tx.type, currency)}
-                    colorClass={tx.type === 'expense' ? 'text-red-500' : 'text-emerald-500'}
-                    iconBg={style.bg}
-                    iconColor={style.hex}
-                    onPress={() => handleEditTx(tx)}
-                    onDelete={() => handleDeleteTx(tx)}
-                />
-            </FadeIn>
-        );
-    };
-
     const now = new Date();
     const monthName = MONTHS_ES[now.getMonth()];
-    const progressColor = budgetProgress ? barColor(budgetProgress.percentage) : '#10b981';
+    const progressColor = budgetProgress ? budgetBarColor(budgetProgress.percentage) : '#10B981';
 
     return (
         <FrostBackground edges={['top']}>
@@ -208,146 +253,149 @@ export default function HomeScreen() {
                 className="flex-1"
                 contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" colors={['#137fec']} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" colors={['#6366F1']} />
                 }
             >
-                {/* ============ HERO GRADIENT SECTION ============ */}
-                <LinearGradient
-                    colors={['#0f172a', '#1e3a5f', '#0f172a']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    className="rounded-b-4xl overflow-hidden"
-                    style={{ paddingBottom: budgetProgress ? 24 : 32 }}
-                >
-                    {/* Decorative circles */}
-                    <View className="absolute -top-8 -right-8 w-32 h-32 rounded-full" style={{ backgroundColor: 'rgba(19,127,236,0.12)' }} />
-                    <View className="absolute top-20 -left-6 w-20 h-20 rounded-full" style={{ backgroundColor: 'rgba(16,185,129,0.08)' }} />
-                    <View className="absolute -bottom-6 right-12 w-24 h-24 rounded-full" style={{ backgroundColor: 'rgba(19,127,236,0.08)' }} />
-
-                    {/* Header */}
-                    <View className="flex-row items-center justify-between px-5 pt-4 pb-1">
-                        <TouchableOpacity onPress={() => router.push('/profile')} className="h-10 w-10 items-center justify-center">
-                            {profile?.avatar_url ? (
-                                <Image source={{ uri: profile.avatar_url }} className="h-9 w-9 rounded-full border-2 border-white/30" />
-                            ) : (
-                                <View className="h-9 w-9 rounded-full bg-white/20 items-center justify-center">
-                                    <Text className="text-white text-sm font-bold">
-                                        {(profile?.full_name ?? '?').charAt(0).toUpperCase()}
-                                    </Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                        <Text className="text-sm font-semibold text-white/70">
-                            {monthName} {now.getFullYear()}
-                        </Text>
-                        <TouchableOpacity onPress={() => router.push('/all-transactions')} className="h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                            <MaterialIcons name="search" size={20} color="rgba(255,255,255,0.8)" />
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Hero number */}
-                    <FadeIn delay={100}>
-                        <View className="items-center pt-6 pb-3 px-5">
-                            <Text className="text-xs font-semibold text-white/50 uppercase tracking-widest mb-3">
-                                Gastado este mes
-                            </Text>
-                            {loading && !refreshing ? (
-                                <View className="h-14 w-48 bg-white/10 rounded-2xl" />
-                            ) : (
-                                <AnimatedCounter value={monthTotalExpense} currency={primaryCurrency} />
-                            )}
-                            {budgetProgress && (
-                                <Text className="text-sm text-white/60 mt-2 font-medium">
-                                    de {formatCurrency(budgetProgress.planned, primaryCurrency)} planificado
+                {/* ============ HEADER ============ */}
+                <View className="flex-row items-center justify-between px-5 pt-2 pb-4">
+                    <TouchableOpacity onPress={() => router.push('/profile')} className="h-10 w-10 items-center justify-center">
+                        {profile?.avatar_url ? (
+                            <Image source={{ uri: profile.avatar_url }} className="h-9 w-9 rounded-full border-2 border-slate-200 dark:border-slate-700" />
+                        ) : (
+                            <View className="h-9 w-9 rounded-full bg-primary-faint dark:bg-primary/10 items-center justify-center">
+                                <Text className="text-primary text-sm font-bold">
+                                    {(profile?.full_name ?? '?').charAt(0).toUpperCase()}
                                 </Text>
-                            )}
-                        </View>
-                    </FadeIn>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                    <AccountSwitcher />
+                    <TouchableOpacity onPress={() => router.push('/all-transactions')} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                        <MaterialIcons name="search" size={20} color="#64748b" />
+                    </TouchableOpacity>
+                </View>
 
-                    {/* Quick stats pills */}
-                    <FadeIn delay={250}>
-                        <View className="flex-row items-center justify-center gap-3 pt-2 pb-2 px-5">
-                            {monthTotalIncome > 0 && (
-                                <View className="flex-row items-center gap-1.5 bg-white/15 px-3 py-1.5 rounded-full">
-                                    <MaterialIcons name="arrow-upward" size={11} color="rgba(255,255,255,0.9)" />
-                                    <Text className="text-xs font-bold text-white/90">
+                {/* ============ SUMMARY CARD ============ */}
+                <FadeIn delay={100}>
+                    <View className="px-5 pb-4">
+                        <View className="rounded-3xl overflow-hidden shadow-lg">
+                            <LinearGradient
+                                colors={['#6366F1', '#4F46E5', '#4338CA']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                className="px-5 pt-6 pb-5"
+                            >
+                                {/* Decorative */}
+                                <View className="absolute -top-8 -right-8 w-32 h-32 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
+                                <View className="absolute bottom-2 -left-6 w-20 h-20 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} />
+
+                                <Text className="text-xs font-semibold text-indigo-200 uppercase tracking-widest mb-2">
+                                    Gastado este mes
+                                </Text>
+
+                                {loading && !refreshing ? (
+                                    <View className="h-14 w-48 bg-white/10 rounded-2xl" />
+                                ) : isAllAccounts && Object.keys(expenseByCurrency).length > 1 ? (
+                                    <View className="gap-1">
+                                        {Object.entries(expenseByCurrency).map(([cur, total]) => (
+                                            <AnimatedCounter key={cur} value={total} currency={cur} />
+                                        ))}
+                                    </View>
+                                ) : (
+                                    <AnimatedCounter value={monthTotalExpense} currency={primaryCurrency} />
+                                )}
+
+                                {budgetProgress && (
+                                    <>
+                                        <View className="mt-4">
+                                            <AnimatedProgressBar
+                                                percentage={budgetProgress.percentage}
+                                                color={progressColor}
+                                                height={6}
+                                                delay={500}
+                                                trackColor="rgba(255,255,255,0.15)"
+                                            />
+                                        </View>
+                                        <View className="flex-row items-center justify-between mt-3">
+                                            <View className="flex-row items-center gap-1.5">
+                                                <View className="h-5 w-5 rounded-full bg-white/15 items-center justify-center">
+                                                    <MaterialIcons name="speed" size={11} color="rgba(255,255,255,0.9)" />
+                                                </View>
+                                                <Text className="text-sm font-bold text-white/90">
+                                                    {formatCurrency(budgetProgress.dailyBudget, primaryCurrency)}/dia
+                                                </Text>
+                                            </View>
+                                            <Text className="text-xs text-white/60 font-medium">
+                                                {budgetProgress.daysLeft} dia{budgetProgress.daysLeft !== 1 ? 's' : ''} · {formatCurrency(budgetProgress.remaining, primaryCurrency)} disponible
+                                            </Text>
+                                        </View>
+                                    </>
+                                )}
+
+                                {!budgetProgress && !loading && (
+                                    <TouchableOpacity
+                                        onPress={() => router.push({ pathname: '/(tabs)/dashboard' })}
+                                        className="flex-row items-center gap-2 mt-4 bg-white/15 self-start px-4 py-2.5 rounded-xl"
+                                    >
+                                        <MaterialIcons name="pie-chart-outline" size={16} color="rgba(255,255,255,0.9)" />
+                                        <Text className="text-sm font-bold text-white/90">Planifica tu mes</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </LinearGradient>
+                        </View>
+                    </View>
+                </FadeIn>
+
+                {/* ============ QUICK STATS ============ */}
+                {(monthTotalIncome > 0 || (budgetProgress && budgetProgress.remaining > 0)) && (
+                    <FadeIn delay={200}>
+                        <View className="flex-row items-center gap-3 px-5 pb-4 flex-wrap">
+                            {isAllAccounts && Object.keys(incomeByCurrency).length > 1 ? (
+                                Object.entries(incomeByCurrency).map(([cur, total]) => (
+                                    <View key={cur} className="flex-row items-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
+                                        <MaterialIcons name="arrow-upward" size={12} color="#10B981" />
+                                        <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                            +{formatCurrency(total, cur)}
+                                        </Text>
+                                    </View>
+                                ))
+                            ) : monthTotalIncome > 0 ? (
+                                <View className="flex-row items-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
+                                    <MaterialIcons name="arrow-upward" size={12} color="#10B981" />
+                                    <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                                         +{formatCurrency(monthTotalIncome, primaryCurrency)}
                                     </Text>
                                 </View>
-                            )}
-                            {budgetProgress && budgetProgress.remaining > 0 && (
-                                <View className="flex-row items-center gap-1.5 bg-white/15 px-3 py-1.5 rounded-full">
-                                    <MaterialIcons name="account-balance-wallet" size={11} color="rgba(255,255,255,0.9)" />
-                                    <Text className="text-xs font-bold text-white/90">
-                                        {formatCurrency(budgetProgress.remaining, primaryCurrency)} disponible
+                            ) : null}
+                            {budgetProgress && (
+                                <View className="flex-row items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-xl">
+                                    <MaterialIcons name="account-balance-wallet" size={12} color="#64748b" />
+                                    <Text className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                        {formatCurrency(budgetProgress.planned, primaryCurrency)} planificado
                                     </Text>
                                 </View>
                             )}
-                        </View>
-                    </FadeIn>
-
-                    {/* Progress bar inside hero */}
-                    {budgetProgress && (
-                        <FadeIn delay={350}>
-                            <View className="px-5 pt-3">
-                                <AnimatedProgressBar
-                                    percentage={budgetProgress.percentage}
-                                    color={progressColor}
-                                    height={6}
-                                    delay={500}
-                                    trackColor="rgba(255,255,255,0.15)"
-                                />
-                                <View className="flex-row items-center justify-between mt-2">
-                                    <Text className="text-xs text-white/50 font-medium">
-                                        ~{formatCurrency(budgetProgress.dailyBudget, primaryCurrency)}/dia
-                                    </Text>
-                                    <Text className="text-xs text-white/50 font-medium">
-                                        {budgetProgress.daysLeft} dia{budgetProgress.daysLeft !== 1 ? 's' : ''} restante{budgetProgress.daysLeft !== 1 ? 's' : ''}
-                                    </Text>
-                                </View>
-                            </View>
-                        </FadeIn>
-                    )}
-                </LinearGradient>
-
-                {/* ============ CONTENT BELOW HERO ============ */}
-
-                {/* No budget CTA */}
-                {!budgetProgress && !loading && (
-                    <FadeIn delay={300}>
-                        <View className="px-5 pt-5">
-                            <ScalePress onPress={() => router.push({ pathname: '/(tabs)/dashboard' })}>
-                                <View className="bg-white/75 dark:bg-card-dark rounded-2xl p-4 border border-dashed border-primary/20 flex-row items-center gap-3 shadow-md"
-                                >
-                                    <View className="h-10 w-10 rounded-xl bg-primary/10 items-center justify-center">
-                                        <MaterialIcons name="pie-chart-outline" size={20} color="#137fec" />
-                                    </View>
-                                    <View className="flex-1">
-                                        <Text className="text-sm font-bold text-stone-700 dark:text-slate-200">Planifica tu mes</Text>
-                                        <Text className="text-xs text-stone-400 mt-0.5">Define cuanto queres gastar por categoria</Text>
-                                    </View>
-                                    <MaterialIcons name="chevron-right" size={20} color="#137fec" />
-                                </View>
-                            </ScalePress>
                         </View>
                     </FadeIn>
                 )}
 
+                {/* ============ ALERTS SECTION ============ */}
+
                 {/* Category Alerts */}
                 {categoryAlerts.length > 0 && (
-                    <View className="px-5 pt-4 gap-2">
+                    <View className="px-5 pb-3 gap-2">
                         {categoryAlerts.map((alert, i) => {
                             const style = getCategoryStyle(alert.color);
                             const isOver = alert.pct >= 100;
                             return (
-                                <FadeIn key={i} delay={400 + i * 80}>
+                                <FadeIn key={i} delay={300 + i * 60}>
                                     <ScalePress onPress={() => router.push({ pathname: '/(tabs)/dashboard' })}>
-                                        <View className={`flex-row items-center gap-3 px-3.5 py-3 rounded-2xl border ${isOver ? 'bg-red-50 dark:bg-red-500/8 border-red-100 dark:border-red-900/20' : 'bg-amber-50 dark:bg-amber-500/8 border-amber-100 dark:border-amber-900/20'}`}>
+                                        <View className={`flex-row items-center gap-3 px-3.5 py-3 rounded-2xl border ${isOver ? 'bg-red-50 dark:bg-red-500/8 border-red-200 dark:border-red-900/20' : 'bg-amber-50 dark:bg-amber-500/8 border-amber-200 dark:border-amber-900/20'}`}>
                                             <View className={`h-8 w-8 rounded-xl items-center justify-center ${style.bg}`}>
                                                 <MaterialIcons name={alert.icon} size={16} color={style.hex} />
                                             </View>
                                             <View className="flex-1">
-                                                <Text className="text-sm font-bold text-stone-800 dark:text-white">{alert.name}</Text>
+                                                <Text className="text-sm font-bold text-slate-800 dark:text-white">{alert.name}</Text>
                                                 <Text className={`text-xs mt-0.5 ${isOver ? 'text-red-500' : 'text-amber-600 dark:text-amber-400'}`}>
                                                     {isOver
                                                         ? `Excedido en ${formatCurrency(Math.abs(alert.remaining), primaryCurrency)}`
@@ -370,17 +418,17 @@ export default function HomeScreen() {
 
                 {/* Pending Recurring */}
                 {pendingRecurringCount > 0 && (
-                    <FadeIn delay={500}>
-                        <View className="px-5 pt-3">
+                    <FadeIn delay={350}>
+                        <View className="px-5 pb-3">
                             <ScalePress onPress={() => router.push('/recurring')}>
-                                <View className="flex-row items-center gap-3 bg-primary/5 dark:bg-primary/8 rounded-2xl px-4 py-3 border border-primary/10">
+                                <View className="flex-row items-center gap-3 bg-primary-faint dark:bg-primary/8 rounded-2xl px-4 py-3 border border-indigo-100 dark:border-indigo-900/20">
                                     <View className="h-8 w-8 rounded-xl bg-primary/15 items-center justify-center">
-                                        <MaterialIcons name="repeat" size={16} color="#137fec" />
+                                        <MaterialIcons name="repeat" size={16} color="#6366F1" />
                                     </View>
-                                    <Text className="flex-1 text-sm font-semibold text-stone-600 dark:text-slate-300">
+                                    <Text className="flex-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
                                         {pendingRecurringCount} recurrente{pendingRecurringCount !== 1 ? 's' : ''} pendiente{pendingRecurringCount !== 1 ? 's' : ''}
                                     </Text>
-                                    <MaterialIcons name="chevron-right" size={16} color="#137fec" />
+                                    <MaterialIcons name="chevron-right" size={16} color="#6366F1" />
                                 </View>
                             </ScalePress>
                         </View>
@@ -389,8 +437,8 @@ export default function HomeScreen() {
 
                 {/* Savings Goals Widget */}
                 {activeGoals.length > 0 && (
-                    <FadeIn delay={550}>
-                        <View className="px-5 pt-3">
+                    <FadeIn delay={400}>
+                        <View className="px-5 pb-3">
                             <GoalsSummaryWidget
                                 goals={activeGoals.slice(0, 3)}
                                 onPress={() => router.push({ pathname: '/(tabs)/goals' })}
@@ -399,11 +447,27 @@ export default function HomeScreen() {
                     </FadeIn>
                 )}
 
+                {/* Analytics Widget */}
+                {currentSummary && (
+                    <FadeIn delay={420}>
+                        <View className="px-5 pb-3">
+                            <AnalyticsSummaryWidget
+                                currentSummary={currentSummary}
+                                previousSummary={previousSummary}
+                                topInsight={topInsight}
+                                currency={primaryCurrency}
+                                onPress={() => router.push('/analytics')}
+                                onInsightDismiss={dismissInsight}
+                            />
+                        </View>
+                    </FadeIn>
+                )}
+
                 {/* Weekly Review Alert */}
                 {weeklyAlert.visible && weeklyAlert.summary && (
-                    <FadeIn delay={400}>
-                        <View className="px-5 pt-3">
-                            <View className={`rounded-2xl p-4 flex-row items-center gap-3 border ${weeklyAlert.summary.criticaCount > 0 ? 'bg-red-50 dark:bg-red-500/8 border-red-100 dark:border-red-900/20' : 'bg-amber-50 dark:bg-amber-500/8 border-amber-100 dark:border-amber-900/20'}`}>
+                    <FadeIn delay={350}>
+                        <View className="px-5 pb-3">
+                            <View className={`rounded-2xl p-4 flex-row items-center gap-3 border ${weeklyAlert.summary.criticaCount > 0 ? 'bg-red-50 dark:bg-red-500/8 border-red-200 dark:border-red-900/20' : 'bg-amber-50 dark:bg-amber-500/8 border-amber-200 dark:border-amber-900/20'}`}>
                                 <View className={`h-9 w-9 rounded-xl items-center justify-center ${weeklyAlert.summary.criticaCount > 0 ? 'bg-red-500/15' : 'bg-amber-500/15'}`}>
                                     <MaterialIcons
                                         name={weeklyAlert.summary.criticaCount > 0 ? 'error' : 'warning'}
@@ -412,8 +476,8 @@ export default function HomeScreen() {
                                     />
                                 </View>
                                 <View className="flex-1">
-                                    <Text className="text-sm font-bold text-stone-800 dark:text-white">Revision semanal</Text>
-                                    <Text className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
+                                    <Text className="text-sm font-bold text-slate-800 dark:text-white">Revision semanal</Text>
+                                    <Text className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                                         {[
                                             weeklyAlert.summary.criticaCount > 0 && `${weeklyAlert.summary.criticaCount} critica${weeklyAlert.summary.criticaCount !== 1 ? 's' : ''}`,
                                             weeklyAlert.summary.enRiesgoCount > 0 && `${weeklyAlert.summary.enRiesgoCount} en riesgo`,
@@ -427,7 +491,7 @@ export default function HomeScreen() {
                                     <Text className={`text-xs font-bold ${weeklyAlert.summary.criticaCount > 0 ? 'text-red-500' : 'text-amber-600'}`}>Ver</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity onPress={weeklyAlert.dismiss} hitSlop={8}>
-                                    <MaterialIcons name="close" size={16} color="#a8a29e" />
+                                    <MaterialIcons name="close" size={16} color="#94A3B8" />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -436,8 +500,8 @@ export default function HomeScreen() {
 
                 {/* Error State */}
                 {error && (
-                    <View className="px-5 pt-4">
-                        <View className="bg-red-50 dark:bg-red-500/8 rounded-2xl p-4 flex-row items-center gap-3 border border-red-100 dark:border-red-900/20">
+                    <View className="px-5 pb-3">
+                        <View className="bg-red-50 dark:bg-red-500/8 rounded-2xl p-4 flex-row items-center gap-3 border border-red-200 dark:border-red-900/20">
                             <MaterialIcons name="error-outline" size={18} color="#ef4444" />
                             <Text className="text-red-500 text-xs flex-1 font-medium">{error}</Text>
                             <TouchableOpacity onPress={onRefresh}>
@@ -447,77 +511,69 @@ export default function HomeScreen() {
                     </View>
                 )}
 
-                {/* ============ TRANSACTIONS ============ */}
-                <View className="px-5 pt-5 flex-1">
-                    <FadeIn delay={300}>
+                {/* ============ RECENT TRANSACTIONS ============ */}
+                <View className="px-5 pt-2 flex-1">
+                    <FadeIn delay={250}>
                         <View className="flex-row items-center justify-between mb-3">
-                            <Text className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-slate-500">Hoy</Text>
-                            {todayTx.length > 0 && (
-                                <View className="bg-frost dark:bg-slate-800 h-5 min-w-[20px] items-center justify-center rounded-full px-1.5">
-                                    <Text className="text-xs font-bold text-stone-500 dark:text-slate-400">{todayTx.length}</Text>
-                                </View>
+                            <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                Recientes
+                            </Text>
+                            {monthTx.length > 7 && (
+                                <TouchableOpacity onPress={() => router.push('/(tabs)/month')}>
+                                    <Text className="text-xs font-bold text-primary">Ver todo</Text>
+                                </TouchableOpacity>
                             )}
                         </View>
                     </FadeIn>
 
                     {loading && !refreshing && <SkeletonLoader.List count={3} />}
 
-                    {!loading && todayTx.length === 0 && !error && (
-                        <FadeIn delay={400}>
-                            <View className="items-center py-8">
-                                <View className="h-14 w-14 rounded-2xl bg-frost dark:bg-input-dark items-center justify-center mb-3">
-                                    <MaterialIcons name="receipt-long" size={22} color="#d6d3d1" />
-                                </View>
-                                <Text className="text-stone-400 dark:text-slate-500 text-sm font-medium">Sin movimientos hoy</Text>
-                                <Text className="text-stone-300 dark:text-slate-600 text-xs mt-1">Toca + para registrar</Text>
-                            </View>
+                    {!loading && recentTx.length === 0 && !error && (
+                        <FadeIn delay={350}>
+                            <EmptyState
+                                icon="receipt-long"
+                                title="Sin movimientos este mes"
+                                subtitle="Toca + para registrar tu primer gasto"
+                                compact
+                            />
                         </FadeIn>
                     )}
 
-                    {todayTx.map((tx, i) => renderTx(tx, i))}
-
-                    {/* Yesterday */}
-                    {yesterdayTx.length > 0 && (
-                        <>
-                            <FadeIn delay={todayTx.length * 40 + 300}>
-                                <View className="flex-row items-center justify-between mb-3 mt-4">
-                                    <Text className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-slate-500">Ayer</Text>
-                                    <View className="bg-frost dark:bg-slate-800 h-5 min-w-[20px] items-center justify-center rounded-full px-1.5">
-                                        <Text className="text-xs font-bold text-stone-500 dark:text-slate-400">{yesterdayTx.length}</Text>
-                                    </View>
+                    {!loading && recentGroups.map(([label, txs], gi) => (
+                        <FadeIn key={label} delay={300 + gi * 50}>
+                            <View className="mb-2">
+                                <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 mt-2">
+                                    {label}
+                                </Text>
+                                <View className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                                    {txs.map((tx, ti) => (
+                                        <View key={tx.id}>
+                                            {ti > 0 && <View className="h-px bg-slate-100 dark:bg-slate-800 ml-14" />}
+                                            <TransactionRow
+                                                transaction={tx}
+                                                currency={txAccount(tx)?.currency}
+                                                onPress={() => handleEditTx(tx)}
+                                                onLongPress={() => handleDeleteTx(tx)}
+                                            />
+                                        </View>
+                                    ))}
                                 </View>
-                            </FadeIn>
-                            {yesterdayTx.map((tx, i) => renderTx(tx, todayTx.length + i))}
-                        </>
-                    )}
+                            </View>
+                        </FadeIn>
+                    ))}
                 </View>
             </ScrollView>
 
             {/* FAB */}
-            <RNAnimated.View
-                style={{
-                    position: 'absolute',
-                    bottom: 96,
-                    right: 20,
-                    transform: [{ scale: fabScale }],
-                }}
-            >
-                <TouchableOpacity
-                    onPress={() => router.push({ pathname: '/add-transaction', params: { type: 'expense' } })}
-                    activeOpacity={0.85}
-                    className="h-14 w-14 rounded-full items-center justify-center"
-                    style={{
-                        backgroundColor: '#137fec',
-                        shadowColor: '#137fec',
-                        shadowOffset: { width: 0, height: 6 },
-                        shadowOpacity: 0.35,
-                        shadowRadius: 12,
-                        elevation: 10,
-                    }}
-                >
-                    <MaterialIcons name="add" size={28} color="#ffffff" />
-                </TouchableOpacity>
-            </RNAnimated.View>
+            <ActionButton
+                onPress={() => router.push({
+                    pathname: '/add-transaction',
+                    params: {
+                        type: 'expense',
+                        ...(selectedAccountId ? { account: selectedAccountId } : {}),
+                    },
+                })}
+            />
 
             <ConfirmModal
                 visible={!!deleteTx}

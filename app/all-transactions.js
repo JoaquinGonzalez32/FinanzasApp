@@ -127,10 +127,10 @@ export default function AllTransactionsScreen() {
                 className="flex-1 px-5"
                 contentContainerStyle={{ paddingBottom: 40 }}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#137fec" colors={['#137fec']} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" colors={['#6366F1']} />
                 }
             >
-                {loading && !refreshing && <ActivityIndicator color="#137fec" style={{ marginVertical: 20 }} />}
+                {loading && !refreshing && <ActivityIndicator color="#6366F1" style={{ marginVertical: 20 }} />}
 
                 {error && (
                     <View className="bg-red-500/10 rounded-xl p-4 flex-row items-center gap-3 border border-red-200 dark:border-red-900/30 mb-4">

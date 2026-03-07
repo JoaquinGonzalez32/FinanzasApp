@@ -110,7 +110,7 @@ export function paceLabel(status: PaceStatus): { text: string; color: string } {
     case "ahead":
       return { text: "Adelantada", color: "#10b981" };
     case "on_track":
-      return { text: "En ritmo", color: "#137fec" };
+      return { text: "En ritmo", color: "#6366F1" };
     case "behind":
       return { text: "Atrasada", color: "#f59e0b" };
     case "no_deadline":

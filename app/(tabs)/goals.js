@@ -100,7 +100,7 @@ export default function GoalsScreen() {
                         }}
                         className="h-9 w-9 rounded-full bg-primary/10 items-center justify-center"
                     >
-                        <MaterialIcons name="add" size={20} color="#137fec" />
+                        <MaterialIcons name="add" size={20} color="#6366F1" />
                     </TouchableOpacity>
                 )}
             </View>
@@ -109,7 +109,7 @@ export default function GoalsScreen() {
                 className="flex-1"
                 contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#137fec" colors={['#137fec']} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" colors={['#6366F1']} />
                 }
             >
                 {/* Summary header */}
@@ -118,7 +118,7 @@ export default function GoalsScreen() {
                         <View className="px-5 pb-3">
                             <View className="bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-sm p-4 flex-row items-center gap-4">
                                 <View className="h-12 w-12 rounded-2xl bg-primary/10 items-center justify-center">
-                                    <MaterialIcons name="flag" size={24} color="#137fec" />
+                                    <MaterialIcons name="flag" size={24} color="#6366F1" />
                                 </View>
                                 <View className="flex-1">
                                     <Text className="text-sm font-bold text-stone-900 dark:text-white">
@@ -146,7 +146,7 @@ export default function GoalsScreen() {
                 {/* Loading */}
                 {allLoading && !refreshing && (
                     <View className="py-12">
-                        <ActivityIndicator size="large" color="#137fec" />
+                        <ActivityIndicator size="large" color="#6366F1" />
                     </View>
                 )}
 

@@ -1,43 +1,62 @@
 // tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-    content: ["./app/**/*.{js,jsx,ts,tsx}", "./components/**/*.{js,jsx,ts,tsx}"],
+    content: [
+        "./app/**/*.{js,jsx,ts,tsx}",
+        "./components/**/*.{js,jsx,ts,tsx}",
+        "./src/**/*.{js,jsx,ts,tsx}",
+    ],
     presets: [require("nativewind/preset")],
     theme: {
         extend: {
             colors: {
-                // Brand
-                "primary": "#137fec",
-                "primary-light": "#4da3f7",
-                "primary-dark": "#0b5fbd",
+                // Brand — Indigo
+                "primary": "#6366F1",
+                "primary-light": "#818CF8",
+                "primary-dark": "#4F46E5",
+                "primary-faint": "#EEF2FF",
 
-                // Surfaces — light (frost glass)
-                "background-light": "#e8edf6",
-                "card-light": "#ffffff",
-                "surface-light": "#dfe5f0",
+                // Surfaces — Light
+                "background-light": "#F8FAFC",
+                "surface-light": "#F1F5F9",
+                "card-light": "#FFFFFF",
+                "input-light": "#F1F5F9",
 
-                // Frost tokens
-                "frost": "#dce3f0",
-                "frost-light": "#eaeff8",
-
-                // Surfaces — dark
-                "background-dark": "#0c1117",
-                "card-dark": "#161f2a",
-                "surface-dark": "#1a242f",
-                "input-dark": "#232d38",
-                "modal-dark": "#0e141b",
+                // Surfaces — Dark
+                "background-dark": "#020617",
+                "surface-dark": "#0F172A",
+                "card-dark": "#1E293B",
+                "input-dark": "#1E293B",
+                "modal-dark": "#0F172A",
 
                 // Semantic accents
-                "success": "#10b981",
-                "success-light": "#d1fae5",
-                "danger": "#ef4444",
-                "danger-light": "#fee2e2",
-                "warning": "#f59e0b",
-                "warning-light": "#fef3c7",
+                "income": "#10B981",
+                "income-light": "#ECFDF5",
+                "expense": "#EF4444",
+                "expense-light": "#FEF2F2",
+                "warning": "#F59E0B",
+                "warning-light": "#FFFBEB",
+
+                // Aliases for backward compat
+                "frost": "#F1F5F9",
+                "frost-light": "#F8FAFC",
+                "success": "#10B981",
+                "success-light": "#D1FAE5",
+                "danger": "#EF4444",
+                "danger-light": "#FEE2E2",
             },
             fontFamily: {
                 sans: ['Manrope_400Regular'],
+                'sans-medium': ['Manrope_500Medium'],
+                'sans-semibold': ['Manrope_600SemiBold'],
                 display: ['Manrope_700Bold'],
+                'display-extra': ['Manrope_800ExtraBold'],
+            },
+            fontSize: {
+                '2xs': '10px',
+                'display-sm': '28px',
+                'display-md': '36px',
+                'display-lg': '48px',
             },
             borderRadius: {
                 '3xl': '24px',

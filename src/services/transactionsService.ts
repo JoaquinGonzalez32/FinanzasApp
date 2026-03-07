@@ -117,6 +117,22 @@ export async function updateTransaction(
   return createTransaction(tx);
 }
 
+export async function getTransactionsRange(
+  startDate: string,
+  endDate: string
+): Promise<Transaction[]> {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("*, category:categories(*)")
+    .gte("date", startDate)
+    .lte("date", endDate)
+    .order("date", { ascending: true })
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function deleteTransaction(id: string): Promise<void> {
   const { error } = await supabase.rpc("delete_transaction_atomic", {
     p_transaction_id: id,

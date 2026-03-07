@@ -13,7 +13,7 @@ const STATUS_CONFIG = {
         bg: 'bg-primary/10',
         text: 'text-primary',
         icon: 'info',
-        iconColor: '#137fec',
+        iconColor: '#6366F1',
         defaultLabel: 'Normal',
     },
     warning: {

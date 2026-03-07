@@ -198,7 +198,7 @@ export default function PlanningScreen() {
                         disabled={availableCategories.length === 0}
                         className={`h-10 w-10 items-center justify-center rounded-full ${availableCategories.length > 0 ? 'bg-primary/10' : 'bg-frost dark:bg-slate-800'}`}
                     >
-                        <MaterialIcons name="add" size={24} color={availableCategories.length > 0 ? '#137fec' : '#a8a29e'} />
+                        <MaterialIcons name="add" size={24} color={availableCategories.length > 0 ? '#6366F1' : '#a8a29e'} />
                     </TouchableOpacity>
                 </SafeAreaView>
             </View>
@@ -232,7 +232,7 @@ export default function PlanningScreen() {
                                         onPress={() => setSelectedAccountId(acc.id)}
                                         className={`flex-row items-center gap-2 mr-3 px-4 py-2.5 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-frost dark:bg-input-dark'}`}
                                     >
-                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={isActive ? '#137fec' : '#475569'} />
+                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={isActive ? '#6366F1' : '#475569'} />
                                         <Text className={`text-sm font-semibold ${isActive ? 'text-primary' : 'text-stone-600 dark:text-slate-400'}`}>{acc.name}</Text>
                                     </TouchableOpacity>
                                 );

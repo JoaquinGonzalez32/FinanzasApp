@@ -30,6 +30,20 @@ export async function getBudgetItems(month: string): Promise<BudgetItem[]> {
   return data ?? [];
 }
 
+export async function getBudgetItemsRange(
+  months: string[]
+): Promise<BudgetItem[]> {
+  if (months.length === 0) return [];
+  const { data, error } = await supabase
+    .from("budget_items")
+    .select("*, category:categories(*)")
+    .in("month", months)
+    .order("sort_order", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function createBudgetItem(
   item: BudgetItemInsert
 ): Promise<BudgetItem> {

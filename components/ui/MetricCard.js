@@ -14,7 +14,7 @@ const MetricCard = ({
     trend,
     icon,
     iconBg = 'bg-primary/10',
-    iconColor = '#137fec',
+    iconColor = '#6366F1',
     variant = 'outlined',
     className: extraClass = '',
 }) => {

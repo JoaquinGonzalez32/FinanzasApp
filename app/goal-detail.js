@@ -141,7 +141,7 @@ export default function GoalDetailScreen() {
     if (loading || !goal) {
         return (
             <View className="flex-1 bg-background-light dark:bg-background-dark items-center justify-center">
-                <ActivityIndicator size="large" color="#137fec" />
+                <ActivityIndicator size="large" color="#6366F1" />
             </View>
         );
     }
@@ -184,7 +184,7 @@ export default function GoalDetailScreen() {
                             })}
                             className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200 dark:active:bg-slate-800"
                         >
-                            <MaterialIcons name="edit" size={20} color="#137fec" />
+                            <MaterialIcons name="edit" size={20} color="#6366F1" />
                         </TouchableOpacity>
                     )}
                     {!isActive && <View className="h-10 w-10" />}
@@ -285,7 +285,7 @@ export default function GoalDetailScreen() {
                                 </View>
                             </View>
 
-                            {contribLoading && <ActivityIndicator size="small" color="#137fec" />}
+                            {contribLoading && <ActivityIndicator size="small" color="#6366F1" />}
 
                             {!contribLoading && contributions.length === 0 && (
                                 <View className="items-center py-8">
@@ -364,7 +364,7 @@ export default function GoalDetailScreen() {
                         <TouchableOpacity
                             onPress={() => setShowContribModal(true)}
                             className="w-full py-4 rounded-xl bg-primary active:opacity-90 shadow-sm"
-                            style={{ shadowColor: '#137fec', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 }}
+                            style={{ shadowColor: '#6366F1', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 }}
                         >
                             <Text className="text-white font-bold text-center text-base">Agregar Aporte</Text>
                         </TouchableOpacity>
@@ -425,7 +425,7 @@ export default function GoalDetailScreen() {
                                 style={{ minHeight: 48, justifyContent: 'center' }}
                             >
                                 {contribSubmitting ? (
-                                    <ActivityIndicator size="small" color="#137fec" />
+                                    <ActivityIndicator size="small" color="#6366F1" />
                                 ) : (
                                     <Text className="text-base font-bold text-primary">Confirmar</Text>
                                 )}

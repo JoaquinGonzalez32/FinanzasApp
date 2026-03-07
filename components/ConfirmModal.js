@@ -3,16 +3,16 @@ import { View, Text, TouchableOpacity, Modal } from 'react-native';
 const ConfirmModal = ({ visible, title, message, onConfirm, onCancel }) => (
     <Modal visible={visible} transparent animationType="fade">
         <View className="flex-1 bg-black/50 items-center justify-center px-6">
-            <View className="w-full bg-white/75 dark:bg-surface-dark rounded-2xl overflow-hidden">
+            <View className="w-full bg-white dark:bg-card-dark rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
                 <View className="p-6">
-                    <Text className="text-lg font-bold text-stone-900 dark:text-white text-center">{title}</Text>
-                    <Text className="text-sm text-stone-500 text-center mt-2">{message}</Text>
+                    <Text className="text-lg font-bold text-slate-900 dark:text-white text-center">{title}</Text>
+                    <Text className="text-sm text-slate-500 text-center mt-2">{message}</Text>
                 </View>
-                <View className="flex-row border-t border-stone-100 dark:border-slate-700">
+                <View className="flex-row border-t border-slate-100 dark:border-slate-700">
                     <TouchableOpacity
                         onPress={onCancel}
-                        className="flex-1 items-center border-r border-stone-100 dark:border-slate-700"
-                        style={{ minHeight: 48 , justifyContent: 'center' }}
+                        className="flex-1 items-center border-r border-slate-100 dark:border-slate-700"
+                        style={{ minHeight: 48, justifyContent: 'center' }}
                     >
                         <Text className="text-base font-semibold text-primary">Cancelar</Text>
                     </TouchableOpacity>

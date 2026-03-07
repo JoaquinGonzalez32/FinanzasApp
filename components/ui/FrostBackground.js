@@ -1,3 +1,11 @@
+/**
+ * FrostBackground — Screen background wrapper
+ *
+ * Light mode: Subtle violet-tinted gradient (slate-50 → violet-50 → slate-50)
+ * Dark mode: Solid dark background
+ *
+ * Replaces the old lavender frost gradient with a cleaner, more subtle one.
+ */
 import { useColorScheme } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,7 +23,7 @@ const FrostBackground = ({ children, edges = ['top'], style }) => {
 
     return (
         <LinearGradient
-            colors={['#e8edf6', '#eee8f4', '#f2edf8']}
+            colors={['#F8FAFC', '#F5F3FF', '#F8FAFC']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[{ flex: 1 }, style]}

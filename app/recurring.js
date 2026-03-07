@@ -124,7 +124,7 @@ export default function RecurringScreen() {
     if (loading) {
         return (
             <View className="flex-1 bg-background-light dark:bg-background-dark items-center justify-center">
-                <ActivityIndicator size="large" color="#137fec" />
+                <ActivityIndicator size="large" color="#6366F1" />
             </View>
         );
     }
@@ -143,7 +143,7 @@ export default function RecurringScreen() {
                         disabled={availableCats.length === 0}
                         className={`h-10 w-10 items-center justify-center rounded-full ${availableCats.length > 0 ? 'bg-primary/10' : 'bg-frost dark:bg-slate-800'}`}
                     >
-                        <MaterialIcons name="add" size={24} color={availableCats.length > 0 ? '#137fec' : '#a8a29e'} />
+                        <MaterialIcons name="add" size={24} color={availableCats.length > 0 ? '#6366F1' : '#a8a29e'} />
                     </TouchableOpacity>
                 </SafeAreaView>
             </View>
@@ -364,7 +364,7 @@ export default function RecurringScreen() {
                                                         onPress={() => setNewAccountId(isActive ? null : acc.id)}
                                                         className={`flex-row items-center gap-2 mr-3 px-4 py-3 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-frost dark:bg-input-dark'}`}
                                                     >
-                                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={isActive ? '#137fec' : '#475569'} />
+                                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={isActive ? '#6366F1' : '#475569'} />
                                                         <Text className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-stone-600 dark:text-slate-400'}`}>{acc.name}</Text>
                                                     </TouchableOpacity>
                                                 );
