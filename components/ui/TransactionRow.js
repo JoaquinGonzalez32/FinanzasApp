@@ -21,6 +21,9 @@ const TransactionRow = ({
     onPress,
     onLongPress,
     showDate = false,
+    accountName,
+    accountColor,
+    budgetMonthLabel,
 }) => {
     const scale = useRef(new Animated.Value(1)).current;
 
@@ -73,17 +76,36 @@ const TransactionRow = ({
                     >
                         {cat?.name ?? 'Sin categoria'}
                     </Text>
-                    <Text
-                        className="text-xs text-slate-400 dark:text-slate-500 mt-0.5"
-                        numberOfLines={1}
-                    >
-                        {transaction.note || (showDate ? transaction.date : '')}
-                    </Text>
+                    <View className="flex-row items-center mt-0.5 gap-1">
+                        {accountName && (
+                            <>
+                                <View className="h-2 w-2 rounded-full" style={{ backgroundColor: accountColor || '#94A3B8' }} />
+                                <Text className="text-xs text-slate-400 dark:text-slate-500" numberOfLines={1}>
+                                    {accountName}
+                                </Text>
+                                {transaction.note ? <Text className="text-xs text-slate-300 dark:text-slate-600">·</Text> : null}
+                            </>
+                        )}
+                        {transaction.note ? (
+                            <Text className="text-xs text-slate-400 dark:text-slate-500 flex-1" numberOfLines={1}>
+                                {transaction.note}
+                            </Text>
+                        ) : !accountName && showDate ? (
+                            <Text className="text-xs text-slate-400 dark:text-slate-500">{transaction.date}</Text>
+                        ) : null}
+                    </View>
                 </View>
 
-                <Text className={`text-sm ${amountWeight} ${amountColor}`}>
-                    {sign} {formatCurrency(amount, currency)}
-                </Text>
+                <View className="items-end">
+                    <Text className={`text-sm ${amountWeight} ${amountColor}`}>
+                        {sign} {formatCurrency(amount, currency)}
+                    </Text>
+                    {budgetMonthLabel && (
+                        <Text className="text-2xs text-primary font-medium mt-0.5">
+                            {budgetMonthLabel}
+                        </Text>
+                    )}
+                </View>
             </TouchableOpacity>
         </Animated.View>
     );

@@ -11,6 +11,7 @@ export interface Transaction {
   date: string; // ISO date string YYYY-MM-DD
   created_at: string;
   recurring_id?: string | null;
+  budget_month?: string | null; // YYYY-MM — which month this income counts toward for budget. null = same as date month
   // joined from categories
   category?: Category;
 }
@@ -34,6 +35,7 @@ export interface TransactionInsert {
   note?: string | null;
   date: string;
   recurring_id?: string | null;
+  budget_month?: string | null;
 }
 
 export interface Profile {

@@ -3,7 +3,7 @@ import { Alert, Platform } from "react-native";
 /**
  * Maps Postgres/Supabase error codes to user-friendly Spanish messages.
  */
-function friendlyMessage(e: unknown): string {
+export function friendlyMessage(e: unknown): string {
   if (!e || typeof e !== "object") return "Ocurrió un error. Intentá de nuevo.";
 
   const err = e as { code?: string; message?: string; status?: number };

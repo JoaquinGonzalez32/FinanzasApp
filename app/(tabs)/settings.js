@@ -48,6 +48,7 @@ import { emitCategoriesChange, emitAccountsChange } from '../../src/lib/events';
 import { getCategoryStyle, formatCurrency } from '../../src/lib/helpers';
 import { useAccountContext } from '../../src/context/AccountContext';
 import { goalProgress } from '../../src/lib/goalHelpers';
+import { useTheme } from '../../src/theme/useTheme';
 
 const ACCOUNT_TYPE_LABELS = {
     cash: 'Efectivo',
@@ -63,6 +64,7 @@ export default function SettingsScreen() {
     const { accounts, loading: accsLoading, refresh: refreshAccs } = useAccounts();
     const { selectAccount } = useAccountContext();
     const { goals: activeGoals } = useSavingsGoals();
+    const { mode, setMode } = useTheme();
     const { show: showToast, ToastComponent } = useToast();
     const [refreshing, setRefreshing] = useState(false);
     const [expenseCatsExpanded, setExpenseCatsExpanded] = useState(false);
@@ -382,6 +384,38 @@ export default function SettingsScreen() {
                                 )}
                             </View>
                         )}
+                    </View>
+                </FadeIn>
+
+                {/* ============ APPEARANCE ============ */}
+                <FadeIn delay={300}>
+                    <View className="px-5 pb-5">
+                        <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Apariencia</Text>
+                        <View className="bg-white dark:bg-card-dark rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex-row">
+                            {[
+                                { key: 'light', icon: 'light-mode', label: 'Claro' },
+                                { key: 'system', icon: 'brightness-auto', label: 'Auto' },
+                                { key: 'dark', icon: 'dark-mode', label: 'Oscuro' },
+                            ].map((opt, i, arr) => {
+                                const active = mode === opt.key;
+                                return (
+                                    <TouchableOpacity
+                                        key={opt.key}
+                                        onPress={() => setMode(opt.key)}
+                                        className={`flex-1 items-center py-3 ${i < arr.length - 1 ? 'border-r border-slate-100 dark:border-slate-800' : ''}`}
+                                    >
+                                        <MaterialIcons
+                                            name={opt.icon}
+                                            size={20}
+                                            color={active ? '#6366F1' : '#94A3B8'}
+                                        />
+                                        <Text className={`text-xs font-semibold mt-1 ${active ? 'text-primary' : 'text-slate-400'}`}>
+                                            {opt.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
                     </View>
                 </FadeIn>
 

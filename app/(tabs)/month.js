@@ -33,8 +33,9 @@ import TransactionRow from '../../components/ui/TransactionRow';
 import ConfirmModal from '../../components/ConfirmModal';
 import { SkeletonLoader, useToast, FadeIn, FrostBackground, EmptyState } from '../../components/ui';
 import { getYearTransactions, deleteTransaction } from '../../src/services/transactionsService';
+import { friendlyMessage } from '../../src/lib/friendlyError';
 import { onTransactionsChange, emitTransactionsChange } from '../../src/lib/events';
-import { formatCurrency, sumByType, MONTHS_ES, DAYS_ES } from '../../src/lib/helpers';
+import { formatCurrency, sumByType, MONTHS_ES, DAYS_ES, monthLabel, getCategoryStyle } from '../../src/lib/helpers';
 import { useAccountContext } from '../../src/context/AccountContext';
 import AccountSwitcher from '../../src/components/AccountSwitcher';
 
@@ -87,29 +88,37 @@ export default function MonthScreen() {
     const monthIncome = useMemo(() => sumByType(monthTx, 'income'), [monthTx]);
     const monthExpense = useMemo(() => sumByType(monthTx, 'expense'), [monthTx]);
 
-    // Multi-currency totals for "Todas" mode
-    const incomeByCurrency = useMemo(() => {
+    // Per-account totals for "Todas" mode
+    const incomeByAccount = useMemo(() => {
         if (!isAllAccounts) return null;
-        const totals = {};
+        const map = {};
         for (const tx of monthTx) {
             if (tx.type !== 'income') continue;
             const accId = tx.account_id ?? tx.category?.account_id;
-            const cur = accId ? accMap[accId]?.currency ?? 'UYU' : 'UYU';
-            totals[cur] = (totals[cur] || 0) + Number(tx.amount);
+            if (!accId || !accMap[accId]) continue;
+            if (!map[accId]) map[accId] = 0;
+            map[accId] += Number(tx.amount);
         }
-        return Object.keys(totals).length > 1 ? totals : null;
+        const entries = Object.entries(map).map(([id, total]) => ({
+            id, total, name: accMap[id]?.name, color: accMap[id]?.color, currency: accMap[id]?.currency ?? 'UYU',
+        }));
+        return entries.length > 0 ? entries : null;
     }, [monthTx, isAllAccounts, accMap]);
 
-    const expenseByCurrency = useMemo(() => {
+    const expenseByAccount = useMemo(() => {
         if (!isAllAccounts) return null;
-        const totals = {};
+        const map = {};
         for (const tx of monthTx) {
             if (tx.type !== 'expense') continue;
             const accId = tx.account_id ?? tx.category?.account_id;
-            const cur = accId ? accMap[accId]?.currency ?? 'UYU' : 'UYU';
-            totals[cur] = (totals[cur] || 0) + Number(tx.amount);
+            if (!accId || !accMap[accId]) continue;
+            if (!map[accId]) map[accId] = 0;
+            map[accId] += Number(tx.amount);
         }
-        return Object.keys(totals).length > 1 ? totals : null;
+        const entries = Object.entries(map).map(([id, total]) => ({
+            id, total, name: accMap[id]?.name, color: accMap[id]?.color, currency: accMap[id]?.currency ?? 'UYU',
+        }));
+        return entries.length > 0 ? entries : null;
     }, [monthTx, isAllAccounts, accMap]);
 
     // Group transactions by day with subtotals
@@ -176,8 +185,15 @@ export default function MonthScreen() {
                 type: tx.type, editId: tx.id, editAmount: String(tx.amount),
                 editCategoryId: tx.category_id || '', editAccountId: tx.account_id || '',
                 editNote: tx.note || '', editDate: tx.date,
+                editBudgetMonth: tx.budget_month || '',
             },
         });
+    };
+
+    const getBudgetMonthLabel = (tx) => {
+        if (tx.type !== 'income' || !tx.budget_month) return undefined;
+        if (tx.budget_month === tx.date.substring(0, 7)) return undefined;
+        return `→ ${monthLabel(tx.budget_month)}`;
     };
 
     const confirmDelete = async () => {
@@ -189,7 +205,7 @@ export default function MonthScreen() {
             emitTransactionsChange();
             showToast({ type: 'success', message: `"${txToDelete.category?.name ?? 'Transaccion'}" eliminada` });
         } catch (e) {
-            showToast({ type: 'error', message: 'Error al eliminar' });
+            showToast({ type: 'error', message: friendlyMessage(e) });
         }
     };
 
@@ -258,42 +274,61 @@ export default function MonthScreen() {
             {/* Compact month summary */}
             {!loading && monthTx.length > 0 && (
                 <FadeIn delay={100}>
-                    <View className="flex-row gap-2.5 mx-5 mb-4">
-                        <View className="flex-1 bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5">
-                            <View className="flex-row items-center gap-2.5">
-                                <View className="h-7 w-7 rounded-full bg-emerald-50 dark:bg-emerald-500/10 items-center justify-center">
-                                    <MaterialIcons name="arrow-upward" size={14} color="#10b981" />
+                    {isAllAccounts && (incomeByAccount || expenseByAccount) ? (
+                        /* Per-account breakdown in "Todas" mode */
+                        <View className="mx-5 mb-4 bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-3">
+                            {incomeByAccount && (
+                                <View className={expenseByAccount ? 'mb-3 pb-3 border-b border-slate-100 dark:border-slate-800' : ''}>
+                                    <Text className="text-2xs text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider mb-1.5">Ingresos</Text>
+                                    {incomeByAccount.map((a) => (
+                                        <View key={a.id} className="flex-row items-center gap-2 mb-1">
+                                            <View className="h-2 w-2 rounded-full" style={{ backgroundColor: getCategoryStyle(a.color).hex }} />
+                                            <Text className="text-xs text-slate-500 dark:text-slate-400 flex-1" numberOfLines={1}>{a.name}</Text>
+                                            <Text className="text-xs font-bold text-emerald-500">+{formatCurrency(a.total, a.currency)}</Text>
+                                        </View>
+                                    ))}
                                 </View>
+                            )}
+                            {expenseByAccount && (
                                 <View>
-                                    <Text className="text-2xs text-slate-400 dark:text-slate-500">Ingresos</Text>
-                                    {incomeByCurrency ? (
-                                        Object.entries(incomeByCurrency).map(([cur, total]) => (
-                                            <Text key={cur} className="text-xs font-bold text-slate-800 dark:text-white">{formatCurrency(total, cur)}</Text>
-                                        ))
-                                    ) : (
+                                    <Text className="text-2xs text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider mb-1.5">Gastos</Text>
+                                    {expenseByAccount.map((a) => (
+                                        <View key={a.id} className="flex-row items-center gap-2 mb-1">
+                                            <View className="h-2 w-2 rounded-full" style={{ backgroundColor: getCategoryStyle(a.color).hex }} />
+                                            <Text className="text-xs text-slate-500 dark:text-slate-400 flex-1" numberOfLines={1}>{a.name}</Text>
+                                            <Text className="text-xs font-bold text-red-500">-{formatCurrency(a.total, a.currency)}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+                    ) : (
+                        /* Single-account or single-currency summary */
+                        <View className="flex-row gap-2.5 mx-5 mb-4">
+                            <View className="flex-1 bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5">
+                                <View className="flex-row items-center gap-2.5">
+                                    <View className="h-7 w-7 rounded-full bg-emerald-50 dark:bg-emerald-500/10 items-center justify-center">
+                                        <MaterialIcons name="arrow-upward" size={14} color="#10b981" />
+                                    </View>
+                                    <View>
+                                        <Text className="text-2xs text-slate-400 dark:text-slate-500">Ingresos</Text>
                                         <Text className="text-xs font-bold text-slate-800 dark:text-white">{formatCurrency(monthIncome, selectedAccount?.currency)}</Text>
-                                    )}
+                                    </View>
                                 </View>
                             </View>
-                        </View>
-                        <View className="flex-1 bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5">
-                            <View className="flex-row items-center gap-2.5">
-                                <View className="h-7 w-7 rounded-full bg-red-50 dark:bg-red-500/10 items-center justify-center">
-                                    <MaterialIcons name="arrow-downward" size={14} color="#ef4444" />
-                                </View>
-                                <View>
-                                    <Text className="text-2xs text-slate-400 dark:text-slate-500">Gastos</Text>
-                                    {expenseByCurrency ? (
-                                        Object.entries(expenseByCurrency).map(([cur, total]) => (
-                                            <Text key={cur} className="text-xs font-bold text-slate-800 dark:text-white">{formatCurrency(total, cur)}</Text>
-                                        ))
-                                    ) : (
+                            <View className="flex-1 bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5">
+                                <View className="flex-row items-center gap-2.5">
+                                    <View className="h-7 w-7 rounded-full bg-red-50 dark:bg-red-500/10 items-center justify-center">
+                                        <MaterialIcons name="arrow-downward" size={14} color="#ef4444" />
+                                    </View>
+                                    <View>
+                                        <Text className="text-2xs text-slate-400 dark:text-slate-500">Gastos</Text>
                                         <Text className="text-xs font-bold text-slate-800 dark:text-white">{formatCurrency(monthExpense, selectedAccount?.currency)}</Text>
-                                    )}
+                                    </View>
                                 </View>
                             </View>
                         </View>
-                    </View>
+                    )}
                 </FadeIn>
             )}
 
@@ -347,6 +382,9 @@ export default function MonthScreen() {
                                             }
                                             onPress={() => handleEditTx(tx)}
                                             onLongPress={() => setDeleteTx(tx)}
+                                            accountName={isAllAccounts ? accMap[tx.account_id ?? tx.category?.account_id]?.name : undefined}
+                                            accountColor={isAllAccounts ? accMap[tx.account_id ?? tx.category?.account_id]?.color : undefined}
+                                            budgetMonthLabel={getBudgetMonthLabel(tx)}
                                         />
                                     </View>
                                 ))}

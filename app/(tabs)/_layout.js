@@ -11,11 +11,12 @@
  * - Custom TabIcon with label
  * - No transparency gimmicks
  */
-import { TouchableOpacity, useColorScheme, View, Platform } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../src/theme/useTheme';
 
 export function ErrorBoundary({ error, retry }) {
     return (
@@ -37,24 +38,14 @@ export function ErrorBoundary({ error, retry }) {
     );
 }
 
-const TabIcon = ({ name, label, color, focused }) => (
-    <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 6 }}>
-        <MaterialIcons name={name} size={22} color={color} />
-        <Text style={{
-            fontSize: 10,
-            fontWeight: focused ? '700' : '500',
-            color,
-            marginTop: 2,
-            fontFamily: Platform.select({ ios: 'Manrope_600SemiBold', default: undefined }),
-        }}>
-            {label}
-        </Text>
+const TabIcon = ({ name, color, focused }) => (
+    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <MaterialIcons name={name} size={24} color={color} />
     </View>
 );
 
 export default function TabLayout() {
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const { isDark } = useTheme();
     const insets = useSafeAreaInsets();
 
     return (
@@ -82,7 +73,7 @@ export default function TabLayout() {
                 name="index"
                 options={{
                     tabBarIcon: ({ color, focused }) => (
-                        <TabIcon name="home-filled" label="Inicio" color={color} focused={focused} />
+                        <TabIcon name="home-filled" color={color} focused={focused} />
                     ),
                 }}
             />
@@ -90,7 +81,7 @@ export default function TabLayout() {
                 name="dashboard"
                 options={{
                     tabBarIcon: ({ color, focused }) => (
-                        <TabIcon name="pie-chart" label="Presupuesto" color={color} focused={focused} />
+                        <TabIcon name="pie-chart" color={color} focused={focused} />
                     ),
                 }}
             />
@@ -98,7 +89,7 @@ export default function TabLayout() {
                 name="month"
                 options={{
                     tabBarIcon: ({ color, focused }) => (
-                        <TabIcon name="receipt-long" label="Movimientos" color={color} focused={focused} />
+                        <TabIcon name="receipt-long" color={color} focused={focused} />
                     ),
                 }}
             />
@@ -113,7 +104,7 @@ export default function TabLayout() {
                 name="settings"
                 options={{
                     tabBarIcon: ({ color, focused }) => (
-                        <TabIcon name="tune" label="Gestion" color={color} focused={focused} />
+                        <TabIcon name="tune" color={color} focused={focused} />
                     ),
                 }}
             />

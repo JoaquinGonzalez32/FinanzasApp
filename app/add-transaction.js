@@ -1,14 +1,15 @@
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Pressable } from 'react-native';
-import { showError } from '../src/lib/friendlyError';
+import { showError, friendlyMessage } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useMemo } from 'react';
-import { Button, SkeletonLoader } from '../components/ui';
+import { Button, SkeletonLoader, useToast } from '../components/ui';
+import ConfirmModal from '../components/ConfirmModal';
 import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
-import { createTransaction, updateTransaction } from '../src/services/transactionsService';
+import { createTransaction, updateTransaction, deleteTransaction } from '../src/services/transactionsService';
 import { emitTransactionsChange } from '../src/lib/events';
-import { toDateISO, MONTHS_ES, DAYS_ES, getCurrencySymbol } from '../src/lib/helpers';
+import { toDateISO, MONTHS_ES, DAYS_ES, getCurrencySymbol, shiftMonth, monthLabel } from '../src/lib/helpers';
 import { useAccountContext } from '../src/context/AccountContext';
 
 export default function AddTransactionScreen() {
@@ -34,8 +35,14 @@ export default function AddTransactionScreen() {
     const [selectedAccount, setSelectedAccount] = useState(defaultAccountId);
     const [note, setNote] = useState(params.editNote || '');
     const [submitting, setSubmitting] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const { show: showToast, ToastComponent } = useToast();
     const [selectedDate, setSelectedDate] = useState(initialDate);
     const [calendarExpanded, setCalendarExpanded] = useState(isEdit && initialDate !== todayStr);
+
+    // Budget month: null = same as date month (default). Only set when user picks a different month.
+    const [budgetMonth, setBudgetMonth] = useState(params.editBudgetMonth || null);
+    const [budgetMonthExpanded, setBudgetMonthExpanded] = useState(!!params.editBudgetMonth);
 
     // Calendar state
     const [calYear, setCalYear] = useState(initialDateParts[0] || now.getFullYear());
@@ -43,6 +50,17 @@ export default function AddTransactionScreen() {
 
     const { categories, loading: loadingCats } = useCategories(type);
     const { accounts } = useAccounts();
+
+    // Budget month picker: current date month ± 2
+    const dateMonth = selectedDate.substring(0, 7);
+    const effectiveBudgetMonth = budgetMonth || dateMonth;
+    const budgetMonthOptions = useMemo(() => {
+        const opts = [];
+        for (let d = -2; d <= 2; d++) {
+            opts.push(shiftMonth(dateMonth, d));
+        }
+        return opts;
+    }, [dateMonth]);
 
     // Calendar grid
     const firstDayOfWeek = new Date(calYear, calMonth - 1, 1).getDay();
@@ -95,6 +113,10 @@ export default function AddTransactionScreen() {
         if (!numAmount || numAmount <= 0) return;
         setSubmitting(true);
         try {
+            // budget_month: only store when income AND differs from date month
+            const bm = type === 'income' && effectiveBudgetMonth !== dateMonth
+                ? effectiveBudgetMonth
+                : null;
             const payload = {
                 amount: numAmount,
                 type,
@@ -102,6 +124,7 @@ export default function AddTransactionScreen() {
                 account_id: selectedAccount || null,
                 note: note.trim() || null,
                 date: selectedDate,
+                budget_month: bm,
             };
             if (isEdit) {
                 await updateTransaction(params.editId, payload);
@@ -112,6 +135,20 @@ export default function AddTransactionScreen() {
             router.back();
         } catch (e) {
             showError(e);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        setShowDeleteConfirm(false);
+        setSubmitting(true);
+        try {
+            await deleteTransaction(params.editId);
+            emitTransactionsChange();
+            router.back();
+        } catch (e) {
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setSubmitting(false);
         }
@@ -156,16 +193,18 @@ export default function AddTransactionScreen() {
                 <View className="px-6 mb-6">
                     <View className="flex-row h-12 w-full items-center justify-center rounded-xl bg-frost dark:bg-input-dark p-1.5">
                         <TouchableOpacity
-                            onPress={() => { setType('expense'); setSelectedCategory(null); }}
-                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'expense' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
+                            onPress={() => { setType('expense'); setSelectedCategory(null); setBudgetMonth(null); setBudgetMonthExpanded(false); }}
+                            className="flex-1 items-center justify-center rounded-lg h-full"
+                            style={type === 'expense' ? { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 } : undefined}
                         >
-                            <Text className={`text-sm font-bold ${type === 'expense' ? 'text-red-500' : 'text-slate-500'}`}>Gasto</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: type === 'expense' ? '#ef4444' : '#64748B' }}>Gasto</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => { setType('income'); setSelectedCategory(null); }}
-                            className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'income' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
+                            className="flex-1 items-center justify-center rounded-lg h-full"
+                            style={type === 'income' ? { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 } : undefined}
                         >
-                            <Text className={`text-sm font-bold ${type === 'income' ? 'text-emerald-500' : 'text-slate-500'}`}>Ingreso</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: type === 'income' ? '#10b981' : '#64748B' }}>Ingreso</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -184,7 +223,7 @@ export default function AddTransactionScreen() {
                         {categories.map((cat) => {
                             const isActive = selectedCategory === cat.id;
                             return (
-                                <View key={cat.id} className="items-center gap-2 mb-4 w-[22%]">
+                                <View key={cat.id} style={{ width: '22%', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                                     <TouchableOpacity
                                         onPress={() => {
                                             const newId = isActive ? null : cat.id;
@@ -193,11 +232,15 @@ export default function AddTransactionScreen() {
                                                 setSelectedAccount(cat.account_id);
                                             }
                                         }}
-                                        className={`h-14 w-14 rounded-2xl items-center justify-center ${isActive ? 'bg-primary shadow-sm shadow-primary/20' : 'bg-frost dark:bg-input-dark'}`}
+                                        style={{
+                                            height: 56, width: 56, borderRadius: 16,
+                                            alignItems: 'center', justifyContent: 'center',
+                                            backgroundColor: isActive ? '#6366F1' : '#F1F5F9',
+                                        }}
                                     >
                                         <MaterialIcons name={cat.icon} size={28} color={isActive ? 'white' : '#475569'} />
                                     </TouchableOpacity>
-                                    <Text className={`text-xs font-semibold ${isActive ? 'text-primary' : 'text-slate-500'}`} numberOfLines={1}>{cat.name}</Text>
+                                    <Text style={{ fontSize: 12, fontWeight: '600', color: isActive ? '#6366F1' : '#64748B' }} numberOfLines={1}>{cat.name}</Text>
                                 </View>
                             );
                         })}
@@ -220,10 +263,17 @@ export default function AddTransactionScreen() {
                                     <TouchableOpacity
                                         key={acc.id}
                                         onPress={() => setSelectedAccount(isActive ? null : acc.id)}
-                                        className={`flex-row items-center gap-2 mr-3 px-4 py-2.5 rounded-xl ${isActive ? 'bg-primary/10 border border-primary/20' : 'bg-frost dark:bg-input-dark'}`}
+                                        style={{
+                                            flexDirection: 'row', alignItems: 'center', gap: 8,
+                                            marginRight: 12, paddingHorizontal: 16, paddingVertical: 10,
+                                            borderRadius: 12,
+                                            backgroundColor: isActive ? 'rgba(99,102,241,0.1)' : '#F1F5F9',
+                                            borderWidth: isActive ? 1 : 0,
+                                            borderColor: isActive ? 'rgba(99,102,241,0.2)' : 'transparent',
+                                        }}
                                     >
                                         <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={18} color={isActive ? '#6366F1' : '#475569'} />
-                                        <Text className={`text-sm font-semibold ${isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>{acc.name}</Text>
+                                        <Text style={{ fontSize: 14, fontWeight: '600', color: isActive ? '#6366F1' : '#475569' }}>{acc.name}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -294,7 +344,11 @@ export default function AddTransactionScreen() {
                                         <TouchableOpacity key={d} onPress={() => selectDay(d)} className="w-11 h-11 items-center justify-center">
                                             {isSelected && <View className="absolute inset-0 bg-primary rounded-lg" />}
                                             {!isSelected && isDayToday && <View className="absolute inset-0 border border-primary/30 rounded-lg" />}
-                                            <Text className={`text-xs ${isSelected ? 'font-bold text-white' : isDayToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-300'}`}>{d}</Text>
+                                            <Text style={{
+                                                fontSize: 12,
+                                                fontWeight: isSelected || isDayToday ? '700' : '400',
+                                                color: isSelected ? '#FFFFFF' : isDayToday ? '#6366F1' : '#334155',
+                                            }}>{d}</Text>
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -306,6 +360,61 @@ export default function AddTransactionScreen() {
                         </View>
                     )}
                 </View>
+
+                {/* Budget Month — only for income */}
+                {type === 'income' && (
+                    <View className="px-6 mb-6">
+                        {!budgetMonthExpanded && effectiveBudgetMonth === dateMonth ? (
+                            <TouchableOpacity
+                                onPress={() => setBudgetMonthExpanded(true)}
+                                className="flex-row items-center gap-2"
+                            >
+                                <MaterialIcons name="event-note" size={16} color="#94A3B8" />
+                                <Text className="text-xs text-slate-400 font-medium">
+                                    ¿Este ingreso aplica a otro mes?
+                                </Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <View>
+                                <Text className="text-sm font-bold text-slate-900 dark:text-white mb-3">Mes de presupuesto</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                                    {budgetMonthOptions.map((m) => {
+                                        const isActive = effectiveBudgetMonth === m;
+                                        const isSameAsDate = m === dateMonth;
+                                        return (
+                                            <TouchableOpacity
+                                                key={m}
+                                                onPress={() => {
+                                                    setBudgetMonth(isSameAsDate ? null : m);
+                                                }}
+                                                style={{
+                                                    paddingHorizontal: 14,
+                                                    paddingVertical: 8,
+                                                    borderRadius: 12,
+                                                    marginRight: 8,
+                                                    backgroundColor: isActive ? '#6366F1' : '#F1F5F9',
+                                                }}
+                                            >
+                                                <Text style={{
+                                                    fontSize: 13,
+                                                    fontWeight: isActive ? '700' : '500',
+                                                    color: isActive ? '#FFFFFF' : '#64748B',
+                                                }}>
+                                                    {monthLabel(m)}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                                {effectiveBudgetMonth !== dateMonth && (
+                                    <Text className="text-xs text-primary font-medium mt-2">
+                                        Este ingreso se contará en el presupuesto de {monthLabel(effectiveBudgetMonth)}
+                                    </Text>
+                                )}
+                            </View>
+                        )}
+                    </View>
+                )}
 
                 {/* Note */}
                 <View className="px-6 mb-6">
@@ -333,8 +442,30 @@ export default function AddTransactionScreen() {
                     >
                         {isEdit ? 'Guardar cambios' : `Confirmar ${type === 'expense' ? 'Gasto' : 'Ingreso'}`}
                     </Button>
+
+                    {isEdit && (
+                        <TouchableOpacity
+                            onPress={() => setShowDeleteConfirm(true)}
+                            disabled={submitting}
+                            className="flex-row items-center justify-center mt-4 py-3"
+                        >
+                            <MaterialIcons name="delete-outline" size={18} color="#ef4444" />
+                            <Text className="text-red-500 font-semibold text-sm ml-1.5">Eliminar transaccion</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </ScrollView>
+
+            {isEdit && (
+                <ConfirmModal
+                    visible={showDeleteConfirm}
+                    title="Eliminar transaccion"
+                    message={`Eliminar este ${type === 'expense' ? 'gasto' : 'ingreso'} de ${getCurrencySymbol(accounts.find(a => a.id === selectedAccount)?.currency)}${amount || '0'}?`}
+                    onConfirm={handleDelete}
+                    onCancel={() => setShowDeleteConfirm(false)}
+                />
+            )}
+            {ToastComponent}
         </KeyboardAvoidingView>
     );
 }

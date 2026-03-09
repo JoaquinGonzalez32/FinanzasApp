@@ -64,8 +64,6 @@ export default function DashboardScreen() {
     const { selectedAccountId, selectedAccount, accounts, isAllAccounts } = useAccountContext();
     const { show: showToast, ToastComponent } = useToast();
 
-    const [inactiveExpanded, setInactiveExpanded] = useState(false);
-
     // Planning state
     const [distMonth, setDistMonth] = useState(getCurrentMonth);
     const { year: distYear, month: distMo } = parseMonth(distMonth);
@@ -132,9 +130,7 @@ export default function DashboardScreen() {
             .sort((a, b) => b.pct - a.pct);
     }, [visibleAssignments, actualByCategory]);
 
-    // Split into active and inactive categories
-    const activeCategories = useMemo(() => sortedAssignments.filter(a => a.actual > 0), [sortedAssignments]);
-    const inactiveCategories = useMemo(() => sortedAssignments.filter(a => a.actual === 0), [sortedAssignments]);
+    const activeCategories = sortedAssignments;
 
     const assignedCategoryIds = useMemo(() => new Set(visibleAssignments.map(a => a.categoryId)), [visibleAssignments]);
     const availableCategories = useMemo(
@@ -270,7 +266,7 @@ export default function DashboardScreen() {
                                         </View>
                                         <View className="items-center">
                                             <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Gastado</Text>
-                                            <Text className={`text-lg font-extrabold mt-0.5 ${totalActual > assignedTotal ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>
+                                            <Text className="text-lg font-extrabold mt-0.5 text-red-500">
                                                 {formatCurrency(totalActual, selectedAccount?.currency)}
                                             </Text>
                                         </View>
@@ -362,47 +358,6 @@ export default function DashboardScreen() {
                                 );
                             })}
 
-                            {/* Inactive categories (collapsed group) */}
-                            {inactiveCategories.length > 0 && (
-                                <FadeIn delay={400}>
-                                    <TouchableOpacity
-                                        onPress={() => setInactiveExpanded(!inactiveExpanded)}
-                                        className="flex-row items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-2xl px-4 py-3 mb-3 border border-dashed border-slate-200 dark:border-slate-700"
-                                    >
-                                        <View className="flex-row items-center gap-2">
-                                            <MaterialIcons name="pause-circle-outline" size={16} color="#94A3B8" />
-                                            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                                                Sin actividad ({inactiveCategories.length})
-                                            </Text>
-                                        </View>
-                                        <MaterialIcons
-                                            name={inactiveExpanded ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-                                            size={20}
-                                            color="#94A3B8"
-                                        />
-                                    </TouchableOpacity>
-
-                                    {inactiveExpanded && inactiveCategories.map((a, idx) => {
-                                        const style = getCategoryStyle(a.category?.color);
-                                        return (
-                                            <View
-                                                key={a.budgetItemId || `inactive-${idx}`}
-                                                className="flex-row items-center gap-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl px-4 py-2.5 mb-2"
-                                            >
-                                                <View className={`h-7 w-7 rounded-lg items-center justify-center ${style.bg}`}>
-                                                    <MaterialIcons name={a.category?.icon || 'category'} size={14} color={style.hex} />
-                                                </View>
-                                                <Text className="flex-1 text-sm text-slate-500" numberOfLines={1}>
-                                                    {a.category?.name}
-                                                </Text>
-                                                <Text className="text-xs text-slate-400">
-                                                    {formatCurrency(a.amount, selectedAccount?.currency)}
-                                                </Text>
-                                            </View>
-                                        );
-                                    })}
-                                </FadeIn>
-                            )}
 
                             {/* Unassigned spending */}
                             {(() => {

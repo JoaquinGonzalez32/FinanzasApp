@@ -8,6 +8,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useTransactions } from '../src/hooks/useTransactions';
 import { useAccounts } from '../src/hooks/useAccounts';
 import { deleteTransaction } from '../src/services/transactionsService';
+import { friendlyMessage } from '../src/lib/friendlyError';
 import { emitTransactionsChange } from '../src/lib/events';
 import { formatAmount, formatCurrency, getCategoryStyle, formatTime, sumByType, MONTHS_ES, DAYS_ES } from '../src/lib/helpers';
 
@@ -77,6 +78,7 @@ export default function AllTransactionsScreen() {
             emitTransactionsChange();
         } catch (e) {
             if (__DEV__) console.log('Delete error:', e.message);
+            // TODO: add toast here when useToast is available in this screen
         } finally {
             setDeleteTx(null);
         }

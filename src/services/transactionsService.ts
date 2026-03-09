@@ -91,6 +91,7 @@ export async function createTransaction(
       p_note: tx.note ?? null,
       p_date: tx.date,
       p_recurring_id: tx.recurring_id ?? null,
+      p_budget_month: tx.budget_month ?? null,
     }
   );
   if (rpcErr) throw rpcErr;
@@ -139,4 +140,30 @@ export async function deleteTransaction(id: string): Promise<void> {
   });
   if (error) throw error;
   emitAccountsChange();
+}
+
+/**
+ * Get income transactions assigned to a specific budget month.
+ * Includes: budget_month = month OR (budget_month IS NULL AND date within month).
+ */
+export async function getBudgetMonthIncome(
+  month: string
+): Promise<Transaction[]> {
+  const { start, end } = monthRange(
+    Number(month.split("-")[0]),
+    Number(month.split("-")[1])
+  );
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("*, category:categories(*)")
+    .eq("type", "income")
+    .or(
+      `budget_month.eq.${month},and(budget_month.is.null,date.gte.${start},date.lte.${end})`
+    )
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
 }
