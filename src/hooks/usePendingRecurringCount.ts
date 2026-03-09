@@ -1,31 +1,27 @@
 import { useState, useEffect, useCallback } from "react";
-import { getRecurringExpenses, getAppliedRecurringIds } from "../services/recurringService";
-import { onRecurringChange, onTransactionsChange } from "../lib/events";
-import { getCurrentMonth } from "../lib/helpers";
+import { autoApplyRecurringTemplates } from "../services/recurringService";
+import { onRecurringChange } from "../lib/events";
+import { emitTransactionsChange } from "../lib/events";
 
 /**
- * Lightweight hook — returns only the count of pending recurring expenses this month.
- * Used by the home screen banner to avoid fetching full template data.
+ * Auto-applies recurring templates on mount (and when recurring changes).
+ * Returns the number of transactions that were auto-created this run.
  */
-export function usePendingRecurringCount(): number {
-  const [count, setCount] = useState(0);
+export function useAutoApplyRecurring(): number {
+  const [applied, setApplied] = useState(0);
 
-  const check = useCallback(async () => {
+  const run = useCallback(async () => {
     try {
-      const month = getCurrentMonth();
-      const [all, appliedIds] = await Promise.all([
-        getRecurringExpenses(),
-        getAppliedRecurringIds(month),
-      ]);
-      setCount(all.filter((r) => !appliedIds.has(r.id)).length);
+      const count = await autoApplyRecurringTemplates();
+      setApplied(count);
+      if (count > 0) emitTransactionsChange();
     } catch {
-      setCount(0);
+      setApplied(0);
     }
   }, []);
 
-  useEffect(() => { check(); }, [check]);
-  useEffect(() => onRecurringChange(() => check()), [check]);
-  useEffect(() => onTransactionsChange(() => check()), [check]);
+  useEffect(() => { run(); }, [run]);
+  useEffect(() => onRecurringChange(() => run()), [run]);
 
-  return count;
+  return applied;
 }

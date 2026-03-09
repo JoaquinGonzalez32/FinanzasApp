@@ -166,7 +166,7 @@ export interface DonutSlice {
   icon?: string;
 }
 
-export interface RecurringExpense {
+export interface RecurringTemplate {
   id: string;
   user_id: string;
   category_id: string;
@@ -180,7 +180,7 @@ export interface RecurringExpense {
   category?: Category;
 }
 
-export interface RecurringExpenseInsert {
+export interface RecurringTemplateInsert {
   category_id: string;
   account_id?: string | null;
   amount: number;

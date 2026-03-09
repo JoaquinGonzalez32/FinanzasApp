@@ -250,14 +250,15 @@ export default function SettingsScreen() {
                         <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Herramientas</Text>
                         <View className="bg-white dark:bg-card-dark rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm">
                             {[
-                                { icon: 'repeat', color: 'bg-primary-faint dark:bg-primary/10', iconColor: '#6366F1', label: 'Gastos Recurrentes', sub: 'Alquiler, servicios, suscripciones', route: '/recurring' },
+                                { icon: 'repeat', color: 'bg-primary-faint dark:bg-primary/10', iconColor: '#6366F1', label: 'Gastos Recurrentes', sub: 'Alquiler, servicios, suscripciones', route: '/recurring', params: { type: 'expense' } },
+                                { icon: 'repeat', color: 'bg-emerald-50 dark:bg-emerald-500/10', iconColor: '#10b981', label: 'Ingresos Recurrentes', sub: 'Sueldo, rentas, freelance', route: '/recurring', params: { type: 'income' } },
                                 { icon: 'trending-up', color: 'bg-emerald-50 dark:bg-emerald-500/10', iconColor: '#10b981', label: 'Revision del Mes', sub: 'Analisis semanal y tendencias', route: '/planning' },
                                 { icon: 'insights', color: 'bg-purple-50 dark:bg-purple-500/10', iconColor: '#9333ea', label: 'Analisis Financiero', sub: 'Graficos, tendencias y comparativas', route: '/analytics' },
                                 { icon: 'widgets', color: 'bg-amber-50 dark:bg-amber-500/10', iconColor: '#f59e0b', label: 'Widgets', sub: 'Configura widgets de pantalla', route: '/widget-settings' },
                             ].map((tool, i, arr) => (
                                 <TouchableOpacity
-                                    key={tool.route}
-                                    onPress={() => router.push(tool.route)}
+                                    key={tool.label}
+                                    onPress={() => router.push(tool.params ? { pathname: tool.route, params: tool.params } : tool.route)}
                                     className={`flex-row items-center gap-3 px-4 py-3.5 ${i < arr.length - 1 ? 'border-b border-slate-100 dark:border-slate-800' : ''}`}
                                 >
                                     <View className={`h-9 w-9 rounded-xl ${tool.color} items-center justify-center`}>

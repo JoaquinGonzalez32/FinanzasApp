@@ -43,7 +43,9 @@
       "Bash(eas whoami:*)",
       "Bash(eas logout:*)",
       "Bash(find app:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)"
     ]
   }
 }

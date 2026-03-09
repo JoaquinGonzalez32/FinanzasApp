@@ -1,9 +1,8 @@
 /**
- * TAB LAYOUT — 4 visible tabs + Goals hidden
+ * TAB LAYOUT — 5 visible tabs
  *
  * Structure:
- *   Inicio | Presupuesto | Movimientos | Gestion
- *   (Goals tab exists but hidden, accessed from Gestion)
+ *   Inicio | Presupuesto | Movimientos | Metas | Gestion
  *
  * Tab Bar:
  * - Clean white (light) / dark slate (dark)
@@ -93,11 +92,12 @@ export default function TabLayout() {
                     ),
                 }}
             />
-            {/* Goals — hidden from tabs, accessed via Gestion */}
             <Tabs.Screen
                 name="goals"
                 options={{
-                    href: null,
+                    tabBarIcon: ({ color, focused }) => (
+                        <TabIcon name="flag" color={color} focused={focused} />
+                    ),
                 }}
             />
             <Tabs.Screen

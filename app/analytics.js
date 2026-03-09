@@ -10,12 +10,11 @@ import { useInsights } from '../src/features/analytics/hooks/useInsights';
 import { buildDistributionSlices } from '../src/features/analytics/services/aggregation';
 import EvolutionChart from '../src/features/analytics/components/charts/EvolutionChart';
 import DistributionPie from '../src/features/analytics/components/charts/DistributionPie';
-import SavingsRateChart from '../src/features/analytics/components/charts/SavingsRateChart';
 import CategoryLinesChart from '../src/features/analytics/components/charts/CategoryLinesChart';
 import InsightCard from '../src/features/analytics/components/cards/InsightCard';
 import { formatCurrency, monthLabel } from '../src/lib/helpers';
 import { useAccounts } from '../src/hooks/useAccounts';
-import { shiftMonth } from '../src/features/analytics/utils/math';
+
 
 const TIME_RANGES = ['3M', '6M', '12M', 'ALL'];
 
@@ -63,10 +62,6 @@ export default function AnalyticsScreen() {
         return expenses.reduce((worst, c) => (!worst || (c.budgetUsage ?? 0) > (worst.budgetUsage ?? 0)) ? c : worst, null);
     }, [currentSummary]);
 
-    const prevMonth = useMemo(() => {
-        if (months.length < 2) return null;
-        return months[months.length - 2];
-    }, [months]);
 
     return (
         <FrostBackground edges={['top']}>
@@ -76,19 +71,7 @@ export default function AnalyticsScreen() {
                     <MaterialIcons name="arrow-back" size={22} color={isDark ? '#fff' : '#292524'} />
                 </TouchableOpacity>
                 <Text className="text-lg font-bold text-stone-900 dark:text-white">Analisis</Text>
-                <TouchableOpacity
-                    onPress={() => router.push({
-                        pathname: '/comparison',
-                        params: {
-                            monthA: prevMonth ?? shiftMonth(months[months.length - 1], -1),
-                            monthB: months[months.length - 1],
-                        },
-                    })}
-                    hitSlop={8}
-                    className="h-10 w-10 items-center justify-center"
-                >
-                    <MaterialIcons name="compare-arrows" size={22} color="#6366F1" />
-                </TouchableOpacity>
+                <View className="h-10 w-10" />
             </View>
 
             {/* Time range selector */}
@@ -147,16 +130,6 @@ export default function AnalyticsScreen() {
                                     icon="payments"
                                     iconBg="bg-red-500/10"
                                     iconColor="#ef4444"
-                                />
-                                <MetricCard
-                                    className="flex-1"
-                                    label="Ahorro"
-                                    value={`${Math.round(currentSummary?.savingsRate ?? 0)}%`}
-                                    trend={globalTrend?.savingsDirection === 'up' ? 'up' : globalTrend?.savingsDirection === 'down' ? 'down' : 'neutral'}
-                                    context={globalTrend?.savingsDirection === 'up' ? 'Subiendo' : globalTrend?.savingsDirection === 'down' ? 'Bajando' : 'Estable'}
-                                    icon="savings"
-                                    iconBg="bg-emerald-500/10"
-                                    iconColor="#10b981"
                                 />
                             </View>
                         </FadeIn>
@@ -247,14 +220,6 @@ export default function AnalyticsScreen() {
                             />
                         </View>
 
-                        {/* Savings Rate Chart */}
-                        <View className="px-5 pb-4">
-                            <SavingsRateChart
-                                summaries={summaries}
-                                targetRate={20}
-                            />
-                        </View>
-
                         {/* Category Lines */}
                         {hasEnoughData && (
                             <View className="px-5 pb-4">
@@ -266,30 +231,6 @@ export default function AnalyticsScreen() {
                             </View>
                         )}
 
-                        {/* Compare CTA */}
-                        <FadeIn delay={400}>
-                            <View className="px-5 pb-4">
-                                <TouchableOpacity
-                                    onPress={() => router.push({
-                                        pathname: '/comparison',
-                                        params: {
-                                            monthA: prevMonth ?? shiftMonth(months[months.length - 1], -1),
-                                            monthB: months[months.length - 1],
-                                        },
-                                    })}
-                                    className="bg-white/75 dark:bg-surface-dark rounded-2xl p-4 border border-white/60 dark:border-slate-800 shadow-sm flex-row items-center gap-3"
-                                >
-                                    <View className="h-10 w-10 rounded-xl bg-primary/10 items-center justify-center">
-                                        <MaterialIcons name="compare-arrows" size={20} color="#6366F1" />
-                                    </View>
-                                    <View className="flex-1">
-                                        <Text className="text-sm font-bold text-stone-800 dark:text-white">Comparar Periodos</Text>
-                                        <Text className="text-xs text-stone-400 mt-0.5">Compara mes vs mes en detalle</Text>
-                                    </View>
-                                    <MaterialIcons name="chevron-right" size={18} color="#d6d3d1" />
-                                </TouchableOpacity>
-                            </View>
-                        </FadeIn>
                     </>
                 )}
             </ScrollView>

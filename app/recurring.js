@@ -1,24 +1,33 @@
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
+
 import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback, useMemo } from 'react';
 import { useRecurring } from '../src/hooks/useRecurring';
 import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
-import { formatCurrency, getCategoryStyle, getCurrencySymbol, toDateISO } from '../src/lib/helpers';
-import { createRecurringExpense, deleteRecurringExpense } from '../src/services/recurringService';
-import { createTransaction } from '../src/services/transactionsService';
-import { emitRecurringChange, emitTransactionsChange } from '../src/lib/events';
+import { formatCurrency, getCategoryStyle, getCurrencySymbol } from '../src/lib/helpers';
+import { createRecurringTemplate, deleteRecurringTemplate } from '../src/services/recurringService';
+import { emitRecurringChange } from '../src/lib/events';
 
 export default function RecurringScreen() {
     const router = useRouter();
-    const { templates, pendingItems, setPendingItems, loading, error } = useRecurring();
-    const { categories: expenseCategories } = useCategories('expense');
+    const { type: routeType } = useLocalSearchParams();
+    const txType = routeType === 'income' ? 'income' : 'expense';
+    const isIncome = txType === 'income';
+
+    const { templates: allTemplates, loading, error } = useRecurring();
+    const { categories: typeCategories } = useCategories(txType);
     const { accounts } = useAccounts();
 
-    const [confirming, setConfirming] = useState(false);
+    // Filter templates by category type
+    const templates = useMemo(
+        () => allTemplates.filter(t => t.category?.type === txType),
+        [allTemplates, txType],
+    );
+
     const [saving, setSaving] = useState(false);
     const [addVisible, setAddVisible] = useState(false);
     const [catPickerVisible, setCatPickerVisible] = useState(false);
@@ -40,52 +49,22 @@ export default function RecurringScreen() {
         [templates]
     );
     const availableCats = useMemo(
-        () => expenseCategories.filter(c => !assignedCatIds.has(c.id)),
-        [expenseCategories, assignedCatIds]
+        () => typeCategories.filter(c => !assignedCatIds.has(c.id)),
+        [typeCategories, assignedCatIds]
     );
-
-    const handleUpdateAmount = useCallback((idx, value) => {
-        setPendingItems(prev =>
-            prev.map((item, i) => i === idx ? { ...item, editAmount: value.replace(/[^0-9]/g, '') } : item)
-        );
-    }, [setPendingItems]);
-
-    const handleConfirmAll = useCallback(async () => {
-        setConfirming(true);
-        const today = toDateISO();
-        try {
-            for (const item of pendingItems) {
-                const amount = Number(item.editAmount) || item.recurring.amount;
-                await createTransaction({
-                    amount,
-                    type: 'expense',
-                    category_id: item.recurring.category_id,
-                    account_id: item.recurring.account_id ?? null,
-                    date: today,
-                    recurring_id: item.recurring.id,
-                });
-            }
-            emitTransactionsChange();
-            emitRecurringChange();
-        } catch (e) {
-            showError(e);
-        } finally {
-            setConfirming(false);
-        }
-    }, [pendingItems]);
 
     const handleDelete = useCallback(async (id) => {
         const confirmed = typeof window !== 'undefined' && window.confirm
-            ? window.confirm('¿Eliminar este gasto recurrente?')
+            ? window.confirm('¿Eliminar este registro recurrente?')
             : await new Promise(resolve =>
-                Alert.alert('Eliminar plantilla', '¿Eliminar este gasto recurrente?', [
+                Alert.alert('Eliminar plantilla', '¿Eliminar este registro recurrente?', [
                     { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
                     { text: 'Eliminar', onPress: () => resolve(true), style: 'destructive' },
                 ])
             );
         if (!confirmed) return;
         try {
-            await deleteRecurringExpense(id);
+            await deleteRecurringTemplate(id);
             emitRecurringChange();
         } catch (e) {
             showError(e);
@@ -105,7 +84,7 @@ export default function RecurringScreen() {
         const day = Math.max(1, Math.min(28, Number(newDay) || 1));
         setSaving(true);
         try {
-            await createRecurringExpense({
+            await createRecurringTemplate({
                 category_id: newCategory.id,
                 account_id: newAccountId || null,
                 amount,
@@ -137,7 +116,7 @@ export default function RecurringScreen() {
                     <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200 dark:active:bg-slate-800">
                         <MaterialIcons name="arrow-back-ios-new" size={20} color="#475569" />
                     </TouchableOpacity>
-                    <Text className="text-lg font-bold text-stone-900 dark:text-white">Gastos Recurrentes</Text>
+                    <Text className="text-lg font-bold text-stone-900 dark:text-white">{isIncome ? 'Ingresos' : 'Gastos'} Recurrentes</Text>
                     <TouchableOpacity
                         onPress={() => setAddVisible(true)}
                         disabled={availableCats.length === 0}
@@ -150,64 +129,6 @@ export default function RecurringScreen() {
 
             <ScrollView className="flex-1 px-5 py-6" keyboardShouldPersistTaps="handled">
                 <View className="space-y-6 pb-24">
-
-                    {/* ── Pending this month ── */}
-                    {pendingItems.length > 0 && (
-                        <View className="space-y-3">
-                            <View className="flex-row items-center justify-between">
-                                <Text className="text-base font-bold text-stone-900 dark:text-white">Pendiente este mes</Text>
-                                <View className="bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 rounded-full">
-                                    <Text className="text-amber-600 text-xs font-bold">
-                                        {pendingItems.length} pendiente{pendingItems.length !== 1 ? 's' : ''}
-                                    </Text>
-                                </View>
-                            </View>
-
-                            <View className="bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md overflow-hidden">
-                                {pendingItems.map((item, idx) => {
-                                    const cat = item.recurring.category;
-                                    const style = getCategoryStyle(cat?.color);
-                                    return (
-                                        <View
-                                            key={item.recurring.id}
-                                            className={`flex-row items-center gap-3 px-4 py-3 ${idx < pendingItems.length - 1 ? 'border-b border-stone-100 dark:border-slate-800' : ''}`}
-                                        >
-                                            <View className={`h-9 w-9 rounded-xl items-center justify-center ${style.bg}`}>
-                                                <MaterialIcons name={cat?.icon || 'category'} size={18} color={style.hex} />
-                                            </View>
-                                            <View className="flex-1">
-                                                <Text className="text-sm font-bold text-stone-900 dark:text-white" numberOfLines={1}>
-                                                    {cat?.name ?? 'Sin categoría'}
-                                                </Text>
-                                                <Text className="text-xs text-stone-400">Día {item.recurring.day_of_month}</Text>
-                                            </View>
-                                            <View className="flex-row items-center">
-                                                <Text className="text-stone-400 font-bold text-sm mr-1">{getCurrencySymbol(accCurrencyMap[item.recurring.account_id])}</Text>
-                                                <TextInput
-                                                    value={item.editAmount}
-                                                    onChangeText={v => handleUpdateAmount(idx, v)}
-                                                    keyboardType="numeric"
-                                                    maxLength={15}
-                                                    className="w-24 h-9 bg-frost dark:bg-slate-800 rounded-lg text-center text-sm font-bold text-stone-900 dark:text-white"
-                                                />
-                                            </View>
-                                        </View>
-                                    );
-                                })}
-                            </View>
-
-                            <TouchableOpacity
-                                onPress={handleConfirmAll}
-                                disabled={confirming}
-                                className={`w-full py-4 rounded-xl shadow-sm shadow-primary/20 active:scale-95 ${confirming ? 'bg-primary/60' : 'bg-primary'}`}
-                            >
-                                {confirming
-                                    ? <ActivityIndicator color="white" />
-                                    : <Text className="text-white font-bold text-center text-base">Confirmar gastos del mes</Text>
-                                }
-                            </TouchableOpacity>
-                        </View>
-                    )}
 
                     {/* ── All templates ── */}
                     <View className="space-y-3">
@@ -222,8 +143,8 @@ export default function RecurringScreen() {
                         {templates.length === 0 ? (
                             <View className="items-center py-12">
                                 <MaterialIcons name="repeat" size={48} color="#a8a29e" />
-                                <Text className="text-stone-400 text-base font-medium mt-4 text-center">Sin gastos recurrentes</Text>
-                                <Text className="text-stone-400 text-sm text-center mt-1">Alquiler, servicios, suscripciones...</Text>
+                                <Text className="text-stone-400 text-base font-medium mt-4 text-center">Sin {isIncome ? 'ingresos' : 'gastos'} recurrentes</Text>
+                                <Text className="text-stone-400 text-sm text-center mt-1">{isIncome ? 'Sueldo, rentas, freelance...' : 'Alquiler, servicios, suscripciones...'}</Text>
                                 <TouchableOpacity onPress={() => setAddVisible(true)} className="mt-5 bg-primary/10 px-5 py-2.5 rounded-full">
                                     <Text className="text-primary font-bold text-sm">Agregar plantilla</Text>
                                 </TouchableOpacity>
@@ -233,7 +154,6 @@ export default function RecurringScreen() {
                                 {templates.map((item, idx) => {
                                     const cat = item.category;
                                     const style = getCategoryStyle(cat?.color);
-                                    const isPending = pendingItems.some(p => p.recurring.id === item.id);
                                     return (
                                         <View
                                             key={item.id}
@@ -250,15 +170,6 @@ export default function RecurringScreen() {
                                                     Día {item.day_of_month} · {formatCurrency(item.amount, accCurrencyMap[item.account_id])}
                                                 </Text>
                                             </View>
-                                            {isPending ? (
-                                                <View className="bg-amber-50 dark:bg-amber-500/10 px-2 py-1 rounded-full mr-2">
-                                                    <Text className="text-amber-600 text-[10px] font-bold">Pendiente</Text>
-                                                </View>
-                                            ) : (
-                                                <View className="bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-full mr-2">
-                                                    <Text className="text-emerald-600 text-[10px] font-bold">Aplicado</Text>
-                                                </View>
-                                            )}
                                             <TouchableOpacity
                                                 onPress={() => handleDelete(item.id)}
                                                 className="h-8 w-8 items-center justify-center rounded-full active:bg-red-100 dark:active:bg-red-500/20"

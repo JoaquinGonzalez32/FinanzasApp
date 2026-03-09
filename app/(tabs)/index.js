@@ -34,7 +34,7 @@ import { friendlyMessage } from '../../src/lib/friendlyError';
 import { emitTransactionsChange } from '../../src/lib/events';
 import { useBudget } from '../../src/hooks/useBudget';
 import { formatCurrency, toDateISO, sumByType, getCurrentMonth, MONTHS_ES, getCategoryStyle, getAssignedTotal, getCategoryAssignments, monthLabel } from '../../src/lib/helpers';
-import { usePendingRecurringCount } from '../../src/hooks/usePendingRecurringCount';
+import { useAutoApplyRecurring } from '../../src/hooks/usePendingRecurringCount';
 import { useSavingsGoals } from '../../src/hooks/useSavingsGoals';
 import { useAnalytics } from '../../src/features/analytics/hooks/useAnalytics';
 import { useInsights } from '../../src/features/analytics/hooks/useInsights';
@@ -140,6 +140,52 @@ export default function HomeScreen() {
         return Object.keys(result).length > 0 ? result : null;
     }, [isAllAccounts, filteredBudgetItems, accMap, accounts, expenseByCurrency]);
 
+    // Per-account cards for carousel in "Todas" mode
+    const accountCards = useMemo(() => {
+        if (!isAllAccounts) return null;
+        const txAccId = (tx) => tx.account_id ?? tx.category?.account_id;
+        const daysLeft = getDaysRemaining();
+
+        return accounts
+            .map(acc => {
+                const accMonthTx = allMonthTx.filter(tx => txAccId(tx) === acc.id);
+                const accIncomeTx = budgetIncomeRaw.filter(tx => txAccId(tx) === acc.id);
+
+                const expense = sumByType(accMonthTx, 'expense');
+                const income = sumByType(accIncomeTx, 'income');
+
+                // Budget items explicitly assigned to this account
+                const accBudgetItems = budgetItems.filter(bi => bi.account_id === acc.id);
+                let budget = null;
+                if (accBudgetItems.length > 0) {
+                    const assignments = getCategoryAssignments(accBudgetItems);
+                    const planned = getAssignedTotal(assignments);
+                    if (planned > 0) {
+                        const remaining = planned - expense;
+                        budget = {
+                            planned,
+                            remaining,
+                            daysLeft,
+                            dailyBudget: daysLeft > 0 ? remaining / daysLeft : 0,
+                            percentage: (expense / planned) * 100,
+                        };
+                    }
+                }
+
+                const savings = income > 0 ? ((income - expense) / income) * 100 : null;
+
+                return {
+                    account: acc,
+                    expense,
+                    income,
+                    budgetProgress: budget,
+                    savingsRate: savings,
+                    hasActivity: expense > 0 || income > 0 || budget !== null,
+                };
+            })
+            .filter(c => c.hasActivity);
+    }, [isAllAccounts, accounts, allMonthTx, budgetIncomeRaw, budgetItems]);
+
     // Category alerts for banner system
     const categoryAlerts = useMemo(() => {
         if (filteredBudgetItems.length === 0) return [];
@@ -201,8 +247,8 @@ export default function HomeScreen() {
         return Object.entries(groups);
     }, [recentTx, todayStr, yesterdayStr]);
 
-    // Data sources for banners
-    const pendingRecurringCount = usePendingRecurringCount();
+    // Auto-apply recurring templates on app open
+    useAutoApplyRecurring();
     const { goals: activeGoals } = useSavingsGoals();
     const { currentSummary } = useAnalytics();
     const { insights } = useInsights(
@@ -214,7 +260,7 @@ export default function HomeScreen() {
         categoryAlerts,
         goals: activeGoals,
         insights,
-        pendingRecurringCount,
+        pendingRecurringCount: 0,
         currency: primaryCurrency,
         accountMap: isAllAccounts ? accMap : undefined,
     });
@@ -291,22 +337,20 @@ export default function HomeScreen() {
 
                 {/* ============ MONTH STATUS CARD ============ */}
                 <FadeIn delay={100}>
-                    <View className="px-5 pb-4">
+                    <View style={{ paddingBottom: 16, paddingHorizontal: isAllAccounts && accountCards?.length > 1 ? 0 : 20 }}>
                         <MonthStatusCard
                             monthTotalExpense={monthTotalExpense}
                             primaryCurrency={primaryCurrency}
-                            expenseByCurrency={expenseByCurrency}
                             isAllAccounts={isAllAccounts}
                             budgetProgress={budgetProgress}
-                            budgetByCurrency={budgetByCurrency}
                             savingsRate={savingsRate}
                             monthTotalIncome={monthTotalIncome}
-                            incomeByCurrency={incomeByCurrency}
                             loading={loading}
                             refreshing={refreshing}
                             onPlanPress={() => router.push({ pathname: '/(tabs)/dashboard' })}
                             accounts={accounts}
                             onAccountPress={selectAccount}
+                            accountCards={accountCards}
                         />
                     </View>
                 </FadeIn>
