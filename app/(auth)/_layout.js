@@ -14,7 +14,7 @@ export function ErrorBoundary({ error, retry }) {
             </Text>
             <TouchableOpacity
                 onPress={retry}
-                style={{ marginTop: 24, backgroundColor: '#137fec', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+                style={{ marginTop: 24, backgroundColor: '#6366F1', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
             >
                 <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Reintentar</Text>
             </TouchableOpacity>

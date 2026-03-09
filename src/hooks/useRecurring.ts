@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
-import type { RecurringExpense } from "../types/database";
-import { getRecurringExpenses, getAppliedRecurringIds } from "../services/recurringService";
+import type { RecurringTemplate } from "../types/database";
+import { getRecurringTemplates, getAppliedRecurringIds } from "../services/recurringService";
 import { onRecurringChange, onTransactionsChange } from "../lib/events";
 import { getCurrentMonth } from "../lib/helpers";
 
 export interface PendingItem {
-  recurring: RecurringExpense;
+  recurring: RecurringTemplate;
   /** Local editable amount — pre-filled from template, user can adjust before confirming */
   editAmount: string;
 }
 
 interface UseRecurringResult {
-  templates: RecurringExpense[];
+  templates: RecurringTemplate[];
   pendingItems: PendingItem[];
   setPendingItems: React.Dispatch<React.SetStateAction<PendingItem[]>>;
   loading: boolean;
@@ -20,7 +20,7 @@ interface UseRecurringResult {
 }
 
 export function useRecurring(): UseRecurringResult {
-  const [templates, setTemplates] = useState<RecurringExpense[]>([]);
+  const [templates, setTemplates] = useState<RecurringTemplate[]>([]);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export function useRecurring(): UseRecurringResult {
     try {
       const month = getCurrentMonth();
       const [all, appliedIds] = await Promise.all([
-        getRecurringExpenses(),
+        getRecurringTemplates(),
         getAppliedRecurringIds(month),
       ]);
       setTemplates(all);

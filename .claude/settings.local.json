@@ -41,7 +41,11 @@
       "Bash(xargs grep:*)",
       "Bash(eas init:*)",
       "Bash(eas whoami:*)",
-      "Bash(eas logout:*)"
+      "Bash(eas logout:*)",
+      "Bash(find app:*)",
+      "Bash(echo:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)"
     ]
   }
 }

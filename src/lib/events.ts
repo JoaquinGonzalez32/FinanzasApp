@@ -28,9 +28,9 @@ const budget = createChannel();
 export const onBudgetChange = budget.on;
 export const emitBudgetChange = budget.emit;
 
-const accountGoals = createChannel();
-export const onAccountGoalsChange = accountGoals.on;
-export const emitAccountGoalsChange = accountGoals.emit;
+const savingsGoals = createChannel();
+export const onSavingsGoalsChange = savingsGoals.on;
+export const emitSavingsGoalsChange = savingsGoals.emit;
 
 const recurring = createChannel();
 export const onRecurringChange = recurring.on;

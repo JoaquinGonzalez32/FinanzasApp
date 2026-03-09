@@ -11,6 +11,7 @@ export interface Transaction {
   date: string; // ISO date string YYYY-MM-DD
   created_at: string;
   recurring_id?: string | null;
+  budget_month?: string | null; // YYYY-MM — which month this income counts toward for budget. null = same as date month
   // joined from categories
   category?: Category;
 }
@@ -34,6 +35,7 @@ export interface TransactionInsert {
   note?: string | null;
   date: string;
   recurring_id?: string | null;
+  budget_month?: string | null;
 }
 
 export interface Profile {
@@ -109,26 +111,42 @@ export interface BudgetItemInsert {
   sort_order?: number;
 }
 
-export type AccountGoalType = "balance" | "category";
+export type GoalStatus = "active" | "completed" | "paused" | "cancelled";
 
-export interface AccountGoal {
+export interface SavingsGoal {
   id: string;
   user_id: string;
   account_id: string;
-  goal_type: AccountGoalType;
-  category_id: string | null;
+  name: string;
   target_amount: number;
-  target_date: string | null;
+  current_amount: number;
+  currency: AccountCurrency;
+  deadline: string | null;
+  status: GoalStatus;
+  icon: string;
+  color: string;
+  priority: number;
   created_at: string;
-  category?: Category;
 }
 
-export interface AccountGoalInsert {
+export interface SavingsGoalInsert {
   account_id: string;
-  goal_type: AccountGoalType;
-  category_id?: string | null;
+  name: string;
   target_amount: number;
-  target_date?: string | null;
+  currency?: AccountCurrency;
+  deadline?: string | null;
+  icon?: string;
+  color?: string;
+  priority?: number;
+}
+
+export interface GoalContribution {
+  id: string;
+  user_id: string;
+  goal_id: string;
+  amount: number;
+  note: string | null;
+  created_at: string;
 }
 
 export interface CategoryAssignment {
@@ -148,7 +166,7 @@ export interface DonutSlice {
   icon?: string;
 }
 
-export interface RecurringExpense {
+export interface RecurringTemplate {
   id: string;
   user_id: string;
   category_id: string;
@@ -162,7 +180,7 @@ export interface RecurringExpense {
   category?: Category;
 }
 
-export interface RecurringExpenseInsert {
+export interface RecurringTemplateInsert {
   category_id: string;
   account_id?: string | null;
   amount: number;

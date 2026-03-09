@@ -8,6 +8,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useTransactions } from '../src/hooks/useTransactions';
 import { useAccounts } from '../src/hooks/useAccounts';
 import { deleteTransaction } from '../src/services/transactionsService';
+import { friendlyMessage } from '../src/lib/friendlyError';
 import { emitTransactionsChange } from '../src/lib/events';
 import { formatAmount, formatCurrency, getCategoryStyle, formatTime, sumByType, MONTHS_ES, DAYS_ES } from '../src/lib/helpers';
 
@@ -77,6 +78,7 @@ export default function AllTransactionsScreen() {
             emitTransactionsChange();
         } catch (e) {
             if (__DEV__) console.log('Delete error:', e.message);
+            // TODO: add toast here when useToast is available in this screen
         } finally {
             setDeleteTx(null);
         }
@@ -103,11 +105,11 @@ export default function AllTransactionsScreen() {
     return (
         <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
             {/* Header */}
-            <View className="flex-row items-center px-5 py-3 border-b border-slate-100 dark:border-slate-800">
-                <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-lg active:bg-slate-200 dark:active:bg-slate-800">
+            <View className="flex-row items-center px-5 py-3 border-b border-stone-100 dark:border-slate-800">
+                <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-lg active:bg-stone-200 dark:active:bg-slate-800">
                     <MaterialIcons name="arrow-back" size={24} color="#64748b" />
                 </TouchableOpacity>
-                <Text className="flex-1 text-center text-lg font-bold text-slate-900 dark:text-white">{monthLabel}</Text>
+                <Text className="flex-1 text-center text-lg font-bold text-stone-900 dark:text-white">{monthLabel}</Text>
                 <View className="w-10" />
             </View>
 
@@ -127,10 +129,10 @@ export default function AllTransactionsScreen() {
                 className="flex-1 px-5"
                 contentContainerStyle={{ paddingBottom: 40 }}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#137fec" colors={['#137fec']} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" colors={['#6366F1']} />
                 }
             >
-                {loading && !refreshing && <ActivityIndicator color="#137fec" style={{ marginVertical: 20 }} />}
+                {loading && !refreshing && <ActivityIndicator color="#6366F1" style={{ marginVertical: 20 }} />}
 
                 {error && (
                     <View className="bg-red-500/10 rounded-xl p-4 flex-row items-center gap-3 border border-red-200 dark:border-red-900/30 mb-4">
@@ -144,8 +146,8 @@ export default function AllTransactionsScreen() {
 
                 {!loading && monthTx.length === 0 && !error && (
                     <View className="items-center py-12">
-                        <MaterialIcons name="receipt-long" size={48} color="#94a3b8" />
-                        <Text className="text-slate-400 text-sm text-center mt-3">Sin movimientos este mes</Text>
+                        <MaterialIcons name="receipt-long" size={48} color="#a8a29e" />
+                        <Text className="text-stone-400 text-sm text-center mt-3">Sin movimientos este mes</Text>
                     </View>
                 )}
 
@@ -155,7 +157,7 @@ export default function AllTransactionsScreen() {
                     return (
                         <View key={date} className="mb-2">
                             <View className="flex-row items-center justify-between mb-3 mt-2">
-                                <Text className="text-sm font-bold text-slate-900 dark:text-white">{formatDateLabel(date)}</Text>
+                                <Text className="text-sm font-bold text-stone-900 dark:text-white">{formatDateLabel(date)}</Text>
                                 <View className="flex-row gap-3">
                                     {dayIncome > 0 && (
                                         <Text className="text-xs font-bold text-green-500">+{formatCurrency(dayIncome)}</Text>

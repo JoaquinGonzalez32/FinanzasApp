@@ -1,88 +1,72 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+/**
+ * HOME SCREEN — "Como vengo este mes?"
+ *
+ * LAYOUT (top to bottom):
+ * ┌──────────────────────────────┐
+ * │  Header: Avatar · Account · Search  │
+ * ├──────────────────────────────┤
+ * │  MonthStatusCard                    │
+ * │  (expense, daily rate, savings,     │
+ * │   pace indicator, income, planned)  │
+ * ├──────────────────────────────┤
+ * │  [ContextualBanner] (max 2)         │
+ * ├──────────────────────────────┤
+ * │  RecentTransactions (last 7)        │
+ * │  Groups: Hoy · Ayer · Earlier       │
+ * └──────────────────────────────┘
+ * [FAB +] bottom-right
+ *
+ * REMOVED: GoalsSummaryWidget, AnalyticsSummaryWidget,
+ *          standalone quick stats pills, weekly review alert.
+ * These are now either integrated into the card (savings rate,
+ * income, planned) or surfaced via contextual banners.
+ */
+import { View, Text, ScrollView, Image, TouchableOpacity, RefreshControl } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMemo, useState, useCallback } from 'react';
-import TransactionItem from '../../components/TransactionItem';
 import ConfirmModal from '../../components/ConfirmModal';
+import { SkeletonLoader, useToast, FadeIn, ActionButton, FrostBackground } from '../../components/ui';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useProfile } from '../../src/hooks/useProfile';
 import { deleteTransaction } from '../../src/services/transactionsService';
+import { friendlyMessage } from '../../src/lib/friendlyError';
 import { emitTransactionsChange } from '../../src/lib/events';
-import { useAccounts } from '../../src/hooks/useAccounts';
-import { formatAmount, formatCurrency, formatTime, getCategoryStyle, toDateISO, sumByType, getCurrencySymbol } from '../../src/lib/helpers';
-import { useWeeklyReviewAlert } from '../../src/hooks/useWeeklyReviewAlert';
-import { usePendingRecurringCount } from '../../src/hooks/usePendingRecurringCount';
+import { useBudget } from '../../src/hooks/useBudget';
+import { formatCurrency, toDateISO, sumByType, getCurrentMonth, MONTHS_ES, getCategoryStyle, getAssignedTotal, getCategoryAssignments, monthLabel } from '../../src/lib/helpers';
+import { useAutoApplyRecurring } from '../../src/hooks/usePendingRecurringCount';
+import { useSavingsGoals } from '../../src/hooks/useSavingsGoals';
+import { useAnalytics } from '../../src/features/analytics/hooks/useAnalytics';
+import { useInsights } from '../../src/features/analytics/hooks/useInsights';
+import { useAccountContext } from '../../src/context/AccountContext';
+import { useFilteredTransactions, useCurrencyTotals } from '../../src/hooks/useFilteredByAccount';
+import { useBudgetIncome } from '../../src/hooks/useBudgetIncome';
+import AccountSwitcher from '../../src/components/AccountSwitcher';
+import MonthStatusCard from '../../src/features/home/components/MonthStatusCard';
+import ContextualBanner from '../../src/features/home/components/ContextualBanner';
+import RecentTransactions from '../../src/features/home/components/RecentTransactions';
+import { useHomeBanners } from '../../src/features/home/hooks/useHomeBanners';
 
-function buildInsight(todayExpense, monthTx, todayStr, currency) {
-    if (monthTx.length === 0) return null;
-
-    const dayTotals = {};
-    for (const tx of monthTx) {
-        if (tx.type !== 'expense' || tx.date === todayStr) continue;
-        dayTotals[tx.date] = (dayTotals[tx.date] || 0) + Number(tx.amount);
-    }
-
-    const pastDays = Object.keys(dayTotals);
-    if (pastDays.length === 0) return null;
-
-    const avgDaily = pastDays.reduce((s, d) => s + dayTotals[d], 0) / pastDays.length;
-    if (avgDaily === 0) return null;
-
-    const diff = ((todayExpense - avgDaily) / avgDaily) * 100;
-    const absDiff = Math.abs(Math.round(diff));
-
-    if (todayExpense === 0 && avgDaily > 0) {
-        return {
-            icon: 'savings',
-            iconColor: '#10b981',
-            iconBg: 'bg-emerald-500/20',
-            text: `No gastaste nada hoy. Tu promedio diario es ${formatCurrency(avgDaily, currency)}.`,
-        };
-    }
-
-    if (diff <= -5) {
-        return {
-            icon: 'trending-down',
-            iconColor: '#137fec',
-            iconBg: 'bg-primary/20',
-            boldPrefix: '¡Vas bien!',
-            text: ` Tu gasto de hoy es un `,
-            highlight: `${absDiff}% menor`,
-            highlightColor: 'text-primary',
-            suffix: ' que tu promedio diario.',
-        };
-    }
-
-    if (diff >= 5) {
-        return {
-            icon: 'trending-up',
-            iconColor: '#f43f5e',
-            iconBg: 'bg-rose-500/20',
-            boldPrefix: '¡Ojo!',
-            text: ` Hoy gastaste un `,
-            highlight: `${absDiff}% más`,
-            highlightColor: 'text-rose-500',
-            suffix: ' que tu promedio diario.',
-        };
-    }
-
-    return {
-        icon: 'check-circle',
-        iconColor: '#10b981',
-        iconBg: 'bg-emerald-500/20',
-        boldPrefix: 'Normal.',
-        text: ' Tu gasto de hoy está dentro de tu promedio diario.',
-    };
+function getDaysRemaining() {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    return lastDay - now.getDate();
 }
 
 export default function HomeScreen() {
     const router = useRouter();
     const { profile } = useProfile();
-    const { transactions: monthTx, loading, error, refresh } = useTransactions({ mode: 'month' });
-    const { accounts } = useAccounts();
+    const { transactions: allMonthTx, loading, error, refresh } = useTransactions({ mode: 'month' });
+    const { selectedAccountId, selectedAccount, accounts, isAllAccounts, selectAccount } = useAccountContext();
+    const currentMonth = useMemo(() => getCurrentMonth(), []);
+    const { budgetItems } = useBudget(currentMonth);
     const [refreshing, setRefreshing] = useState(false);
     const [deleteTx, setDeleteTx] = useState(null);
+    const { show: showToast, ToastComponent } = useToast();
+
+    const monthTx = useFilteredTransactions(allMonthTx);
+    const { income: budgetIncomeRaw } = useBudgetIncome(currentMonth);
+    const budgetIncomeTx = useFilteredTransactions(budgetIncomeRaw);
 
     const todayStr = useMemo(() => toDateISO(), []);
     const yesterdayStr = useMemo(() => {
@@ -91,42 +75,197 @@ export default function HomeScreen() {
         return toDateISO(d);
     }, []);
 
-    const todayTx = useMemo(() => monthTx.filter(t => t.date === todayStr), [monthTx, todayStr]);
-    const yesterdayTx = useMemo(() => monthTx.filter(t => t.date === yesterdayStr), [monthTx, yesterdayStr]);
-
-    const accountStats = useMemo(() => accounts.map(acc => {
-        const linked = monthTx.filter(t => (t.account_id ?? t.category?.account_id) === acc.id);
-        const todayLinked = todayTx.filter(t => (t.account_id ?? t.category?.account_id) === acc.id);
-        return {
-            account: acc,
-            monthIncome: sumByType(linked, 'income'),
-            monthExpense: sumByType(linked, 'expense'),
-            todayExpense: sumByType(todayLinked, 'expense'),
-            todayIncome: sumByType(todayLinked, 'income'),
-        };
-    }), [accounts, monthTx, todayTx]);
+    const primaryCurrency = selectedAccount?.currency ?? accounts[0]?.currency;
 
     const accMap = useMemo(() => {
         const m = {};
         accounts.forEach(a => { m[a.id] = a; });
         return m;
     }, [accounts]);
+
+    const expenseByCurrency = useCurrencyTotals(monthTx, accMap, 'expense');
+    const incomeByCurrency = useCurrencyTotals(budgetIncomeTx, accMap, 'income');
+
+    const monthTotalExpense = useMemo(() => sumByType(monthTx, 'expense'), [monthTx]);
+    const monthTotalIncome = useMemo(() => sumByType(budgetIncomeTx, 'income'), [budgetIncomeTx]);
+
+    const filteredBudgetItems = useMemo(() => {
+        if (!selectedAccountId) return budgetItems;
+        return budgetItems.filter(bi => !bi.account_id || bi.account_id === selectedAccountId);
+    }, [budgetItems, selectedAccountId]);
+
+    const budgetProgress = useMemo(() => {
+        if (filteredBudgetItems.length === 0) return null;
+        const assignments = getCategoryAssignments(filteredBudgetItems);
+        const planned = getAssignedTotal(assignments);
+        if (planned <= 0) return null;
+        const daysLeft = getDaysRemaining();
+        const remaining = planned - monthTotalExpense;
+        const dailyBudget = daysLeft > 0 ? remaining / daysLeft : 0;
+        const percentage = (monthTotalExpense / planned) * 100;
+        return { planned, remaining, daysLeft, dailyBudget, percentage };
+    }, [filteredBudgetItems, monthTotalExpense]);
+
+    // Per-currency budget breakdown for "Todas" mode
+    const budgetByCurrency = useMemo(() => {
+        if (!isAllAccounts || filteredBudgetItems.length === 0) return null;
+        const assignments = getCategoryAssignments(filteredBudgetItems);
+        // Group assignments by currency (via account_id → accMap → currency)
+        const byCur = {};
+        for (const a of assignments) {
+            const acc = a.account_id ? accMap[a.account_id] : null;
+            const cur = acc?.currency ?? accounts[0]?.currency ?? 'UYU';
+            if (!byCur[cur]) byCur[cur] = { planned: 0, expense: 0 };
+            byCur[cur].planned += a.amount;
+        }
+        // Match expense totals
+        for (const [cur, exp] of Object.entries(expenseByCurrency)) {
+            if (!byCur[cur]) continue;
+            byCur[cur].expense = exp;
+        }
+        // Build progress per currency
+        const daysLeft = getDaysRemaining();
+        const result = {};
+        for (const [cur, data] of Object.entries(byCur)) {
+            if (data.planned <= 0) continue;
+            const remaining = data.planned - data.expense;
+            result[cur] = {
+                planned: data.planned,
+                remaining,
+                daysLeft,
+                dailyBudget: daysLeft > 0 ? remaining / daysLeft : 0,
+                percentage: (data.expense / data.planned) * 100,
+            };
+        }
+        return Object.keys(result).length > 0 ? result : null;
+    }, [isAllAccounts, filteredBudgetItems, accMap, accounts, expenseByCurrency]);
+
+    // Per-account cards for carousel in "Todas" mode
+    const accountCards = useMemo(() => {
+        if (!isAllAccounts) return null;
+        const txAccId = (tx) => tx.account_id ?? tx.category?.account_id;
+        const daysLeft = getDaysRemaining();
+
+        return accounts
+            .map(acc => {
+                const accMonthTx = allMonthTx.filter(tx => txAccId(tx) === acc.id);
+                const accIncomeTx = budgetIncomeRaw.filter(tx => txAccId(tx) === acc.id);
+
+                const expense = sumByType(accMonthTx, 'expense');
+                const income = sumByType(accIncomeTx, 'income');
+
+                // Budget items explicitly assigned to this account
+                const accBudgetItems = budgetItems.filter(bi => bi.account_id === acc.id);
+                let budget = null;
+                if (accBudgetItems.length > 0) {
+                    const assignments = getCategoryAssignments(accBudgetItems);
+                    const planned = getAssignedTotal(assignments);
+                    if (planned > 0) {
+                        const remaining = planned - expense;
+                        budget = {
+                            planned,
+                            remaining,
+                            daysLeft,
+                            dailyBudget: daysLeft > 0 ? remaining / daysLeft : 0,
+                            percentage: (expense / planned) * 100,
+                        };
+                    }
+                }
+
+                const savings = income > 0 ? ((income - expense) / income) * 100 : null;
+
+                return {
+                    account: acc,
+                    expense,
+                    income,
+                    budgetProgress: budget,
+                    savingsRate: savings,
+                    hasActivity: expense > 0 || income > 0 || budget !== null,
+                };
+            })
+            .filter(c => c.hasActivity);
+    }, [isAllAccounts, accounts, allMonthTx, budgetIncomeRaw, budgetItems]);
+
+    // Category alerts for banner system
+    const categoryAlerts = useMemo(() => {
+        if (filteredBudgetItems.length === 0) return [];
+        const assignments = getCategoryAssignments(filteredBudgetItems);
+        const alerts = [];
+        for (const a of assignments) {
+            const spent = monthTx
+                .filter(t => t.type === 'expense' && t.category_id === a.categoryId)
+                .reduce((s, t) => s + Number(t.amount), 0);
+            if (a.amount <= 0) continue;
+            const pct = (spent / a.amount) * 100;
+            if (pct >= 80) {
+                const acc = a.account_id ? accMap[a.account_id] : null;
+                alerts.push({
+                    name: a.category?.name ?? 'Sin categoria',
+                    icon: a.category?.icon ?? 'category',
+                    color: a.category?.color,
+                    spent, planned: a.amount, pct,
+                    remaining: a.amount - spent,
+                    accountName: isAllAccounts ? acc?.name : undefined,
+                    currency: acc?.currency,
+                });
+            }
+        }
+        return alerts.sort((a, b) => b.pct - a.pct).slice(0, 3);
+    }, [filteredBudgetItems, monthTx, accMap, isAllAccounts]);
+
+    // Savings rate
+    const savingsRate = useMemo(() => {
+        if (monthTotalIncome <= 0) return null;
+        return ((monthTotalIncome - monthTotalExpense) / monthTotalIncome) * 100;
+    }, [monthTotalIncome, monthTotalExpense]);
+
     const txAccount = (tx) => accMap[tx.account_id ?? tx.category?.account_id];
 
-    const primaryAccount = useMemo(() => accounts[0] ?? null, [accounts]);
-    const primaryMonthTx = useMemo(() => {
-        if (!primaryAccount) return [];
-        return monthTx.filter(t => (t.account_id ?? t.category?.account_id) === primaryAccount.id);
-    }, [monthTx, primaryAccount]);
-    const primaryTodayExpense = useMemo(() => {
-        if (!primaryAccount) return 0;
-        return sumByType(primaryMonthTx.filter(t => t.date === todayStr), 'expense');
-    }, [primaryMonthTx, todayStr, primaryAccount]);
-    const insight = useMemo(() => buildInsight(primaryTodayExpense, primaryMonthTx, todayStr, primaryAccount?.currency), [primaryTodayExpense, primaryMonthTx, todayStr, primaryAccount]);
+    // Recent transactions: last 7 from this month
+    const recentTx = useMemo(() => {
+        const sorted = [...monthTx].sort((a, b) => {
+            const dateCmp = b.date.localeCompare(a.date);
+            if (dateCmp !== 0) return dateCmp;
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+        return sorted.slice(0, 7);
+    }, [monthTx]);
 
-    const weeklyAlert = useWeeklyReviewAlert(monthTx, loading);
-    const pendingRecurringCount = usePendingRecurringCount();
+    const recentGroups = useMemo(() => {
+        const groups = {};
+        for (const tx of recentTx) {
+            let label;
+            if (tx.date === todayStr) label = 'Hoy';
+            else if (tx.date === yesterdayStr) label = 'Ayer';
+            else {
+                const d = new Date(tx.date + 'T00:00:00');
+                label = `${d.getDate()}/${d.getMonth() + 1}`;
+            }
+            if (!groups[label]) groups[label] = [];
+            groups[label].push(tx);
+        }
+        return Object.entries(groups);
+    }, [recentTx, todayStr, yesterdayStr]);
 
+    // Auto-apply recurring templates on app open
+    useAutoApplyRecurring();
+    const { goals: activeGoals } = useSavingsGoals();
+    const { currentSummary } = useAnalytics();
+    const { insights } = useInsights(
+        currentSummary ? [currentSummary] : [],
+        primaryCurrency,
+    );
+
+    const { banners, dismiss: dismissBanner } = useHomeBanners({
+        categoryAlerts,
+        goals: activeGoals,
+        insights,
+        pendingRecurringCount: 0,
+        currency: primaryCurrency,
+        accountMap: isAllAccounts ? accMap : undefined,
+    });
+
+    // Handlers
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try { await refresh(); } finally { setRefreshing(false); }
@@ -136,13 +275,10 @@ export default function HomeScreen() {
         router.push({
             pathname: '/add-transaction',
             params: {
-                type: tx.type,
-                editId: tx.id,
-                editAmount: String(tx.amount),
-                editCategoryId: tx.category_id || '',
-                editAccountId: tx.account_id || '',
-                editNote: tx.note || '',
-                editDate: tx.date,
+                type: tx.type, editId: tx.id, editAmount: String(tx.amount),
+                editCategoryId: tx.category_id || '', editAccountId: tx.account_id || '',
+                editNote: tx.note || '', editDate: tx.date,
+                editBudgetMonth: tx.budget_month || '',
             },
         });
     };
@@ -151,293 +287,145 @@ export default function HomeScreen() {
 
     const confirmDelete = async () => {
         if (!deleteTx) return;
+        const txToDelete = deleteTx;
+        setDeleteTx(null);
         try {
-            await deleteTransaction(deleteTx.id);
+            await deleteTransaction(txToDelete.id);
             emitTransactionsChange();
+            showToast({ type: 'success', message: `"${txToDelete.category?.name ?? 'Transaccion'}" eliminada` });
         } catch (e) {
-            if (__DEV__) console.log('Delete error:', e.message);
-        } finally {
-            setDeleteTx(null);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         }
     };
 
-    // TODO: Notificaciones - implementar sistema de notificaciones push
-    const handleNotifications = () => {
-        Alert.alert('Próximamente', 'Las notificaciones estarán disponibles en una próxima versión.');
-    };
-
-    const renderTx = (tx) => {
-        const style = getCategoryStyle(tx.category?.color);
-        const currency = txAccount(tx)?.currency;
-        return (
-            <TransactionItem
-                key={tx.id}
-                icon={tx.category?.icon ?? "payments"}
-                label={tx.category?.name ?? "Sin categoría"}
-                sub={tx.note ? `${tx.note} • ${formatTime(tx.created_at)}` : formatTime(tx.created_at)}
-                amount={formatAmount(tx.amount, tx.type, currency)}
-                colorClass={tx.type === 'expense' ? 'text-red-500' : 'text-green-500'}
-                iconBg={style.bg}
-                iconColor={style.hex}
-                onPress={() => handleEditTx(tx)}
-                onDelete={() => handleDeleteTx(tx)}
-            />
-        );
+    const handleBannerPress = (banner) => {
+        if (banner.route) {
+            router.push({
+                pathname: banner.route,
+                params: banner.routeParams,
+            });
+        }
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
+        <FrostBackground edges={['top']}>
             <ScrollView
                 className="flex-1"
                 contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#137fec" colors={['#137fec']} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" colors={['#6366F1']} />
                 }
             >
-                {/* Header */}
-                <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
-                    <TouchableOpacity onPress={() => router.push('/profile')} className="h-12 w-12 items-center justify-center">
+                {/* ============ HEADER ============ */}
+                <View className="flex-row items-center justify-between px-5 pt-2 pb-4">
+                    <TouchableOpacity onPress={() => router.push('/profile')} className="h-10 w-10 items-center justify-center">
                         {profile?.avatar_url ? (
-                            <Image
-                                source={{ uri: profile.avatar_url }}
-                                className="h-10 w-10 rounded-full border-2 border-primary/20"
-                            />
+                            <Image source={{ uri: profile.avatar_url }} className="h-9 w-9 rounded-full border-2 border-slate-200 dark:border-slate-700" />
                         ) : (
-                            <View className="h-10 w-10 rounded-full bg-primary/20 items-center justify-center border-2 border-primary/20">
-                                <Text className="text-primary text-lg font-bold">
+                            <View className="h-9 w-9 rounded-full bg-primary-faint dark:bg-primary/10 items-center justify-center">
+                                <Text className="text-primary text-sm font-bold">
                                     {(profile?.full_name ?? '?').charAt(0).toUpperCase()}
                                 </Text>
                             </View>
                         )}
                     </TouchableOpacity>
-                    <View className="items-center">
-                        <Text className="text-lg font-bold text-slate-900 dark:text-white">
-                            Hola, {profile?.full_name?.split(' ')[0] ?? 'usuario'}
-                        </Text>
-                        <Text className="text-xs text-slate-500 font-medium">
-                            {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                        </Text>
-                    </View>
-                    <TouchableOpacity onPress={handleNotifications} className="h-12 w-12 items-center justify-center rounded-lg active:bg-slate-200 dark:active:bg-slate-800">
-                        <MaterialIcons name="notifications" size={24} color="#64748b" />
+                    <AccountSwitcher />
+                    <TouchableOpacity onPress={() => router.push('/all-transactions')} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                        <MaterialIcons name="search" size={20} color="#64748b" />
                     </TouchableOpacity>
                 </View>
 
-                {/* Per-account Balance */}
-                <View className="py-6">
-                    <Text className="text-slate-500 text-sm font-medium mb-3 px-5">Balance del mes</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
-                        {accountStats.map(({ account: acc, monthIncome, monthExpense, todayExpense: tExp, todayIncome: tInc }) => {
-                            const balance = monthIncome - monthExpense;
-                            const style = getCategoryStyle(acc.color);
-                            return (
-                                <View key={acc.id} className="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-4" style={{ width: 280 }}>
-                                    <View className="flex-row items-center gap-2.5 mb-2">
-                                        <View className={`h-9 w-9 rounded-xl items-center justify-center ${style.bg}`}>
-                                            <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={20} color={style.hex} />
-                                        </View>
-                                        <View className="flex-1">
-                                            <Text className="text-sm font-bold text-slate-900 dark:text-white">{acc.name}</Text>
-                                            <Text className="text-[10px] text-slate-400 font-medium">{acc.currency}</Text>
-                                        </View>
-                                    </View>
-                                    <Text className={`text-2xl font-extrabold ${balance >= 0 ? 'text-primary' : 'text-red-500'} mb-2`}>
-                                        {balance < 0 ? '-' : ''}{formatCurrency(Math.abs(balance), acc.currency)}
-                                    </Text>
-                                    <View className="flex-row justify-between">
-                                        <Text className="text-xs font-semibold text-emerald-500">+{formatCurrency(monthIncome, acc.currency)}</Text>
-                                        <Text className="text-xs font-semibold text-rose-500">-{formatCurrency(monthExpense, acc.currency)}</Text>
-                                    </View>
-                                    {(tExp > 0 || tInc > 0) && (
-                                        <View className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                            <Text className="text-[10px] text-slate-400 font-medium">
-                                                Hoy: {tExp > 0 ? `-${formatCurrency(tExp, acc.currency)}` : ''}{tExp > 0 && tInc > 0 ? '  ·  ' : ''}{tInc > 0 ? `+${formatCurrency(tInc, acc.currency)}` : ''}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
-                            );
-                        })}
-                    </ScrollView>
-                </View>
+                {/* ============ MONTH STATUS CARD ============ */}
+                <FadeIn delay={100}>
+                    <View style={{ paddingBottom: 16, paddingHorizontal: isAllAccounts && accountCards?.length > 1 ? 0 : 20 }}>
+                        <MonthStatusCard
+                            monthTotalExpense={monthTotalExpense}
+                            primaryCurrency={primaryCurrency}
+                            isAllAccounts={isAllAccounts}
+                            budgetProgress={budgetProgress}
+                            savingsRate={savingsRate}
+                            monthTotalIncome={monthTotalIncome}
+                            loading={loading}
+                            refreshing={refreshing}
+                            onPlanPress={() => router.push({ pathname: '/(tabs)/dashboard' })}
+                            accounts={accounts}
+                            onAccountPress={selectAccount}
+                            accountCards={accountCards}
+                        />
+                    </View>
+                </FadeIn>
 
-                {/* Actions */}
-                <View className="px-5 py-2 flex-row gap-3 justify-center">
-                    <TouchableOpacity
-                        onPress={() => router.push({ pathname: '/add-transaction', params: { type: 'expense' } })}
-                        className="flex-1 flex-row items-center justify-center gap-2 rounded-xl h-14 bg-primary shadow-lg shadow-primary/20"
-                    >
-                        <MaterialIcons name="add-circle" size={24} color="white" />
-                        <Text className="text-white text-base font-bold">Gasto</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => router.push({ pathname: '/add-transaction', params: { type: 'income' } })}
-                        className="flex-1 flex-row items-center justify-center gap-2 rounded-xl h-14 bg-white dark:bg-slate-800 border-2 border-primary/10"
-                    >
-                        <MaterialIcons name="account-balance-wallet" size={24} color="#137fec" />
-                        <Text className="text-primary text-base font-bold">Ingreso</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Insight Card */}
-                {insight && (
-                    <View className="px-5 py-6">
-                        <View className={`${insight.iconBg.replace('bg-', 'bg-').includes('/') ? '' : 'bg-primary/5'} rounded-xl p-4 flex-row items-center gap-4 border border-slate-100 dark:border-slate-800/50`}>
-                            <View className={`${insight.iconBg} p-2 rounded-lg`}>
-                                <MaterialIcons name={insight.icon} size={24} color={insight.iconColor} />
-                            </View>
-                            <Text className="text-sm text-slate-700 dark:text-slate-300 flex-1">
-                                {insight.boldPrefix && <Text className="font-bold">{insight.boldPrefix}</Text>}
-                                {insight.text}
-                                {insight.highlight && <Text className={`${insight.highlightColor} font-bold`}>{insight.highlight}</Text>}
-                                {insight.suffix ?? ''}
-                            </Text>
-                        </View>
+                {/* ============ CONTEXTUAL BANNERS ============ */}
+                {banners.length > 0 && (
+                    <View className="px-5 pb-3 gap-2">
+                        {banners.map((banner, i) => (
+                            <FadeIn key={banner.id} delay={200 + i * 60}>
+                                <ContextualBanner
+                                    banner={banner}
+                                    onPress={() => handleBannerPress(banner)}
+                                    onDismiss={dismissBanner}
+                                />
+                            </FadeIn>
+                        ))}
                     </View>
                 )}
 
-                {/* Pending Recurring Expenses Banner */}
-                {pendingRecurringCount > 0 && (
-                    <View className="px-5 pb-2">
-                        <TouchableOpacity
-                            onPress={() => router.push('/recurring')}
-                            className="flex-row items-center gap-3 bg-primary/5 dark:bg-primary/10 rounded-xl p-4 border border-primary/20"
-                        >
-                            <View className="bg-primary/20 p-1.5 rounded-lg">
-                                <MaterialIcons name="repeat" size={18} color="#137fec" />
-                            </View>
-                            <View className="flex-1">
-                                <Text className="text-sm font-bold text-slate-900 dark:text-white">Gastos recurrentes</Text>
-                                <Text className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                    {pendingRecurringCount} pendiente{pendingRecurringCount !== 1 ? 's' : ''} de confirmar este mes
-                                </Text>
-                            </View>
-                            <MaterialIcons name="chevron-right" size={20} color="#137fec" />
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {/* Weekly Review Alert — visible on Mondays when categories are at risk */}
-                {weeklyAlert.visible && weeklyAlert.summary && (
-                    <View className="px-5 pb-2">
-                        <View className={`rounded-xl p-4 border ${weeklyAlert.summary.criticaCount > 0 ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-900/30' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-900/30'}`}>
-                            <View className="flex-row items-start gap-3">
-                                <View className={`p-1.5 rounded-lg mt-0.5 ${weeklyAlert.summary.criticaCount > 0 ? 'bg-red-100 dark:bg-red-500/20' : 'bg-amber-100 dark:bg-amber-500/20'}`}>
-                                    <MaterialIcons
-                                        name={weeklyAlert.summary.criticaCount > 0 ? 'error' : 'warning'}
-                                        size={18}
-                                        color={weeklyAlert.summary.criticaCount > 0 ? '#ef4444' : '#f59e0b'}
-                                    />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-sm font-bold text-slate-900 dark:text-white">Revisión semanal</Text>
-                                    <Text className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        {[
-                                            weeklyAlert.summary.criticaCount > 0 && `${weeklyAlert.summary.criticaCount} crítica${weeklyAlert.summary.criticaCount !== 1 ? 's' : ''}`,
-                                            weeklyAlert.summary.enRiesgoCount > 0 && `${weeklyAlert.summary.enRiesgoCount} en riesgo`,
-                                        ].filter(Boolean).join(' · ')}
-                                    </Text>
-                                    <TouchableOpacity
-                                        onPress={() => { weeklyAlert.dismiss(); router.push('/planning'); }}
-                                        className="mt-2 self-start"
-                                    >
-                                        <Text className={`text-xs font-bold ${weeklyAlert.summary.criticaCount > 0 ? 'text-red-500' : 'text-amber-600'}`}>
-                                            Ver planificación →
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <TouchableOpacity
-                                    onPress={weeklyAlert.dismiss}
-                                    className="h-7 w-7 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
-                                >
-                                    <MaterialIcons name="close" size={16} color="#64748b" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </View>
-                )}
-
-                {/* Error State */}
+                {/* ============ ERROR STATE ============ */}
                 {error && (
-                    <View className="px-5 py-4">
-                        <View className="bg-red-500/10 rounded-xl p-4 flex-row items-center gap-3 border border-red-200 dark:border-red-900/30">
-                            <MaterialIcons name="error-outline" size={24} color="#ef4444" />
-                            <Text className="text-red-500 text-sm flex-1 font-medium">{error}</Text>
+                    <View className="px-5 pb-3">
+                        <View className="bg-red-50 dark:bg-red-500/8 rounded-2xl p-4 flex-row items-center gap-3 border border-red-200 dark:border-red-900/20">
+                            <MaterialIcons name="error-outline" size={18} color="#ef4444" />
+                            <Text className="text-red-500 text-xs flex-1 font-medium">{error}</Text>
                             <TouchableOpacity onPress={onRefresh}>
-                                <Text className="text-primary font-bold text-sm">Reintentar</Text>
+                                <Text className="text-primary font-bold text-xs">Reintentar</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 )}
 
-                {/* Transactions List */}
-                <View className="px-5 flex-1">
-                    <View className="flex-row items-center justify-between mb-4">
-                        <Text className="text-lg font-bold text-slate-900 dark:text-white">Actividad de hoy</Text>
-                        <TouchableOpacity onPress={() => router.push('/all-transactions')}>
-                            <Text className="text-primary text-sm font-bold">Ver todo</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {loading && !refreshing && <ActivityIndicator color="#137fec" style={{ marginVertical: 20 }} />}
-
-                    {!loading && todayTx.length === 0 && !error && (
-                        <View className="items-center py-6">
-                            <MaterialIcons name="receipt-long" size={40} color="#94a3b8" />
-                            <Text className="text-slate-400 text-sm text-center mt-2">Sin movimientos hoy</Text>
-                            <Text className="text-slate-400 text-xs text-center mt-1">Registrá tu primer gasto o ingreso</Text>
-                        </View>
-                    )}
-
-                    {accounts.map(acc => {
-                        const accTodayTx = todayTx.filter(t => (t.account_id ?? t.category?.account_id) === acc.id);
-                        if (accTodayTx.length === 0) return null;
-                        const accStyle = getCategoryStyle(acc.color);
-                        return (
-                            <View key={acc.id} className="mb-2">
-                                <View className="flex-row items-center gap-2 mb-2">
-                                    <View className={`h-5 w-5 rounded-md items-center justify-center ${accStyle.bg}`}>
-                                        <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={12} color={accStyle.hex} />
-                                    </View>
-                                    <Text className="text-xs font-bold text-slate-500 dark:text-slate-400">{acc.name}</Text>
-                                </View>
-                                {accTodayTx.map(renderTx)}
-                            </View>
-                        );
+                {/* ============ RECENT TRANSACTIONS ============ */}
+                <RecentTransactions
+                    recentGroups={recentGroups}
+                    loading={loading}
+                    refreshing={refreshing}
+                    hasTransactions={recentTx.length > 0}
+                    hasMoreThanShown={monthTx.length > 7}
+                    error={error}
+                    txAccount={txAccount}
+                    isAllAccounts={isAllAccounts}
+                    onEditTx={handleEditTx}
+                    onDeleteTx={handleDeleteTx}
+                    onViewAll={() => router.push('/(tabs)/month')}
+                    onAddFirst={() => router.push({
+                        pathname: '/add-transaction',
+                        params: {
+                            type: 'expense',
+                            ...(selectedAccountId ? { account: selectedAccountId } : {}),
+                        },
                     })}
-
-                    {yesterdayTx.length > 0 && (
-                        <>
-                            <View className="pt-4 flex-row items-center justify-between mb-4">
-                                <Text className="text-lg font-bold text-slate-900 dark:text-white">Ayer</Text>
-                            </View>
-                            {accounts.map(acc => {
-                                const accYestTx = yesterdayTx.filter(t => (t.account_id ?? t.category?.account_id) === acc.id);
-                                if (accYestTx.length === 0) return null;
-                                const accStyle = getCategoryStyle(acc.color);
-                                return (
-                                    <View key={acc.id} className="mb-2">
-                                        <View className="flex-row items-center gap-2 mb-2">
-                                            <View className={`h-5 w-5 rounded-md items-center justify-center ${accStyle.bg}`}>
-                                                <MaterialIcons name={acc.icon || 'account-balance-wallet'} size={12} color={accStyle.hex} />
-                                            </View>
-                                            <Text className="text-xs font-bold text-slate-500 dark:text-slate-400">{acc.name}</Text>
-                                        </View>
-                                        {accYestTx.map(renderTx)}
-                                    </View>
-                                );
-                            })}
-                        </>
-                    )}
-                </View>
+                />
             </ScrollView>
+
+            {/* FAB */}
+            <ActionButton
+                onPress={() => router.push({
+                    pathname: '/add-transaction',
+                    params: {
+                        type: 'expense',
+                        ...(selectedAccountId ? { account: selectedAccountId } : {}),
+                    },
+                })}
+            />
+
             <ConfirmModal
                 visible={!!deleteTx}
-                title="Eliminar transacción"
-                message={deleteTx ? `¿Eliminar "${deleteTx.category?.name ?? 'Sin categoría'}" por ${formatCurrency(deleteTx.amount, accounts.find(a => a.id === (deleteTx.account_id ?? deleteTx.category?.account_id))?.currency)}?` : ''}
+                title="Eliminar transaccion"
+                message={deleteTx ? `Eliminar "${deleteTx.category?.name ?? 'Sin categoria'}" por ${formatCurrency(deleteTx.amount, accounts.find(a => a.id === (deleteTx.account_id ?? deleteTx.category?.account_id))?.currency)}?` : ''}
                 onConfirm={confirmDelete}
                 onCancel={() => setDeleteTx(null)}
             />
-        </SafeAreaView>
+
+            {ToastComponent}
+        </FrostBackground>
     );
 }

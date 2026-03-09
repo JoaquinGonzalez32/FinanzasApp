@@ -3,6 +3,7 @@ import { showError } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
+import { Button } from '../components/ui';
 import { createCategory, updateCategory } from '../src/services/categoriesService';
 import { emitCategoriesChange } from '../src/lib/events';
 import { CATEGORY_COLORS, getCategoryStyle } from '../src/lib/helpers';
@@ -47,7 +48,7 @@ export default function AddCategoryScreen() {
 
     const handleSubmit = async () => {
         if (!name.trim()) {
-            Alert.alert('Error', 'Ingresá un nombre para la categoría');
+            Alert.alert('Error', 'Ingresa un nombre para la categoria');
             return;
         }
         setSubmitting(true);
@@ -88,15 +89,15 @@ export default function AddCategoryScreen() {
             className="flex-1 bg-white dark:bg-modal-dark"
         >
             <View className="items-center pt-3 pb-2">
-                <View className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-[#3b4754]" />
+                <View className="h-1.5 w-12 rounded-full bg-stone-300 dark:bg-slate-600" />
             </View>
 
             <View className="flex-row items-center justify-between px-4 py-2">
                 <TouchableOpacity onPress={() => router.back()}>
                     <Text className="text-primary font-medium text-base">Cancelar</Text>
                 </TouchableOpacity>
-                <Text className="text-base font-bold text-slate-900 dark:text-white">
-                    {isEditing ? 'Editar Categoría' : 'Nueva Categoría'}
+                <Text className="text-base font-bold text-stone-900 dark:text-white">
+                    {isEditing ? 'Editar Categoria' : 'Nueva Categoria'}
                 </Text>
                 <TouchableOpacity onPress={handleSubmit} disabled={submitting}>
                     <Text className={`text-primary font-bold text-base ${submitting ? 'opacity-50' : ''}`}>
@@ -108,44 +109,44 @@ export default function AddCategoryScreen() {
             <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
                 {/* Preview */}
                 <View className="items-center py-6">
-                    <View className={`h-16 w-16 rounded-full ${previewStyle.bgCircle} items-center justify-center`}>
+                    <View className={`h-16 w-16 rounded-2xl ${previewStyle.bgCircle} items-center justify-center`}>
                         <MaterialIcons name={selectedIcon} size={32} color={previewStyle.hex} />
                     </View>
-                    <Text className="mt-2 text-base font-bold text-slate-900 dark:text-white">
+                    <Text className="mt-2 text-base font-bold text-stone-900 dark:text-white">
                         {name || 'Nombre'}
                     </Text>
                 </View>
 
                 {/* Name */}
                 <View className="px-6 mb-6">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Nombre</Text>
-                    <View className="bg-slate-100 dark:bg-input-dark rounded-xl px-4 h-12 justify-center">
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Nombre</Text>
+                    <View className="bg-frost dark:bg-input-dark rounded-xl px-4 h-12 justify-center">
                         <TextInput
                             value={name}
                             onChangeText={setName}
                             placeholder="Ej: Comida, Gym..."
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor="#a8a29e"
                             maxLength={100}
-                            className="text-base text-slate-900 dark:text-white font-medium"
+                            className="text-base text-stone-900 dark:text-white font-medium"
                         />
                     </View>
                 </View>
 
                 {/* Type Toggle */}
                 <View className="px-6 mb-6">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Tipo</Text>
-                    <View className="flex-row h-12 w-full items-center justify-center rounded-xl bg-slate-100 dark:bg-input-dark p-1.5">
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Tipo</Text>
+                    <View className="flex-row h-12 w-full items-center justify-center rounded-xl bg-frost dark:bg-input-dark p-1.5">
                         <TouchableOpacity
                             onPress={() => setType('expense')}
                             className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'expense' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
                         >
-                            <Text className={`text-sm font-bold ${type === 'expense' ? 'text-primary' : 'text-slate-500'}`}>Gasto</Text>
+                            <Text className={`text-sm font-bold ${type === 'expense' ? 'text-red-500' : 'text-stone-500'}`}>Gasto</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => setType('income')}
                             className={`flex-1 items-center justify-center rounded-lg h-full ${type === 'income' ? 'bg-white dark:bg-modal-dark shadow-sm' : ''}`}
                         >
-                            <Text className={`text-sm font-bold ${type === 'income' ? 'text-primary' : 'text-slate-500'}`}>Ingreso</Text>
+                            <Text className={`text-sm font-bold ${type === 'income' ? 'text-emerald-500' : 'text-stone-500'}`}>Ingreso</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -153,14 +154,14 @@ export default function AddCategoryScreen() {
                 {/* Linked Account */}
                 {accounts.length > 0 && (
                     <View className="px-6 mb-6">
-                        <Text className="text-slate-900 dark:text-white text-base font-bold mb-1">Cuenta vinculada</Text>
-                        <Text className="text-slate-500 text-xs mb-3">Las transacciones ajustarán el saldo de esta cuenta</Text>
+                        <Text className="text-sm font-bold text-stone-900 dark:text-white mb-1">Cuenta vinculada</Text>
+                        <Text className="text-stone-500 text-xs mb-3">Las transacciones ajustaran el saldo de esta cuenta</Text>
                         <View className="flex-row flex-wrap gap-2">
                             <TouchableOpacity
                                 onPress={() => setSelectedAccount(null)}
-                                className={`px-4 h-10 rounded-xl items-center justify-center ${selectedAccount === null ? 'bg-primary' : 'bg-slate-100 dark:bg-input-dark'}`}
+                                className={`px-4 h-10 rounded-xl items-center justify-center ${selectedAccount === null ? 'bg-primary' : 'bg-frost dark:bg-input-dark'}`}
                             >
-                                <Text className={`text-sm font-semibold ${selectedAccount === null ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>Ninguna</Text>
+                                <Text className={`text-sm font-semibold ${selectedAccount === null ? 'text-white' : 'text-stone-600 dark:text-slate-300'}`}>Ninguna</Text>
                             </TouchableOpacity>
                             {accounts.map((acc) => {
                                 const isActive = selectedAccount === acc.id;
@@ -169,10 +170,10 @@ export default function AddCategoryScreen() {
                                     <TouchableOpacity
                                         key={acc.id}
                                         onPress={() => setSelectedAccount(acc.id)}
-                                        className={`flex-row items-center gap-2 px-4 h-10 rounded-xl ${isActive ? 'bg-primary' : 'bg-slate-100 dark:bg-input-dark'}`}
+                                        className={`flex-row items-center gap-2 px-4 h-10 rounded-xl ${isActive ? 'bg-primary' : 'bg-frost dark:bg-input-dark'}`}
                                     >
                                         <MaterialIcons name={acc.icon} size={16} color={isActive ? 'white' : style.hex} />
-                                        <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>{acc.name}</Text>
+                                        <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-stone-600 dark:text-slate-300'}`}>{acc.name}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -182,7 +183,7 @@ export default function AddCategoryScreen() {
 
                 {/* Icon Grid */}
                 <View className="px-6 mb-6">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Icono</Text>
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Icono</Text>
                     <View className="flex-row flex-wrap gap-3">
                         {ICON_OPTIONS.map((icon) => {
                             const isActive = selectedIcon === icon;
@@ -190,7 +191,7 @@ export default function AddCategoryScreen() {
                                 <TouchableOpacity
                                     key={icon}
                                     onPress={() => setSelectedIcon(icon)}
-                                    className={`h-12 w-12 rounded-xl items-center justify-center ${isActive ? 'bg-primary' : 'bg-slate-100 dark:bg-input-dark'}`}
+                                    className={`h-12 w-12 rounded-xl items-center justify-center ${isActive ? 'bg-primary' : 'bg-frost dark:bg-input-dark'}`}
                                 >
                                     <MaterialIcons name={icon} size={24} color={isActive ? 'white' : '#64748b'} />
                                 </TouchableOpacity>
@@ -201,7 +202,7 @@ export default function AddCategoryScreen() {
 
                 {/* Color Grid */}
                 <View className="px-6 mb-8">
-                    <Text className="text-slate-900 dark:text-white text-base font-bold mb-3">Color</Text>
+                    <Text className="text-sm font-bold text-stone-900 dark:text-white mb-3">Color</Text>
                     <View className="flex-row flex-wrap gap-3">
                         {COLOR_KEYS.map((colorKey) => {
                             const style = getCategoryStyle(colorKey);
@@ -210,7 +211,7 @@ export default function AddCategoryScreen() {
                                 <TouchableOpacity
                                     key={colorKey}
                                     onPress={() => setSelectedColor(colorKey)}
-                                    className={`h-12 w-12 rounded-xl items-center justify-center ${isActive ? 'border-2 border-slate-900 dark:border-white' : ''}`}
+                                    className={`h-12 w-12 rounded-xl items-center justify-center ${isActive ? 'border-2 border-stone-900 dark:border-white' : ''}`}
                                     style={{ backgroundColor: style.hex + '30' }}
                                 >
                                     <View className="h-6 w-6 rounded-full" style={{ backgroundColor: style.hex }} />

@@ -50,34 +50,34 @@ export default function RegisterScreen() {
                 {/* Title */}
                 <View className="items-center mb-10">
                     <Text className="text-3xl font-extrabold text-primary">FinanzaApp</Text>
-                    <Text className="text-sm text-slate-500 mt-2">Creá tu cuenta</Text>
+                    <Text className="text-sm text-stone-500 mt-2">Creá tu cuenta</Text>
                 </View>
 
                 {/* Email */}
-                <View className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 p-4 mb-3">
+                <View className="bg-white/75 dark:bg-surface-dark rounded-xl dark:border dark:border-slate-800/50 p-4 mb-3">
                     <TextInput
                         value={email}
                         onChangeText={setEmail}
                         placeholder="Email"
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor="#a8a29e"
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoComplete="email"
                         maxLength={254}
-                        className="text-base text-slate-900 dark:text-white font-medium"
+                        className="text-base text-stone-900 dark:text-white font-medium"
                     />
                 </View>
 
                 {/* Password */}
-                <View className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800/50 p-4 mb-4">
+                <View className="bg-white/75 dark:bg-surface-dark rounded-xl dark:border dark:border-slate-800/50 p-4 mb-4">
                     <TextInput
                         value={password}
                         onChangeText={setPassword}
                         placeholder="Contraseña (mín. 6 caracteres)"
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor="#a8a29e"
                         secureTextEntry
                         maxLength={128}
-                        className="text-base text-slate-900 dark:text-white font-medium"
+                        className="text-base text-stone-900 dark:text-white font-medium"
                     />
                 </View>
 
@@ -101,7 +101,7 @@ export default function RegisterScreen() {
 
                 {/* Back to Login */}
                 <TouchableOpacity onPress={() => router.back()} className="mt-6 items-center">
-                    <Text className="text-slate-500 text-sm">
+                    <Text className="text-stone-500 text-sm">
                         ¿Ya tenés cuenta? <Text className="text-primary font-bold">Ingresar</Text>
                     </Text>
                 </TouchableOpacity>

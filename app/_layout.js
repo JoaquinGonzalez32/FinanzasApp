@@ -10,10 +10,13 @@ import {
     Manrope_800ExtraBold
 } from '@expo-google-fonts/manrope';
 import { useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { AccountProvider } from '../src/context/AccountContext';
+import { useWidgetSync } from '../src/features/widgets/hooks/useWidgetSync';
+import { ThemeProvider } from '../src/theme';
 
 export function ErrorBoundary({ error, retry }) {
     return (
@@ -27,7 +30,7 @@ export function ErrorBoundary({ error, retry }) {
             </Text>
             <TouchableOpacity
                 onPress={retry}
-                style={{ marginTop: 24, backgroundColor: '#137fec', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+                style={{ marginTop: 24, backgroundColor: '#6366F1', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
             >
                 <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Reintentar</Text>
             </TouchableOpacity>
@@ -41,6 +44,49 @@ function RootNavigator() {
     const { user, loading } = useAuth();
     const segments = useSegments();
     const router = useRouter();
+
+    // Sync widget data on app state changes
+    useWidgetSync();
+
+    // Handle deep links from widgets
+    useEffect(() => {
+        if (loading || !user) return;
+
+        function handleDeepLink({ url }) {
+            if (!url) return;
+            try {
+                const parsed = new URL(url);
+                const path = parsed.hostname || parsed.pathname?.replace(/^\//, '');
+                const params = Object.fromEntries(parsed.searchParams.entries());
+
+                switch (path) {
+                    case 'add':
+                        router.push({ pathname: '/add-transaction', params });
+                        break;
+                    case 'budget':
+                        router.replace('/(tabs)/dashboard');
+                        break;
+                    case 'transactions':
+                        router.replace('/(tabs)/month');
+                        break;
+                    case 'home':
+                        router.replace('/(tabs)');
+                        break;
+                }
+            } catch (e) {
+                // Ignore invalid URLs
+            }
+        }
+
+        // Handle URL that opened the app
+        Linking.getInitialURL().then((url) => {
+            if (url) handleDeepLink({ url });
+        });
+
+        // Handle URLs while app is running
+        const sub = Linking.addEventListener('url', handleDeepLink);
+        return () => sub.remove();
+    }, [loading, user]);
 
     useEffect(() => {
         if (loading) return;
@@ -56,8 +102,8 @@ function RootNavigator() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
-                <ActivityIndicator size="large" color="#137fec" />
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' }}>
+                <ActivityIndicator size="large" color="#6366F1" />
             </View>
         );
     }
@@ -123,7 +169,15 @@ function RootNavigator() {
                 }}
             />
             <Stack.Screen
-                name="add-account-goal"
+                name="add-goal"
+                options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                    animation: 'slide_from_bottom'
+                }}
+            />
+            <Stack.Screen
+                name="goal-detail"
                 options={{
                     presentation: 'modal',
                     headerShown: false,
@@ -132,6 +186,30 @@ function RootNavigator() {
             />
             <Stack.Screen
                 name="recurring"
+                options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                    animation: 'slide_from_bottom'
+                }}
+            />
+            <Stack.Screen
+                name="analytics"
+                options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                    animation: 'slide_from_bottom'
+                }}
+            />
+            <Stack.Screen
+                name="comparison"
+                options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                    animation: 'slide_from_bottom'
+                }}
+            />
+            <Stack.Screen
+                name="widget-settings"
                 options={{
                     presentation: 'modal',
                     headerShown: false,
@@ -163,10 +241,14 @@ export default function RootLayout() {
 
     return (
         <>
-            <StatusBar style="auto" />
-            <AuthProvider>
-                <RootNavigator />
-            </AuthProvider>
+            <StatusBar style="auto" translucent />
+            <ThemeProvider>
+                <AuthProvider>
+                    <AccountProvider>
+                        <RootNavigator />
+                    </AccountProvider>
+                </AuthProvider>
+            </ThemeProvider>
         </>
     );
 }
