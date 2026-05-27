@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { formatCurrency, getCurrencySymbol } from '../../../lib/helpers';
 import { AnimatedProgressBar, SkeletonLoader } from '../../../../components/ui';
+import { budgetColor as budgetBarColor } from '../../../theme/colors';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_H_PADDING = 20; // matches px-5 from parent
@@ -41,13 +42,6 @@ function AnimatedCounter({ value, currency, size = 'large' }) {
             {formatCurrency(display, currency)}
         </Text>
     );
-}
-
-function budgetBarColor(pct) {
-    if (pct >= 100) return '#EF4444';
-    if (pct >= 85) return '#F59E0B';
-    if (pct >= 65) return '#818CF8';
-    return '#10B981';
 }
 
 function getPaceIndicator(budgetProgress, daysInMonth) {

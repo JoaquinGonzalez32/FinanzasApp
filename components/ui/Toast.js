@@ -1,6 +1,15 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, Animated, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { haptics } from '../../src/lib/haptics';
+
+const HAPTIC_FOR_TYPE = {
+    success: haptics.success,
+    error: haptics.error,
+    warning: haptics.warning,
+    info: haptics.tap,
+    undo: haptics.tap,
+};
 
 const TOAST_TYPES = {
     success: { icon: 'check-circle', bg: 'bg-emerald-600', iconColor: '#ffffff' },
@@ -27,6 +36,7 @@ const Toast = ({ visible, type = 'success', message, action, onAction, onDismiss
 
     useEffect(() => {
         if (visible) {
+            (HAPTIC_FOR_TYPE[type] ?? haptics.tap)();
             Animated.parallel([
                 Animated.spring(translateY, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }),
                 Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),

@@ -249,7 +249,12 @@ export default function MonthScreen() {
 
             {/* Month navigator */}
             <View className="flex-row items-center justify-between px-5 pb-3">
-                <TouchableOpacity onPress={() => goMonth(-1)} className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                <TouchableOpacity
+                    onPress={() => goMonth(-1)}
+                    className="h-11 w-11 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
+                    accessibilityRole="button"
+                    accessibilityLabel="Mes anterior"
+                >
                     <MaterialIcons name="chevron-left" size={20} color="#64748b" />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => { setSelectedDay(null); }} className="flex-row items-center gap-2">
@@ -265,7 +270,10 @@ export default function MonthScreen() {
                 <TouchableOpacity
                     onPress={() => goMonth(1)}
                     disabled={year === currentYear && selectedMonth >= currentMonth}
-                    className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
+                    className="h-11 w-11 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
+                    accessibilityRole="button"
+                    accessibilityLabel="Mes siguiente"
+                    accessibilityState={{ disabled: year === currentYear && selectedMonth >= currentMonth }}
                 >
                     <MaterialIcons name="chevron-right" size={20} color={year === currentYear && selectedMonth >= currentMonth ? '#CBD5E1' : '#64748b'} />
                 </TouchableOpacity>

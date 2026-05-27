@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
-import { showError } from '../src/lib/friendlyError';
+import { friendlyMessage } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -168,11 +168,11 @@ export default function PlanningScreen() {
             emitBudgetChange();
             router.back();
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setSaving(false);
         }
-    }, [visibleItems, removedIds, router, selectedMonth]);
+    }, [visibleItems, removedIds, router, selectedMonth, showToast]);
 
     if (loading) {
         return (

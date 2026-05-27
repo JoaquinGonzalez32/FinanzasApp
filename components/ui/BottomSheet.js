@@ -11,6 +11,7 @@
 import { View, Text, TouchableOpacity, Modal, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { haptics } from '../../src/lib/haptics';
 
 const BottomSheet = ({
     visible,
@@ -55,8 +56,11 @@ const BottomSheet = ({
                                     )}
                                 </View>
                                 <TouchableOpacity
-                                    onPress={onClose}
+                                    onPress={() => { haptics.tap(); onClose && onClose(); }}
                                     className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Cerrar"
+                                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                                 >
                                     <MaterialIcons name="close" size={20} color="#64748b" />
                                 </TouchableOpacity>

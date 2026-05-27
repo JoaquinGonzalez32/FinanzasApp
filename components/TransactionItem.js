@@ -32,6 +32,9 @@ const TransactionItem = ({ icon, label, sub, amount, colorClass, iconBg, iconCol
                 onPressOut={handlePressOut}
                 activeOpacity={0.7}
                 className="flex-row items-center gap-3 px-4 py-3"
+                accessibilityRole="button"
+                accessibilityLabel={`${label} ${amount}${sub ? `, ${sub}` : ''}`}
+                accessibilityHint={onLongPress ? 'Mantén presionado para más acciones' : undefined}
             >
                 <View className={`h-9 w-9 rounded-full ${iconBg} items-center justify-center`}>
                     <MaterialIcons name={icon} size={16} color={iconColor || '#475569'} />

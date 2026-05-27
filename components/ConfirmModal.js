@@ -1,4 +1,5 @@
 import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { haptics } from '../src/lib/haptics';
 
 const ConfirmModal = ({ visible, title, message, onConfirm, onCancel }) => (
     <Modal visible={visible} transparent animationType="fade">
@@ -10,16 +11,20 @@ const ConfirmModal = ({ visible, title, message, onConfirm, onCancel }) => (
                 </View>
                 <View className="flex-row border-t border-slate-100 dark:border-slate-700">
                     <TouchableOpacity
-                        onPress={onCancel}
+                        onPress={() => { haptics.tap(); onCancel && onCancel(); }}
                         className="flex-1 items-center border-r border-slate-100 dark:border-slate-700"
                         style={{ minHeight: 48, justifyContent: 'center' }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Cancelar"
                     >
                         <Text className="text-base font-semibold text-primary">Cancelar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        onPress={onConfirm}
+                        onPress={() => { haptics.warning(); onConfirm && onConfirm(); }}
                         className="flex-1 items-center"
                         style={{ minHeight: 48, justifyContent: 'center' }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Confirmar eliminación"
                     >
                         <Text className="text-base font-bold text-red-500">Eliminar</Text>
                     </TouchableOpacity>

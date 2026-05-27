@@ -1,5 +1,3 @@
-import { Alert, Platform } from "react-native";
-
 /**
  * Maps Postgres/Supabase error codes to user-friendly Spanish messages.
  */
@@ -27,16 +25,4 @@ export function friendlyMessage(e: unknown): string {
     return "Error de conexión. Verificá tu internet e intentá de nuevo.";
 
   return err.message || "Ocurrió un error. Intentá de nuevo.";
-}
-
-/**
- * Show a user-friendly error alert (handles web vs native).
- */
-export function showError(e: unknown): void {
-  const msg = friendlyMessage(e);
-  if (Platform.OS === "web") {
-    window.alert(msg);
-  } else {
-    Alert.alert("Error", msg);
-  }
 }

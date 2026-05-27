@@ -10,31 +10,15 @@
  * - Custom TabIcon with label
  * - No transparency gimmicks
  */
-import { TouchableOpacity, View } from 'react-native';
+import { View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/theme/useTheme';
+import ErrorBoundaryFallback from '../../components/ui/ErrorBoundaryFallback';
 
-export function ErrorBoundary({ error, retry }) {
-    return (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', padding: 24 }}>
-            <MaterialIcons name="error-outline" size={48} color="#EF4444" />
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#0F172A', marginTop: 16, textAlign: 'center' }}>
-                Algo salio mal
-            </Text>
-            <Text style={{ fontSize: 14, color: '#64748B', marginTop: 8, textAlign: 'center' }}>
-                {error?.message || 'Error inesperado'}
-            </Text>
-            <TouchableOpacity
-                onPress={retry}
-                style={{ marginTop: 24, backgroundColor: '#6366F1', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
-            >
-                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Reintentar</Text>
-            </TouchableOpacity>
-        </View>
-    );
+export function ErrorBoundary(props) {
+    return <ErrorBoundaryFallback {...props} />;
 }
 
 const TabIcon = ({ name, color, focused }) => (

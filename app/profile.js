@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Platform, Alert } from 'react-native';
-import { showError } from '../src/lib/friendlyError';
+import { friendlyMessage } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -37,7 +37,7 @@ export default function ProfileScreen() {
             });
             showToast({ type: 'success', message: 'Perfil actualizado' });
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setSaving(false);
         }

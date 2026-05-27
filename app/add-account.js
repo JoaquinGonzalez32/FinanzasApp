@@ -1,9 +1,9 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, Switch } from 'react-native';
-import { showError } from '../src/lib/friendlyError';
+import { friendlyMessage } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { Button } from '../components/ui';
+import { Button, useToast } from '../components/ui';
 import { createAccount, updateAccount } from '../src/services/accountsService';
 import { emitAccountsChange } from '../src/lib/events';
 import { CATEGORY_COLORS, getCategoryStyle, getCurrencySymbol } from '../src/lib/helpers';
@@ -38,6 +38,7 @@ export default function AddAccountScreen() {
     const [currency, setCurrency] = useState('UYU');
     const [includeInTotal, setIncludeInTotal] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const { show: showToast, ToastComponent } = useToast();
 
     useEffect(() => {
         if (isEditing) {
@@ -85,7 +86,7 @@ export default function AddAccountScreen() {
             emitAccountsChange();
             router.back();
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setSubmitting(false);
         }
@@ -267,6 +268,7 @@ export default function AddAccountScreen() {
                     </View>
                 </View>
             </ScrollView>
+            {ToastComponent}
         </KeyboardAvoidingView>
     );
 }

@@ -46,12 +46,7 @@ import MonthStatusCard from '../../src/features/home/components/MonthStatusCard'
 import ContextualBanner from '../../src/features/home/components/ContextualBanner';
 import RecentTransactions from '../../src/features/home/components/RecentTransactions';
 import { useHomeBanners } from '../../src/features/home/hooks/useHomeBanners';
-
-function getDaysRemaining() {
-    const now = new Date();
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    return lastDay - now.getDate();
-}
+import { getDaysRemaining } from '../../src/lib/dateHelpers';
 
 export default function HomeScreen() {
     const router = useRouter();

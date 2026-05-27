@@ -1,5 +1,5 @@
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Pressable } from 'react-native';
-import { showError, friendlyMessage } from '../src/lib/friendlyError';
+import { friendlyMessage } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useMemo } from 'react';
@@ -9,6 +9,7 @@ import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
 import { createTransaction, updateTransaction, deleteTransaction } from '../src/services/transactionsService';
 import { emitTransactionsChange } from '../src/lib/events';
+import { haptics } from '../src/lib/haptics';
 import { toDateISO, MONTHS_ES, DAYS_ES, getCurrencySymbol, shiftMonth, monthLabel } from '../src/lib/helpers';
 import { useAccountContext } from '../src/context/AccountContext';
 
@@ -134,7 +135,7 @@ export default function AddTransactionScreen() {
             emitTransactionsChange();
             router.back();
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setSubmitting(false);
         }
@@ -193,16 +194,22 @@ export default function AddTransactionScreen() {
                 <View className="px-6 mb-6">
                     <View className="flex-row h-12 w-full items-center justify-center rounded-xl bg-frost dark:bg-input-dark p-1.5">
                         <TouchableOpacity
-                            onPress={() => { setType('expense'); setSelectedCategory(null); setBudgetMonth(null); setBudgetMonthExpanded(false); }}
+                            onPress={() => { if (type !== 'expense') haptics.selection(); setType('expense'); setSelectedCategory(null); setBudgetMonth(null); setBudgetMonthExpanded(false); }}
                             className="flex-1 items-center justify-center rounded-lg h-full"
                             style={type === 'expense' ? { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 } : undefined}
+                            accessibilityRole="button"
+                            accessibilityLabel="Tipo gasto"
+                            accessibilityState={{ selected: type === 'expense' }}
                         >
                             <Text style={{ fontSize: 14, fontWeight: '700', color: type === 'expense' ? '#ef4444' : '#64748B' }}>Gasto</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            onPress={() => { setType('income'); setSelectedCategory(null); }}
+                            onPress={() => { if (type !== 'income') haptics.selection(); setType('income'); setSelectedCategory(null); }}
                             className="flex-1 items-center justify-center rounded-lg h-full"
                             style={type === 'income' ? { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 } : undefined}
+                            accessibilityRole="button"
+                            accessibilityLabel="Tipo ingreso"
+                            accessibilityState={{ selected: type === 'income' }}
                         >
                             <Text style={{ fontSize: 14, fontWeight: '700', color: type === 'income' ? '#10b981' : '#64748B' }}>Ingreso</Text>
                         </TouchableOpacity>

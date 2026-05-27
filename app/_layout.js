@@ -10,32 +10,16 @@ import {
     Manrope_800ExtraBold
 } from '@expo-google-fonts/manrope';
 import { useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { View, ActivityIndicator, Linking } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { AccountProvider } from '../src/context/AccountContext';
 import { useWidgetSync } from '../src/features/widgets/hooks/useWidgetSync';
 import { ThemeProvider } from '../src/theme';
+import ErrorBoundaryFallback from '../components/ui/ErrorBoundaryFallback';
 
-export function ErrorBoundary({ error, retry }) {
-    return (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', padding: 24 }}>
-            <MaterialIcons name="error-outline" size={48} color="#ef4444" />
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#0f172a', marginTop: 16, textAlign: 'center' }}>
-                Algo salió mal
-            </Text>
-            <Text style={{ fontSize: 14, color: '#64748b', marginTop: 8, textAlign: 'center' }}>
-                {error?.message || 'Error inesperado'}
-            </Text>
-            <TouchableOpacity
-                onPress={retry}
-                style={{ marginTop: 24, backgroundColor: '#6366F1', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
-            >
-                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Reintentar</Text>
-            </TouchableOpacity>
-        </View>
-    );
+export function ErrorBoundary(props) {
+    return <ErrorBoundaryFallback {...props} />;
 }
 
 SplashScreen.preventAutoHideAsync();

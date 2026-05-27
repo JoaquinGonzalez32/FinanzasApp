@@ -1,10 +1,10 @@
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Platform } from 'react-native';
-import { showError } from '../src/lib/friendlyError';
+import { friendlyMessage } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
-import { AnimatedProgressBar, FadeIn } from '../components/ui';
+import { AnimatedProgressBar, FadeIn, useToast } from '../components/ui';
 import ConfirmModal from '../components/ConfirmModal';
 import { getGoal, addContribution, removeContribution, pauseGoal, resumeGoal, completeGoal, deleteGoal } from '../src/services/savingsGoalsService';
 import { emitSavingsGoalsChange } from '../src/lib/events';
@@ -35,6 +35,7 @@ export default function GoalDetailScreen() {
     // Delete confirm
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleteContribId, setDeleteContribId] = useState(null);
+    const { show: showToast, ToastComponent } = useToast();
 
     const loadGoal = useCallback(async () => {
         if (!goalId) return;
@@ -86,7 +87,7 @@ export default function GoalDetailScreen() {
             setContribAmount('');
             setContribNote('');
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setContribSubmitting(false);
         }
@@ -97,7 +98,7 @@ export default function GoalDetailScreen() {
         try {
             await removeContribution(deleteContribId);
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setDeleteContribId(null);
         }
@@ -113,7 +114,7 @@ export default function GoalDetailScreen() {
             }
             emitSavingsGoalsChange();
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         }
     };
 
@@ -122,7 +123,7 @@ export default function GoalDetailScreen() {
             await completeGoal(goalId);
             emitSavingsGoalsChange();
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         }
     };
 
@@ -132,7 +133,7 @@ export default function GoalDetailScreen() {
             emitSavingsGoalsChange();
             router.back();
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setShowDeleteConfirm(false);
         }
@@ -452,6 +453,8 @@ export default function GoalDetailScreen() {
                 onConfirm={handleRemoveContribution}
                 onCancel={() => setDeleteContribId(null)}
             />
+
+            {ToastComponent}
         </View>
     );
 }

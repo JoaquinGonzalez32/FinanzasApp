@@ -7,6 +7,7 @@
 import { TouchableOpacity, Animated, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRef, useEffect } from 'react';
+import { haptics } from '../../src/lib/haptics';
 
 const ActionButton = ({
     icon = 'add',
@@ -15,7 +16,12 @@ const ActionButton = ({
     right = 20,
     size = 56,
     color = '#6366F1',
+    accessibilityLabel,
 }) => {
+    const handlePress = (e) => {
+        haptics.medium();
+        if (onPress) onPress(e);
+    };
     const scale = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -38,8 +44,10 @@ const ActionButton = ({
             }}
         >
             <TouchableOpacity
-                onPress={onPress}
+                onPress={handlePress}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={accessibilityLabel ?? 'Agregar transacción'}
                 style={{
                     height: size,
                     width: size,

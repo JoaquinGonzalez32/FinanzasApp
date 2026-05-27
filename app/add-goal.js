@@ -1,8 +1,9 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
-import { showError } from '../src/lib/friendlyError';
+import { friendlyMessage } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
+import { useToast } from '../components/ui';
 import { createGoal, updateGoal } from '../src/services/savingsGoalsService';
 import { emitSavingsGoalsChange } from '../src/lib/events';
 import { CATEGORY_COLORS, getCategoryStyle, getCurrencySymbol } from '../src/lib/helpers';
@@ -28,6 +29,7 @@ export default function AddGoalScreen() {
     const [selectedIcon, setSelectedIcon] = useState('flag');
     const [selectedColor, setSelectedColor] = useState('primary');
     const [submitting, setSubmitting] = useState(false);
+    const { show: showToast, ToastComponent } = useToast();
 
     useEffect(() => {
         if (isEditing) {
@@ -85,7 +87,7 @@ export default function AddGoalScreen() {
             emitSavingsGoalsChange();
             router.back();
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setSubmitting(false);
         }
@@ -214,6 +216,7 @@ export default function AddGoalScreen() {
                     </View>
                 </View>
             </ScrollView>
+            {ToastComponent}
         </KeyboardAvoidingView>
     );
 }

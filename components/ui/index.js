@@ -17,3 +17,4 @@ export { default as TransactionRow } from './TransactionRow';
 export { default as ActionButton } from './ActionButton';
 export { default as EmptyState } from './EmptyState';
 export { default as BottomSheet } from './BottomSheet';
+export { default as ErrorBoundaryFallback } from './ErrorBoundaryFallback';

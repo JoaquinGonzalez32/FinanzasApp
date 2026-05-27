@@ -1,9 +1,9 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { showError } from '../src/lib/friendlyError';
+import { friendlyMessage } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { Button } from '../components/ui';
+import { Button, useToast } from '../components/ui';
 import { createCategory, updateCategory } from '../src/services/categoriesService';
 import { emitCategoriesChange } from '../src/lib/events';
 import { CATEGORY_COLORS, getCategoryStyle } from '../src/lib/helpers';
@@ -33,6 +33,7 @@ export default function AddCategoryScreen() {
     const [selectedColor, setSelectedColor] = useState(getInitial('color', 'orange'));
     const [selectedAccount, setSelectedAccount] = useState(getInitial('account_id', '') || null);
     const [submitting, setSubmitting] = useState(false);
+    const { show: showToast, ToastComponent } = useToast();
 
     const { accounts } = useAccounts();
 
@@ -75,7 +76,7 @@ export default function AddCategoryScreen() {
             emitCategoriesChange();
             router.back();
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setSubmitting(false);
         }
@@ -221,6 +222,7 @@ export default function AddCategoryScreen() {
                     </View>
                 </View>
             </ScrollView>
+            {ToastComponent}
         </KeyboardAvoidingView>
     );
 }

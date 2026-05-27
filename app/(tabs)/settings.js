@@ -34,7 +34,7 @@
  * - Cleaner visual hierarchy
  */
 import { View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
-import { showError } from '../../src/lib/friendlyError';
+import { friendlyMessage } from '../../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState, useMemo, useCallback } from 'react';
@@ -102,7 +102,7 @@ export default function SettingsScreen() {
             await deleteCategory(cat.id);
             emitCategoriesChange();
             showToast({ type: 'success', message: `"${cat.name}" eliminada` });
-        } catch (e) { showError(e); }
+        } catch (e) { showToast({ type: 'error', message: friendlyMessage(e) }); }
     };
 
     const handleEditCategory = (cat) => {
@@ -134,7 +134,7 @@ export default function SettingsScreen() {
             await deleteAccount(acc.id);
             emitAccountsChange();
             showToast({ type: 'success', message: `"${acc.name}" eliminada` });
-        } catch (e) { showError(e); }
+        } catch (e) { showToast({ type: 'error', message: friendlyMessage(e) }); }
     };
 
     const handleViewAccount = (acc) => {

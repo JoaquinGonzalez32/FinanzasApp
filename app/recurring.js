@@ -1,10 +1,11 @@
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
 
-import { showError } from '../src/lib/friendlyError';
+import { friendlyMessage } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback, useMemo } from 'react';
+import { useToast } from '../components/ui';
 import { useRecurring } from '../src/hooks/useRecurring';
 import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
@@ -31,6 +32,7 @@ export default function RecurringScreen() {
     const [saving, setSaving] = useState(false);
     const [addVisible, setAddVisible] = useState(false);
     const [catPickerVisible, setCatPickerVisible] = useState(false);
+    const { show: showToast, ToastComponent } = useToast();
 
     // Add form state
     const [newCategory, setNewCategory] = useState(null);
@@ -67,9 +69,9 @@ export default function RecurringScreen() {
             await deleteRecurringTemplate(id);
             emitRecurringChange();
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         }
-    }, []);
+    }, [showToast]);
 
     const resetAddForm = useCallback(() => {
         setNewCategory(null);
@@ -94,11 +96,11 @@ export default function RecurringScreen() {
             setAddVisible(false);
             resetAddForm();
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setSaving(false);
         }
-    }, [newCategory, newAmount, newDay, newAccountId, resetAddForm]);
+    }, [newCategory, newAmount, newDay, newAccountId, resetAddForm, showToast]);
 
     if (loading) {
         return (
@@ -301,6 +303,8 @@ export default function RecurringScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {ToastComponent}
 
             {/* ── Category Picker Modal (stacked on top of add modal) ── */}
             <Modal visible={catPickerVisible} animationType="slide" transparent>

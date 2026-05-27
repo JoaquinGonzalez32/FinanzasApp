@@ -26,7 +26,7 @@
  * └──────────────────────────────┘
  */
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { showError } from '../../src/lib/friendlyError';
+import { friendlyMessage } from '../../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -45,19 +45,8 @@ import { PieChart } from 'react-native-gifted-charts';
 import { useAccountContext } from '../../src/context/AccountContext';
 import { useFilteredTransactions } from '../../src/hooks/useFilteredByAccount';
 import AccountSwitcher from '../../src/components/AccountSwitcher';
-
-function budgetBarColor(pct) {
-    if (pct >= 100) return '#EF4444';
-    if (pct >= 85) return '#F59E0B';
-    if (pct >= 65) return '#6366F1';
-    return '#10B981';
-}
-
-function getDaysRemaining() {
-    const now = new Date();
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    return lastDay - now.getDate();
-}
+import { getDaysRemaining } from '../../src/lib/dateHelpers';
+import { budgetColor as budgetBarColor } from '../../src/theme/colors';
 
 const CURRENCY_LABELS = { UYU: 'Pesos uruguayos', USD: 'Dólares', EUR: 'Euros' };
 
@@ -445,7 +434,7 @@ export default function DashboardScreen() {
             emitBudgetChange();
             showToast({ type: 'success', message: 'Planificacion guardada' });
         } catch (e) {
-            showError(e);
+            showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
             setSaving(false);
         }
@@ -480,7 +469,9 @@ export default function DashboardScreen() {
                                 setEditVisible(true);
                             }
                         }}
-                        className="h-9 w-9 items-center justify-center rounded-full bg-primary-faint dark:bg-primary/10"
+                        className="h-11 w-11 items-center justify-center rounded-full bg-primary-faint dark:bg-primary/10"
+                        accessibilityRole="button"
+                        accessibilityLabel="Editar presupuesto"
                     >
                         <MaterialIcons name="edit" size={16} color="#6366F1" />
                     </TouchableOpacity>
@@ -490,13 +481,23 @@ export default function DashboardScreen() {
             <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
                 {/* Month navigator */}
                 <View className="flex-row items-center justify-center gap-4 px-5 pb-4">
-                    <TouchableOpacity onPress={() => setDistMonth(m => shiftMonth(m, -1))} className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                    <TouchableOpacity
+                        onPress={() => setDistMonth(m => shiftMonth(m, -1))}
+                        className="h-11 w-11 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
+                        accessibilityRole="button"
+                        accessibilityLabel="Mes anterior"
+                    >
                         <MaterialIcons name="chevron-left" size={20} color="#64748b" />
                     </TouchableOpacity>
                     <Text className="text-sm font-semibold text-slate-700 dark:text-slate-300 min-w-[140px] text-center">
                         {monthLabel(distMonth)}
                     </Text>
-                    <TouchableOpacity onPress={() => setDistMonth(m => shiftMonth(m, 1))} className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                    <TouchableOpacity
+                        onPress={() => setDistMonth(m => shiftMonth(m, 1))}
+                        className="h-11 w-11 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
+                        accessibilityRole="button"
+                        accessibilityLabel="Mes siguiente"
+                    >
                         <MaterialIcons name="chevron-right" size={20} color="#64748b" />
                     </TouchableOpacity>
                 </View>
