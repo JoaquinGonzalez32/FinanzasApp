@@ -1,25 +1,8 @@
 /**
- * HOME SCREEN — "Como vengo este mes?"
- *
- * LAYOUT (top to bottom):
- * ┌──────────────────────────────┐
- * │  Header: Avatar · Account · Search  │
- * ├──────────────────────────────┤
- * │  MonthStatusCard                    │
- * │  (expense, daily rate, savings,     │
- * │   pace indicator, income, planned)  │
- * ├──────────────────────────────┤
- * │  [ContextualBanner] (max 2)         │
- * ├──────────────────────────────┤
- * │  RecentTransactions (last 7)        │
- * │  Groups: Hoy · Ayer · Earlier       │
- * └──────────────────────────────┘
- * [FAB +] bottom-right
- *
- * REMOVED: GoalsSummaryWidget, AnalyticsSummaryWidget,
- *          standalone quick stats pills, weekly review alert.
- * These are now either integrated into the card (savings rate,
- * income, planned) or surfaced via contextual banners.
+ * HOME SCREEN — three focused sections:
+ *   1. MonthStatusCard
+ *   2. DailyInsight (heuristic today, AI-ready)
+ *   3. UpcomingThisMonth (recurring next + critical budgets)
  */
 import { View, Text, ScrollView, Image, TouchableOpacity, RefreshControl } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
