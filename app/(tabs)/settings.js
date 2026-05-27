@@ -49,6 +49,7 @@ import { getCategoryStyle, formatCurrency } from '../../src/lib/helpers';
 import { useAccountContext } from '../../src/context/AccountContext';
 import { goalProgress } from '../../src/lib/goalHelpers';
 import { useTheme } from '../../src/theme/useTheme';
+import NotificationSettingsSection from '../../src/features/notifications/NotificationSettingsSection';
 
 const ACCOUNT_TYPE_LABELS = {
     cash: 'Efectivo',
@@ -419,6 +420,8 @@ export default function SettingsScreen() {
                         </View>
                     </View>
                 </FadeIn>
+
+                <NotificationSettingsSection />
 
                 {/* ============ PROFILE ============ */}
                 <FadeIn delay={350}>

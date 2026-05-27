@@ -19,6 +19,9 @@ import { useWidgetSync } from '../src/features/widgets/hooks/useWidgetSync';
 import { ThemeProvider } from '../src/theme';
 import ErrorBoundaryFallback from '../components/ui/ErrorBoundaryFallback';
 import { queryClient } from '../src/lib/queryClient';
+import { applySchedule, configureForegroundBehavior, getSettings } from '../src/features/notifications/notificationService';
+
+configureForegroundBehavior();
 
 export function ErrorBoundary(props) {
     return <ErrorBoundaryFallback {...props} />;
@@ -33,6 +36,13 @@ function RootNavigator() {
 
     // Sync widget data on app state changes
     useWidgetSync();
+
+    // Re-apply the daily-reminder schedule on cold start (OS sometimes drops
+    // scheduled notifications after reboot, locale change, etc.).
+    useEffect(() => {
+        if (loading || !user) return;
+        getSettings().then(applySchedule).catch(() => {});
+    }, [loading, user]);
 
     // Handle deep links from widgets
     useEffect(() => {
