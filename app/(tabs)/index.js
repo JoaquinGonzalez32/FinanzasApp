@@ -25,27 +25,21 @@ import { View, Text, ScrollView, Image, TouchableOpacity, RefreshControl } from 
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, useState, useCallback } from 'react';
-import ConfirmModal from '../../components/ConfirmModal';
-import { SkeletonLoader, useToast, FadeIn, ActionButton, FrostBackground } from '../../components/ui';
+import { FadeIn, ActionButton, FrostBackground } from '../../components/ui';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useProfile } from '../../src/hooks/useProfile';
-import { deleteTransaction } from '../../src/services/transactionsService';
-import { friendlyMessage } from '../../src/lib/friendlyError';
-import { invalidate } from '../../src/lib/queryClient';
 import { useBudget } from '../../src/hooks/useBudget';
-import { formatCurrency, toDateISO, sumByType, getCurrentMonth, MONTHS_ES, getCategoryStyle, getAssignedTotal, getCategoryAssignments, monthLabel } from '../../src/lib/helpers';
+import { sumByType, getCurrentMonth, getAssignedTotal, getCategoryAssignments } from '../../src/lib/helpers';
 import { useAutoApplyRecurring } from '../../src/hooks/usePendingRecurringCount';
-import { useSavingsGoals } from '../../src/hooks/useSavingsGoals';
-import { useAnalytics } from '../../src/features/analytics/hooks/useAnalytics';
-import { useInsights } from '../../src/features/analytics/hooks/useInsights';
+import { useRecurring } from '../../src/hooks/useRecurring';
 import { useAccountContext } from '../../src/context/AccountContext';
 import { useFilteredTransactions, useCurrencyTotals } from '../../src/hooks/useFilteredByAccount';
 import { useBudgetIncome } from '../../src/hooks/useBudgetIncome';
 import AccountSwitcher from '../../src/components/AccountSwitcher';
 import MonthStatusCard from '../../src/features/home/components/MonthStatusCard';
-import ContextualBanner from '../../src/features/home/components/ContextualBanner';
-import RecentTransactions from '../../src/features/home/components/RecentTransactions';
-import { useHomeBanners } from '../../src/features/home/hooks/useHomeBanners';
+import DailyInsight from '../../src/features/home/components/DailyInsight';
+import UpcomingThisMonth from '../../src/features/home/components/UpcomingThisMonth';
+import { computeInsight } from '../../src/features/home/insightHeuristic';
 import { getDaysRemaining } from '../../src/lib/dateHelpers';
 
 export default function HomeScreen() {
@@ -56,19 +50,10 @@ export default function HomeScreen() {
     const currentMonth = useMemo(() => getCurrentMonth(), []);
     const { budgetItems } = useBudget(currentMonth);
     const [refreshing, setRefreshing] = useState(false);
-    const [deleteTx, setDeleteTx] = useState(null);
-    const { show: showToast, ToastComponent } = useToast();
 
     const monthTx = useFilteredTransactions(allMonthTx);
     const { income: budgetIncomeRaw } = useBudgetIncome(currentMonth);
     const budgetIncomeTx = useFilteredTransactions(budgetIncomeRaw);
-
-    const todayStr = useMemo(() => toDateISO(), []);
-    const yesterdayStr = useMemo(() => {
-        const d = new Date();
-        d.setDate(d.getDate() - 1);
-        return toDateISO(d);
-    }, []);
 
     const primaryCurrency = selectedAccount?.currency ?? accounts[0]?.currency;
 
@@ -214,93 +199,32 @@ export default function HomeScreen() {
         return ((monthTotalIncome - monthTotalExpense) / monthTotalIncome) * 100;
     }, [monthTotalIncome, monthTotalExpense]);
 
-    const txAccount = (tx) => accMap[tx.account_id ?? tx.category?.account_id];
-
-    // Recent transactions: last 7 from this month
-    const recentTx = useMemo(() => {
-        const sorted = [...monthTx].sort((a, b) => {
-            const dateCmp = b.date.localeCompare(a.date);
-            if (dateCmp !== 0) return dateCmp;
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        });
-        return sorted.slice(0, 7);
-    }, [monthTx]);
-
-    const recentGroups = useMemo(() => {
-        const groups = {};
-        for (const tx of recentTx) {
-            let label;
-            if (tx.date === todayStr) label = 'Hoy';
-            else if (tx.date === yesterdayStr) label = 'Ayer';
-            else {
-                const d = new Date(tx.date + 'T00:00:00');
-                label = `${d.getDate()}/${d.getMonth() + 1}`;
-            }
-            if (!groups[label]) groups[label] = [];
-            groups[label].push(tx);
-        }
-        return Object.entries(groups);
-    }, [recentTx, todayStr, yesterdayStr]);
-
     // Auto-apply recurring templates on app open
     useAutoApplyRecurring();
-    const { goals: activeGoals } = useSavingsGoals();
-    const { currentSummary } = useAnalytics();
-    const { insights } = useInsights(
-        currentSummary ? [currentSummary] : [],
-        primaryCurrency,
-    );
+    const { pendingItems: pendingRecurring } = useRecurring();
 
-    const { banners, dismiss: dismissBanner } = useHomeBanners({
-        categoryAlerts,
-        goals: activeGoals,
-        insights,
-        pendingRecurringCount: 0,
-        currency: primaryCurrency,
-        accountMap: isAllAccounts ? accMap : undefined,
-    });
+    const dailyInsight = useMemo(() => {
+        const plannedTotal = budgetProgress?.planned ?? 0;
+        const now = new Date();
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const topOver = categoryAlerts[0]
+            ? { name: categoryAlerts[0].name, pct: categoryAlerts[0].pct }
+            : null;
+        return computeInsight({
+            monthExpense: monthTotalExpense,
+            monthIncome: monthTotalIncome,
+            plannedTotal,
+            daysIntoMonth: now.getDate(),
+            daysInMonth,
+            primaryCurrency,
+            topOverCategory: topOver,
+        });
+    }, [budgetProgress, categoryAlerts, monthTotalExpense, monthTotalIncome, primaryCurrency]);
 
-    // Handlers
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try { await refresh(); } finally { setRefreshing(false); }
     }, [refresh]);
-
-    const handleEditTx = (tx) => {
-        router.push({
-            pathname: '/add-transaction',
-            params: {
-                type: tx.type, editId: tx.id, editAmount: String(tx.amount),
-                editCategoryId: tx.category_id || '', editAccountId: tx.account_id || '',
-                editNote: tx.note || '', editDate: tx.date,
-                editBudgetMonth: tx.budget_month || '',
-            },
-        });
-    };
-
-    const handleDeleteTx = (tx) => setDeleteTx(tx);
-
-    const confirmDelete = async () => {
-        if (!deleteTx) return;
-        const txToDelete = deleteTx;
-        setDeleteTx(null);
-        try {
-            await deleteTransaction(txToDelete.id);
-            invalidate.transactions();
-            showToast({ type: 'success', message: `"${txToDelete.category?.name ?? 'Transaccion'}" eliminada` });
-        } catch (e) {
-            showToast({ type: 'error', message: friendlyMessage(e) });
-        }
-    };
-
-    const handleBannerPress = (banner) => {
-        if (banner.route) {
-            router.push({
-                pathname: banner.route,
-                params: banner.routeParams,
-            });
-        }
-    };
 
     return (
         <FrostBackground edges={['top']}>
@@ -350,20 +274,14 @@ export default function HomeScreen() {
                     </View>
                 </FadeIn>
 
-                {/* ============ CONTEXTUAL BANNERS ============ */}
-                {banners.length > 0 && (
-                    <View className="px-5 pb-3 gap-2">
-                        {banners.map((banner, i) => (
-                            <FadeIn key={banner.id} delay={200 + i * 60}>
-                                <ContextualBanner
-                                    banner={banner}
-                                    onPress={() => handleBannerPress(banner)}
-                                    onDismiss={dismissBanner}
-                                />
-                            </FadeIn>
-                        ))}
-                    </View>
-                )}
+                {/* ============ DAILY INSIGHT ============ */}
+                <DailyInsight insight={dailyInsight} />
+
+                {/* ============ UPCOMING ============ */}
+                <UpcomingThisMonth
+                    pendingRecurring={pendingRecurring}
+                    criticalBudgets={categoryAlerts}
+                />
 
                 {/* ============ ERROR STATE ============ */}
                 {error && (
@@ -371,34 +289,12 @@ export default function HomeScreen() {
                         <View className="bg-red-50 dark:bg-red-500/8 rounded-2xl p-4 flex-row items-center gap-3 border border-red-200 dark:border-red-900/20">
                             <MaterialIcons name="error-outline" size={18} color="#ef4444" />
                             <Text className="text-red-500 text-xs flex-1 font-medium">{error}</Text>
-                            <TouchableOpacity onPress={onRefresh}>
+                            <TouchableOpacity onPress={onRefresh} accessibilityRole="button" accessibilityLabel="Reintentar carga">
                                 <Text className="text-primary font-bold text-xs">Reintentar</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 )}
-
-                {/* ============ RECENT TRANSACTIONS ============ */}
-                <RecentTransactions
-                    recentGroups={recentGroups}
-                    loading={loading}
-                    refreshing={refreshing}
-                    hasTransactions={recentTx.length > 0}
-                    hasMoreThanShown={monthTx.length > 7}
-                    error={error}
-                    txAccount={txAccount}
-                    isAllAccounts={isAllAccounts}
-                    onEditTx={handleEditTx}
-                    onDeleteTx={handleDeleteTx}
-                    onViewAll={() => router.push('/(tabs)/month')}
-                    onAddFirst={() => router.push({
-                        pathname: '/add-transaction',
-                        params: {
-                            type: 'expense',
-                            ...(selectedAccountId ? { account: selectedAccountId } : {}),
-                        },
-                    })}
-                />
             </ScrollView>
 
             {/* FAB */}
@@ -411,16 +307,6 @@ export default function HomeScreen() {
                     },
                 })}
             />
-
-            <ConfirmModal
-                visible={!!deleteTx}
-                title="Eliminar transaccion"
-                message={deleteTx ? `Eliminar "${deleteTx.category?.name ?? 'Sin categoria'}" por ${formatCurrency(deleteTx.amount, accounts.find(a => a.id === (deleteTx.account_id ?? deleteTx.category?.account_id))?.currency)}?` : ''}
-                onConfirm={confirmDelete}
-                onCancel={() => setDeleteTx(null)}
-            />
-
-            {ToastComponent}
         </FrostBackground>
     );
 }
