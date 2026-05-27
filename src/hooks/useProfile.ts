@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { Profile, ProfileUpdate } from "../types/database";
 import * as svc from "../services/profileService";
 import { supabase } from "../lib/supabase";
+import { qk, queryClient } from "../lib/queryClient";
 
 interface UseProfileResult {
   profile: Profile | null;
@@ -13,41 +15,36 @@ interface UseProfileResult {
 }
 
 export function useProfile(): UseProfileResult {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const query = useQuery({
+    queryKey: qk.profile,
+    queryFn: async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      setEmail(user?.email ?? null);
+      const profile = await svc.getProfile();
+      return { profile, email: user?.email ?? null };
+    },
+  });
 
-      const data = await svc.getProfile();
-      setProfile(data);
-    } catch (e: any) {
-      setError(e.message ?? "Error loading profile");
-    } finally {
-      setLoading(false);
-    }
+  const refresh = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
+
+  const saveProfile = useCallback(async (updates: ProfileUpdate) => {
+    const saved = await svc.upsertProfile(updates);
+    queryClient.setQueryData(qk.profile, (prev: any) => ({
+      ...(prev ?? { email: null }),
+      profile: saved,
+    }));
+    return saved;
   }, []);
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  const saveProfile = useCallback(
-    async (updates: ProfileUpdate) => {
-      const saved = await svc.upsertProfile(updates);
-      setProfile(saved);
-      return saved;
-    },
-    []
-  );
-
-  return { profile, email, loading, error, refresh: fetch, saveProfile };
+  return {
+    profile: query.data?.profile ?? null,
+    email: query.data?.email ?? null,
+    loading: query.isPending,
+    error: query.error ? (query.error as Error).message : null,
+    refresh,
+    saveProfile,
+  };
 }

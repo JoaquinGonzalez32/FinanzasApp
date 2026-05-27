@@ -5,7 +5,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Button, useToast } from '../components/ui';
 import { createAccount, updateAccount } from '../src/services/accountsService';
-import { emitAccountsChange } from '../src/lib/events';
+import { invalidate } from '../src/lib/queryClient';
 import { CATEGORY_COLORS, getCategoryStyle, getCurrencySymbol } from '../src/lib/helpers';
 
 const ACCOUNT_TYPES = [
@@ -83,7 +83,7 @@ export default function AddAccountScreen() {
                     include_in_total: includeInTotal,
                 });
             }
-            emitAccountsChange();
+            invalidate.accounts();
             router.back();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });

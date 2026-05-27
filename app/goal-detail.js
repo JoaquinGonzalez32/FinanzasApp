@@ -7,9 +7,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { AnimatedProgressBar, FadeIn, useToast } from '../components/ui';
 import ConfirmModal from '../components/ConfirmModal';
 import { getGoal, addContribution, removeContribution, pauseGoal, resumeGoal, completeGoal, deleteGoal } from '../src/services/savingsGoalsService';
-import { emitSavingsGoalsChange } from '../src/lib/events';
+import { invalidate } from '../src/lib/queryClient';
 import { useGoalContributions } from '../src/hooks/useSavingsGoals';
-import { onSavingsGoalsChange } from '../src/lib/events';
 import { formatCurrency, getCategoryStyle } from '../src/lib/helpers';
 import {
     goalProgress, goalRemaining, goalPaceStatus, paceLabel,
@@ -70,12 +69,6 @@ export default function GoalDetailScreen() {
         loadGoal();
     }, [loadGoal]);
 
-    useEffect(() => {
-        return onSavingsGoalsChange(() => {
-            loadGoal();
-        });
-    }, [loadGoal]);
-
     const handleAddContribution = async () => {
         const amount = Number(contribAmount);
         if (!amount || amount <= 0) return;
@@ -83,6 +76,8 @@ export default function GoalDetailScreen() {
         setContribSubmitting(true);
         try {
             await addContribution(goalId, amount, contribNote.trim() || undefined);
+            invalidate.savingsGoals();
+            await loadGoal();
             setShowContribModal(false);
             setContribAmount('');
             setContribNote('');
@@ -97,6 +92,8 @@ export default function GoalDetailScreen() {
         if (!deleteContribId) return;
         try {
             await removeContribution(deleteContribId);
+            invalidate.savingsGoals();
+            await loadGoal();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });
         } finally {
@@ -112,7 +109,8 @@ export default function GoalDetailScreen() {
             } else {
                 await resumeGoal(goalId);
             }
-            emitSavingsGoalsChange();
+            invalidate.savingsGoals();
+            await loadGoal();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });
         }
@@ -121,7 +119,8 @@ export default function GoalDetailScreen() {
     const handleComplete = async () => {
         try {
             await completeGoal(goalId);
-            emitSavingsGoalsChange();
+            invalidate.savingsGoals();
+            await loadGoal();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });
         }
@@ -130,7 +129,7 @@ export default function GoalDetailScreen() {
     const handleDelete = async () => {
         try {
             await deleteGoal(goalId);
-            emitSavingsGoalsChange();
+            invalidate.savingsGoals();
             router.back();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });

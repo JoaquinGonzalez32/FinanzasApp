@@ -44,7 +44,7 @@ import { useAccounts } from '../../src/hooks/useAccounts';
 import { useSavingsGoals } from '../../src/hooks/useSavingsGoals';
 import { deleteCategory } from '../../src/services/categoriesService';
 import { deleteAccount } from '../../src/services/accountsService';
-import { emitCategoriesChange, emitAccountsChange } from '../../src/lib/events';
+import { invalidate } from '../../src/lib/queryClient';
 import { getCategoryStyle, formatCurrency } from '../../src/lib/helpers';
 import { useAccountContext } from '../../src/context/AccountContext';
 import { goalProgress } from '../../src/lib/goalHelpers';
@@ -100,7 +100,7 @@ export default function SettingsScreen() {
         if (!confirmed) return;
         try {
             await deleteCategory(cat.id);
-            emitCategoriesChange();
+            invalidate.categories();
             showToast({ type: 'success', message: `"${cat.name}" eliminada` });
         } catch (e) { showToast({ type: 'error', message: friendlyMessage(e) }); }
     };
@@ -132,7 +132,7 @@ export default function SettingsScreen() {
         if (!confirmed) return;
         try {
             await deleteAccount(acc.id);
-            emitAccountsChange();
+            invalidate.accounts();
             showToast({ type: 'success', message: `"${acc.name}" eliminada` });
         } catch (e) { showToast({ type: 'error', message: friendlyMessage(e) }); }
     };

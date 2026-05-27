@@ -10,7 +10,7 @@ import { useCategories } from '../src/hooks/useCategories';
 import { useTransactions } from '../src/hooks/useTransactions';
 import { useAccounts } from '../src/hooks/useAccounts';
 import { formatCurrency, getCategoryStyle, getCurrencySymbol, getCurrentMonth, parseMonth, shiftMonth, monthLabel } from '../src/lib/helpers';
-import { emitBudgetChange } from '../src/lib/events';
+import { invalidate } from '../src/lib/queryClient';
 import * as svc from '../src/services/budgetService';
 import { computeWeeklyReview } from '../src/lib/weeklyReview';
 
@@ -165,7 +165,7 @@ export default function PlanningScreen() {
                     await svc.updateBudgetItem(item.id, payload);
                 }
             }
-            emitBudgetChange();
+            invalidate.budget();
             router.back();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });

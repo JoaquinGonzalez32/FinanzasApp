@@ -1,6 +1,5 @@
 import { supabase } from "../lib/supabase";
 import type { SavingsGoal, SavingsGoalInsert, GoalContribution } from "../types/database";
-import { emitSavingsGoalsChange } from "../lib/events";
 
 export async function getGoalsByAccount(accountId: string): Promise<SavingsGoal[]> {
   const { data, error } = await supabase
@@ -108,7 +107,6 @@ export async function addContribution(
   });
 
   if (error) throw error;
-  emitSavingsGoalsChange();
 }
 
 export async function removeContribution(contributionId: string): Promise<void> {
@@ -117,7 +115,6 @@ export async function removeContribution(contributionId: string): Promise<void> 
   });
 
   if (error) throw error;
-  emitSavingsGoalsChange();
 }
 
 export async function getContributions(goalId: string): Promise<GoalContribution[]> {

@@ -9,7 +9,7 @@ import { useTransactions } from '../src/hooks/useTransactions';
 import { useAccounts } from '../src/hooks/useAccounts';
 import { deleteTransaction } from '../src/services/transactionsService';
 import { friendlyMessage } from '../src/lib/friendlyError';
-import { emitTransactionsChange } from '../src/lib/events';
+import { invalidate } from '../src/lib/queryClient';
 import { formatAmount, formatCurrency, getCategoryStyle, formatTime, sumByType, MONTHS_ES, DAYS_ES } from '../src/lib/helpers';
 
 function formatDateLabel(dateStr) {
@@ -75,7 +75,7 @@ export default function AllTransactionsScreen() {
         if (!deleteTx) return;
         try {
             await deleteTransaction(deleteTx.id);
-            emitTransactionsChange();
+            invalidate.transactions();
         } catch (e) {
             if (__DEV__) console.log('Delete error:', e.message);
             // TODO: add toast here when useToast is available in this screen

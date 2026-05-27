@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { BudgetItem } from "../types/database";
 import * as svc from "../services/budgetService";
-import { onBudgetChange } from "../lib/events";
+import { qk } from "../lib/queryClient";
 
 interface UseBudgetResult {
   budgetItems: BudgetItem[];
@@ -11,32 +12,19 @@ interface UseBudgetResult {
 }
 
 export function useBudget(month: string): UseBudgetResult {
-  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: qk.budget(month),
+    queryFn: () => svc.getBudgetItems(month),
+  });
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await svc.getBudgetItems(month);
-      setBudgetItems(data);
-    } catch (e: any) {
-      setError(e.message ?? "Error loading budget");
-    } finally {
-      setLoading(false);
-    }
-  }, [month]);
+  const refresh = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  useEffect(() => {
-    return onBudgetChange(() => {
-      fetch();
-    });
-  }, [fetch]);
-
-  return { budgetItems, loading, error, refresh: fetch };
+  return {
+    budgetItems: query.data ?? [],
+    loading: query.isPending,
+    error: query.error ? (query.error as Error).message : null,
+    refresh,
+  };
 }

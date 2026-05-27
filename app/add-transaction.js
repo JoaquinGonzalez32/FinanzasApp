@@ -8,7 +8,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
 import { createTransaction, updateTransaction, deleteTransaction } from '../src/services/transactionsService';
-import { emitTransactionsChange } from '../src/lib/events';
+import { invalidate } from '../src/lib/queryClient';
 import { haptics } from '../src/lib/haptics';
 import { toDateISO, MONTHS_ES, DAYS_ES, getCurrencySymbol, shiftMonth, monthLabel } from '../src/lib/helpers';
 import { useAccountContext } from '../src/context/AccountContext';
@@ -132,7 +132,7 @@ export default function AddTransactionScreen() {
             } else {
                 await createTransaction(payload);
             }
-            emitTransactionsChange();
+            invalidate.transactions();
             router.back();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });
@@ -146,7 +146,7 @@ export default function AddTransactionScreen() {
         setSubmitting(true);
         try {
             await deleteTransaction(params.editId);
-            emitTransactionsChange();
+            invalidate.transactions();
             router.back();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });

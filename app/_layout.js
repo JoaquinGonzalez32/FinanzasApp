@@ -12,11 +12,13 @@ import {
 import { useEffect } from 'react';
 import { View, ActivityIndicator, Linking } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { AccountProvider } from '../src/context/AccountContext';
 import { useWidgetSync } from '../src/features/widgets/hooks/useWidgetSync';
 import { ThemeProvider } from '../src/theme';
 import ErrorBoundaryFallback from '../components/ui/ErrorBoundaryFallback';
+import { queryClient } from '../src/lib/queryClient';
 
 export function ErrorBoundary(props) {
     return <ErrorBoundaryFallback {...props} />;
@@ -226,13 +228,15 @@ export default function RootLayout() {
     return (
         <>
             <StatusBar style="auto" translucent />
-            <ThemeProvider>
-                <AuthProvider>
-                    <AccountProvider>
-                        <RootNavigator />
-                    </AccountProvider>
-                </AuthProvider>
-            </ThemeProvider>
+            <QueryClientProvider client={queryClient}>
+                <ThemeProvider>
+                    <AuthProvider>
+                        <AccountProvider>
+                            <RootNavigator />
+                        </AccountProvider>
+                    </AuthProvider>
+                </ThemeProvider>
+            </QueryClientProvider>
         </>
     );
 }

@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { SavingsGoal, GoalContribution } from "../types/database";
 import * as svc from "../services/savingsGoalsService";
-import { onSavingsGoalsChange } from "../lib/events";
+import { qk } from "../lib/queryClient";
 
 interface UseSavingsGoalsResult {
   goals: SavingsGoal[];
@@ -10,42 +11,29 @@ interface UseSavingsGoalsResult {
   refresh: () => Promise<void>;
 }
 
-export function useSavingsGoals(accountId?: string | null, mode?: "active" | "all"): UseSavingsGoalsResult {
-  const [goals, setGoals] = useState<SavingsGoal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function useSavingsGoals(
+  accountId?: string | null,
+  mode?: "active" | "all"
+): UseSavingsGoalsResult {
+  const query = useQuery({
+    queryKey: qk.savingsGoals(accountId, mode),
+    queryFn: async () => {
+      if (accountId) return svc.getGoalsByAccount(accountId);
+      if (mode === "all") return svc.getAllGoals();
+      return svc.getAllActiveGoals();
+    },
+  });
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      let data: SavingsGoal[];
-      if (accountId) {
-        data = await svc.getGoalsByAccount(accountId);
-      } else if (mode === "all") {
-        data = await svc.getAllGoals();
-      } else {
-        data = await svc.getAllActiveGoals();
-      }
-      setGoals(data);
-    } catch (e: any) {
-      setError(e.message ?? "Error loading goals");
-    } finally {
-      setLoading(false);
-    }
-  }, [accountId, mode]);
+  const refresh = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  useEffect(() => {
-    return onSavingsGoalsChange(() => {
-      fetch();
-    });
-  }, [fetch]);
-
-  return { goals, loading, error, refresh: fetch };
+  return {
+    goals: query.data ?? [],
+    loading: query.isPending,
+    error: query.error ? (query.error as Error).message : null,
+    refresh,
+  };
 }
 
 interface UseGoalContributionsResult {
@@ -56,37 +44,20 @@ interface UseGoalContributionsResult {
 }
 
 export function useGoalContributions(goalId: string | null): UseGoalContributionsResult {
-  const [contributions, setContributions] = useState<GoalContribution[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: qk.goalContributions(goalId),
+    queryFn: () => svc.getContributions(goalId!),
+    enabled: !!goalId,
+  });
 
-  const fetch = useCallback(async () => {
-    if (!goalId) {
-      setContributions([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await svc.getContributions(goalId);
-      setContributions(data);
-    } catch (e: any) {
-      setError(e.message ?? "Error loading contributions");
-    } finally {
-      setLoading(false);
-    }
-  }, [goalId]);
+  const refresh = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  useEffect(() => {
-    return onSavingsGoalsChange(() => {
-      fetch();
-    });
-  }, [fetch]);
-
-  return { contributions, loading, error, refresh: fetch };
+  return {
+    contributions: query.data ?? [],
+    loading: goalId ? query.isPending : false,
+    error: query.error ? (query.error as Error).message : null,
+    refresh,
+  };
 }

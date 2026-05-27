@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { Account } from "../types/database";
 import * as svc from "../services/accountsService";
-import { onAccountsChange } from "../lib/events";
+import { qk } from "../lib/queryClient";
 
 interface UseAccountsResult {
   accounts: Account[];
@@ -11,34 +12,19 @@ interface UseAccountsResult {
 }
 
 export function useAccounts(): UseAccountsResult {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: qk.accounts,
+    queryFn: () => svc.getAccounts(),
+  });
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await svc.getAccounts();
-      setAccounts(data);
-    } catch (e: any) {
-      // TODO: Si la tabla no existe en Supabase, este error aparecerá.
-      // Crear la tabla accounts con el SQL del archivo accountsService.ts
-      setError(e.message ?? "Error loading accounts");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const refresh = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  useEffect(() => {
-    return onAccountsChange(() => {
-      fetch();
-    });
-  }, [fetch]);
-
-  return { accounts, loading, error, refresh: fetch };
+  return {
+    accounts: query.data ?? [],
+    loading: query.isPending,
+    error: query.error ? (query.error as Error).message : null,
+    refresh,
+  };
 }

@@ -31,7 +31,7 @@ import { useTransactions } from '../../src/hooks/useTransactions';
 import { useProfile } from '../../src/hooks/useProfile';
 import { deleteTransaction } from '../../src/services/transactionsService';
 import { friendlyMessage } from '../../src/lib/friendlyError';
-import { emitTransactionsChange } from '../../src/lib/events';
+import { invalidate } from '../../src/lib/queryClient';
 import { useBudget } from '../../src/hooks/useBudget';
 import { formatCurrency, toDateISO, sumByType, getCurrentMonth, MONTHS_ES, getCategoryStyle, getAssignedTotal, getCategoryAssignments, monthLabel } from '../../src/lib/helpers';
 import { useAutoApplyRecurring } from '../../src/hooks/usePendingRecurringCount';
@@ -286,7 +286,7 @@ export default function HomeScreen() {
         setDeleteTx(null);
         try {
             await deleteTransaction(txToDelete.id);
-            emitTransactionsChange();
+            invalidate.transactions();
             showToast({ type: 'success', message: `"${txToDelete.category?.name ?? 'Transaccion'}" eliminada` });
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });

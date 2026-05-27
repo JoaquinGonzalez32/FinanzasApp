@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { Transaction, TransactionInsert } from "../types/database";
 import * as svc from "../services/transactionsService";
-import { onTransactionsChange } from "../lib/events";
+import { qk, invalidate } from "../lib/queryClient";
 
 interface UseTransactionsOptions {
   mode: "today" | "month" | "date";
@@ -22,61 +23,41 @@ interface UseTransactionsResult {
 export function useTransactions(
   options: UseTransactionsOptions
 ): UseTransactionsResult {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      let data: Transaction[];
+  const query = useQuery({
+    queryKey: qk.transactions(options),
+    queryFn: async () => {
       switch (options.mode) {
         case "today":
-          data = await svc.getTodayTransactions();
-          break;
+          return svc.getTodayTransactions();
         case "month":
-          data = await svc.getMonthTransactions(options.year, options.month);
-          break;
+          return svc.getMonthTransactions(options.year, options.month);
         case "date":
-          data = await svc.getTransactionsByDate(options.date!);
-          break;
+          return svc.getTransactionsByDate(options.date!);
       }
-      setTransactions(data);
-    } catch (e: any) {
-      setError(e.message ?? "Error loading transactions");
-    } finally {
-      setLoading(false);
-    }
-  }, [options.mode, options.year, options.month, options.date]);
-
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  // Re-fetch when any screen emits a change
-  useEffect(() => {
-    return onTransactionsChange(() => {
-      fetch();
-    });
-  }, [fetch]);
-
-  const add = useCallback(
-    async (tx: TransactionInsert) => {
-      const created = await svc.createTransaction(tx);
-      await fetch();
-      return created;
     },
-    [fetch]
-  );
+  });
 
-  const remove = useCallback(
-    async (id: string) => {
-      await svc.deleteTransaction(id);
-      await fetch();
-    },
-    [fetch]
-  );
+  const refresh = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
 
-  return { transactions, loading, error, refresh: fetch, add, remove };
+  const add = useCallback(async (tx: TransactionInsert) => {
+    const created = await svc.createTransaction(tx);
+    invalidate.transactions();
+    return created;
+  }, []);
+
+  const remove = useCallback(async (id: string) => {
+    await svc.deleteTransaction(id);
+    invalidate.transactions();
+  }, []);
+
+  return {
+    transactions: query.data ?? [],
+    loading: query.isPending,
+    error: query.error ? (query.error as Error).message : null,
+    refresh,
+    add,
+    remove,
+  };
 }

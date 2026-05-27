@@ -5,7 +5,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { useToast } from '../components/ui';
 import { createGoal, updateGoal } from '../src/services/savingsGoalsService';
-import { emitSavingsGoalsChange } from '../src/lib/events';
+import { invalidate } from '../src/lib/queryClient';
 import { CATEGORY_COLORS, getCategoryStyle, getCurrencySymbol } from '../src/lib/helpers';
 
 const ICON_OPTIONS = [
@@ -84,7 +84,7 @@ export default function AddGoalScreen() {
                     color: selectedColor,
                 });
             }
-            emitSavingsGoalsChange();
+            invalidate.savingsGoals();
             router.back();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });

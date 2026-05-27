@@ -11,7 +11,7 @@ import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
 import { formatCurrency, getCategoryStyle, getCurrencySymbol } from '../src/lib/helpers';
 import { createRecurringTemplate, deleteRecurringTemplate } from '../src/services/recurringService';
-import { emitRecurringChange } from '../src/lib/events';
+import { invalidate } from '../src/lib/queryClient';
 
 export default function RecurringScreen() {
     const router = useRouter();
@@ -67,7 +67,7 @@ export default function RecurringScreen() {
         if (!confirmed) return;
         try {
             await deleteRecurringTemplate(id);
-            emitRecurringChange();
+            invalidate.recurring();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });
         }
@@ -92,7 +92,7 @@ export default function RecurringScreen() {
                 amount,
                 day_of_month: day,
             });
-            emitRecurringChange();
+            invalidate.recurring();
             setAddVisible(false);
             resetAddForm();
         } catch (e) {

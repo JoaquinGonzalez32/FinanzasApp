@@ -5,7 +5,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Button, useToast } from '../components/ui';
 import { createCategory, updateCategory } from '../src/services/categoriesService';
-import { emitCategoriesChange } from '../src/lib/events';
+import { invalidate } from '../src/lib/queryClient';
 import { CATEGORY_COLORS, getCategoryStyle } from '../src/lib/helpers';
 import { useAccounts } from '../src/hooks/useAccounts';
 
@@ -73,7 +73,7 @@ export default function AddCategoryScreen() {
                     created_at: new Date().toISOString(),
                 });
             }
-            emitCategoriesChange();
+            invalidate.categories();
             router.back();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });

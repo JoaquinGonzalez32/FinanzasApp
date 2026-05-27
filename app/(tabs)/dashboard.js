@@ -34,7 +34,7 @@ import { StatusBadge, SkeletonLoader, Button, useToast, FadeIn, ScalePress, Anim
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useBudget } from '../../src/hooks/useBudget';
 import { useCategories } from '../../src/hooks/useCategories';
-import { emitBudgetChange } from '../../src/lib/events';
+import { invalidate } from '../../src/lib/queryClient';
 import * as budgetSvc from '../../src/services/budgetService';
 import {
     formatCurrency, getCategoryStyle, getCurrencySymbol, sumByType, MONTHS_ES,
@@ -431,7 +431,7 @@ export default function DashboardScreen() {
             }
             setIsDirty(false);
             setEditVisible(false);
-            emitBudgetChange();
+            invalidate.budget();
             showToast({ type: 'success', message: 'Planificacion guardada' });
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });

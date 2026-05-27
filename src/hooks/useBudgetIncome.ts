@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { Transaction } from "../types/database";
 import { getBudgetMonthIncome } from "../services/transactionsService";
-import { onTransactionsChange } from "../lib/events";
+import { qk } from "../lib/queryClient";
 
 /**
  * Fetches income transactions assigned to a specific budget month.
@@ -9,30 +10,24 @@ import { onTransactionsChange } from "../lib/events";
  * whose date falls within the month.
  */
 export function useBudgetIncome(month: string) {
-  const [income, setIncome] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const query = useQuery({
+    queryKey: qk.budgetIncome(month),
+    queryFn: async () => {
+      try {
+        return await getBudgetMonthIncome(month);
+      } catch {
+        return [] as Transaction[];
+      }
+    },
+  });
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getBudgetMonthIncome(month);
-      setIncome(data);
-    } catch {
-      // Silently fail — income will be 0
-    } finally {
-      setLoading(false);
-    }
-  }, [month]);
+  const refresh = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  useEffect(() => {
-    return onTransactionsChange(() => {
-      fetch();
-    });
-  }, [fetch]);
-
-  return { income, loading, refresh: fetch };
+  return {
+    income: query.data ?? [],
+    loading: query.isPending,
+    refresh,
+  };
 }

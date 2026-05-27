@@ -34,7 +34,8 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { SkeletonLoader, useToast, FadeIn, FrostBackground, EmptyState } from '../../components/ui';
 import { getYearTransactions, deleteTransaction } from '../../src/services/transactionsService';
 import { friendlyMessage } from '../../src/lib/friendlyError';
-import { onTransactionsChange, emitTransactionsChange } from '../../src/lib/events';
+import { useQuery } from '@tanstack/react-query';
+import { invalidate } from '../../src/lib/queryClient';
 import { formatCurrency, sumByType, MONTHS_ES, DAYS_ES, monthLabel, getCategoryStyle } from '../../src/lib/helpers';
 import { useAccountContext } from '../../src/context/AccountContext';
 import AccountSwitcher from '../../src/components/AccountSwitcher';
@@ -49,8 +50,6 @@ export default function MonthScreen() {
     const [year, setYear] = useState(currentYear);
     const [selectedMonth, setSelectedMonth] = useState(currentMonth);
     const [selectedDay, setSelectedDay] = useState(null);
-    const [yearTx, setYearTx] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [deleteTx, setDeleteTx] = useState(null);
     const [calendarVisible, setCalendarVisible] = useState(false);
     const { show: showToast, ToastComponent } = useToast();
@@ -63,20 +62,13 @@ export default function MonthScreen() {
         return m;
     }, [accounts]);
 
-    const fetchYear = useCallback(async () => {
-        setLoading(true);
-        try {
-            const data = await getYearTransactions(year);
-            setYearTx(data);
-        } catch (e) {
-            if (__DEV__) console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    }, [year]);
-
-    useEffect(() => { fetchYear(); }, [fetchYear]);
-    useEffect(() => onTransactionsChange(fetchYear), [fetchYear]);
+    const yearQuery = useQuery({
+        queryKey: ['transactions', 'year', year],
+        queryFn: () => getYearTransactions(year),
+    });
+    const yearTx = yearQuery.data ?? [];
+    const loading = yearQuery.isPending;
+    const fetchYear = useCallback(async () => { await yearQuery.refetch(); }, [yearQuery]);
 
     const monthTx = useMemo(() => {
         const mStr = String(selectedMonth).padStart(2, '0');
@@ -202,7 +194,7 @@ export default function MonthScreen() {
         setDeleteTx(null);
         try {
             await deleteTransaction(txToDelete.id);
-            emitTransactionsChange();
+            invalidate.transactions();
             showToast({ type: 'success', message: `"${txToDelete.category?.name ?? 'Transaccion'}" eliminada` });
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });

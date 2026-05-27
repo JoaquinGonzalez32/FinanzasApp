@@ -1,6 +1,5 @@
 import { supabase } from "../lib/supabase";
 import type { Transaction, TransactionInsert } from "../types/database";
-import { emitAccountsChange } from "../lib/events";
 
 function todayISO(): string {
   const d = new Date();
@@ -104,8 +103,6 @@ export async function createTransaction(
     .single();
   if (fetchErr) throw fetchErr;
 
-  const accountId = data.account_id ?? data.category?.account_id;
-  if (accountId) emitAccountsChange();
   return data;
 }
 
@@ -139,7 +136,6 @@ export async function deleteTransaction(id: string): Promise<void> {
     p_transaction_id: id,
   });
   if (error) throw error;
-  emitAccountsChange();
 }
 
 /**

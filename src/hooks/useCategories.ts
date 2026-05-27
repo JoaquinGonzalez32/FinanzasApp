@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { Category, TransactionType } from "../types/database";
 import * as svc from "../services/categoriesService";
-import { onCategoriesChange } from "../lib/events";
+import { qk } from "../lib/queryClient";
 
 interface UseCategoriesResult {
   categories: Category[];
@@ -11,32 +12,19 @@ interface UseCategoriesResult {
 }
 
 export function useCategories(type?: TransactionType): UseCategoriesResult {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: qk.categories(type),
+    queryFn: () => svc.getCategories(type),
+  });
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await svc.getCategories(type);
-      setCategories(data);
-    } catch (e: any) {
-      setError(e.message ?? "Error loading categories");
-    } finally {
-      setLoading(false);
-    }
-  }, [type]);
+  const refresh = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  useEffect(() => {
-    return onCategoriesChange(() => {
-      fetch();
-    });
-  }, [fetch]);
-
-  return { categories, loading, error, refresh: fetch };
+  return {
+    categories: query.data ?? [],
+    loading: query.isPending,
+    error: query.error ? (query.error as Error).message : null,
+    refresh,
+  };
 }
