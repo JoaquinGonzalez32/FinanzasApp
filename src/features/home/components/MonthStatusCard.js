@@ -13,22 +13,26 @@ const CARD_PEEK = 24;
 const CAROUSEL_CARD_WIDTH = SCREEN_WIDTH - CARD_H_PADDING * 2 - CARD_PEEK;
 
 function AnimatedCounter({ value, currency, size = 'large' }) {
-    const animValue = useRef(new RNAnimated.Value(0)).current;
-    const [display, setDisplay] = useState(0);
-
-    useEffect(() => {
-        animValue.setValue(0);
-        RNAnimated.timing(animValue, {
-            toValue: value,
-            duration: 800,
-            useNativeDriver: false,
-        }).start();
-    }, [value]);
+    const animValue = useRef(new RNAnimated.Value(value)).current;
+    const prevValueRef = useRef(value);
+    const [display, setDisplay] = useState(value);
 
     useEffect(() => {
         const id = animValue.addListener(({ value: v }) => setDisplay(Math.round(v)));
         return () => animValue.removeListener(id);
     }, []);
+
+    useEffect(() => {
+        // Skip animation when the value is unchanged (re-mount, re-render with
+        // same data) — show it immediately. Only animate real transitions.
+        if (value === prevValueRef.current) return;
+        RNAnimated.timing(animValue, {
+            toValue: value,
+            duration: 600,
+            useNativeDriver: false,
+        }).start();
+        prevValueRef.current = value;
+    }, [value]);
 
     return (
         <Text

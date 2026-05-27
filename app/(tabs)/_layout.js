@@ -61,7 +61,7 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="dashboard"
+                name="budget"
                 options={{
                     tabBarIcon: ({ color, focused }) => (
                         <TabIcon name="pie-chart" color={color} focused={focused} />

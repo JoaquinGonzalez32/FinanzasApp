@@ -342,7 +342,7 @@ export default function HomeScreen() {
                             monthTotalIncome={monthTotalIncome}
                             loading={loading}
                             refreshing={refreshing}
-                            onPlanPress={() => router.push({ pathname: '/(tabs)/dashboard' })}
+                            onPlanPress={() => router.push({ pathname: '/(tabs)/budget' })}
                             accounts={accounts}
                             onAccountPress={selectAccount}
                             accountCards={accountCards}

@@ -50,7 +50,7 @@ function RootNavigator() {
                         router.push({ pathname: '/add-transaction', params });
                         break;
                     case 'budget':
-                        router.replace('/(tabs)/dashboard');
+                        router.replace('/(tabs)/budget');
                         break;
                     case 'transactions':
                         router.replace('/(tabs)/month');
