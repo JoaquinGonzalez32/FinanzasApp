@@ -6,6 +6,7 @@ export { default as ProgressBar } from './ProgressBar';
 export { default as MetricCard } from './MetricCard';
 export { default as StatusBadge } from './StatusBadge';
 export { default as Toast, useToast } from './Toast';
+export { default as GlobalToast } from './GlobalToast';
 export { default as SkeletonLoader } from './SkeletonLoader';
 export { FadeIn, StaggerList, ScalePress, AnimatedProgressBar, PulseView } from './Animated';
 export { default as FrostBackground } from './FrostBackground';

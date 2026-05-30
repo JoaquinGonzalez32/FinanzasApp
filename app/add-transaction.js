@@ -2,13 +2,14 @@ import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform
 import { friendlyMessage } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useState, useMemo } from 'react';
-import { Button, SkeletonLoader, useToast } from '../components/ui';
+import { useState, useMemo, useRef } from 'react';
+import { Button, SkeletonLoader } from '../components/ui';
 import ConfirmModal from '../components/ConfirmModal';
 import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
 import { createTransaction, updateTransaction, deleteTransaction } from '../src/services/transactionsService';
 import { invalidate, optimisticTx } from '../src/lib/queryClient';
+import { toastBus } from '../src/lib/toastBus';
 import { haptics } from '../src/lib/haptics';
 import { toDateISO, MONTHS_ES, DAYS_ES, getCurrencySymbol, shiftMonth, monthLabel } from '../src/lib/helpers';
 import { useAccountContext } from '../src/context/AccountContext';
@@ -35,9 +36,8 @@ export default function AddTransactionScreen() {
     const [selectedCategory, setSelectedCategory] = useState(params.editCategoryId || params.category || null);
     const [selectedAccount, setSelectedAccount] = useState(defaultAccountId);
     const [note, setNote] = useState(params.editNote || '');
-    const [submitting, setSubmitting] = useState(false);
+    const inFlight = useRef(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const { show: showToast, ToastComponent } = useToast();
     const [selectedDate, setSelectedDate] = useState(initialDate);
     const [calendarExpanded, setCalendarExpanded] = useState(isEdit && initialDate !== todayStr);
 
@@ -109,60 +109,67 @@ export default function AddTransactionScreen() {
         ? `Hoy, ${selDay} de ${MONTHS_ES[selMonth - 1]}`
         : `${DAYS_ES[selectedDateObj.getDay()]}, ${selDay} de ${MONTHS_ES[selMonth - 1]}`;
 
-    const handleConfirm = async () => {
+    const handleConfirm = () => {
+        if (inFlight.current) return;
         const numAmount = parseFloat(amount.replace(',', '.'));
         if (!numAmount || numAmount <= 0) return;
-        setSubmitting(true);
-        try {
-            // budget_month: only store when income AND differs from date month
-            const bm = type === 'income' && effectiveBudgetMonth !== dateMonth
-                ? effectiveBudgetMonth
-                : null;
-            const payload = {
-                amount: numAmount,
-                type,
-                category_id: selectedCategory || null,
-                account_id: selectedAccount || null,
-                note: note.trim() || null,
-                date: selectedDate,
-                budget_month: bm,
-            };
-            // Both create and update return the full row (with category join).
-            // updateTransaction swaps the id (delete-old + create-new), so an
-            // edit must replace the old id; a create just inserts. Patching the
-            // cache with the returned row means the list shows it instantly on
-            // navigate — no skeleton/refetch flash on the destination screen.
-            const saved = isEdit
-                ? await updateTransaction(params.editId, payload)
-                : await createTransaction(payload);
-            if (isEdit) {
-                optimisticTx.replace(params.editId, saved);
-            } else {
-                optimisticTx.insert(saved);
-            }
-            invalidate.transactions();
-            router.back();
-        } catch (e) {
-            showToast({ type: 'error', message: friendlyMessage(e) });
-            setSubmitting(false);
-        }
+        inFlight.current = true;
+
+        // budget_month: only store when income AND differs from date month
+        const bm = type === 'income' && effectiveBudgetMonth !== dateMonth
+            ? effectiveBudgetMonth
+            : null;
+        const payload = {
+            amount: numAmount,
+            type,
+            category_id: selectedCategory || null,
+            account_id: selectedAccount || null,
+            note: note.trim() || null,
+            date: selectedDate,
+            budget_month: bm,
+        };
+
+        // Optimistic row so the list reflects the change the instant we navigate.
+        // updateTransaction swaps the id (delete-old + create-new), so an edit
+        // replaces the old row; a create just inserts.
+        const tempId = `optimistic-${Date.now()}`;
+        const category = categories.find((c) => c.id === selectedCategory) || undefined;
+        const tempTx = { id: tempId, user_id: '', created_at: new Date().toISOString(), category, ...payload };
+        const rollback = isEdit
+            ? optimisticTx.replace(params.editId, tempTx)
+            : optimisticTx.insert(tempTx);
+
+        router.back();
+
+        const op = isEdit
+            ? updateTransaction(params.editId, payload)
+            : createTransaction(payload);
+        op
+            .then((saved) => {
+                // Swap the temp row for the authoritative server row, then reconcile.
+                optimisticTx.replace(tempId, saved);
+                invalidate.transactions();
+            })
+            .catch((e) => {
+                rollback();
+                invalidate.transactions();
+                toastBus.show({ type: 'error', message: friendlyMessage(e) });
+            });
     };
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         setShowDeleteConfirm(false);
-        setSubmitting(true);
-        // Remove from cache up front so the row is already gone when we land
-        // back on the list; restore it if the network delete fails.
+        // Remove optimistically, navigate, delete in the background. The toastBus
+        // surfaces a failure even though this screen has already unmounted.
         const rollback = optimisticTx.remove(params.editId);
-        try {
-            await deleteTransaction(params.editId);
-            invalidate.transactions();
-            router.back();
-        } catch (e) {
-            rollback();
-            showToast({ type: 'error', message: friendlyMessage(e) });
-            setSubmitting(false);
-        }
+        router.back();
+        deleteTransaction(params.editId)
+            .then(() => invalidate.transactions())
+            .catch((e) => {
+                rollback();
+                invalidate.transactions();
+                toastBus.show({ type: 'error', message: friendlyMessage(e) });
+            });
     };
 
     return (
@@ -453,8 +460,7 @@ export default function AddTransactionScreen() {
                         size="lg"
                         icon="check-circle"
                         fullWidth
-                        loading={submitting}
-                        disabled={!amount || submitting}
+                        disabled={!amount}
                         onPress={handleConfirm}
                     >
                         {isEdit ? 'Guardar cambios' : `Confirmar ${type === 'expense' ? 'Gasto' : 'Ingreso'}`}
@@ -463,7 +469,6 @@ export default function AddTransactionScreen() {
                     {isEdit && (
                         <TouchableOpacity
                             onPress={() => setShowDeleteConfirm(true)}
-                            disabled={submitting}
                             className="flex-row items-center justify-center mt-4 py-3"
                         >
                             <MaterialIcons name="delete-outline" size={18} color="#ef4444" />
@@ -482,7 +487,6 @@ export default function AddTransactionScreen() {
                     onCancel={() => setShowDeleteConfirm(false)}
                 />
             )}
-            {ToastComponent}
         </KeyboardAvoidingView>
     );
 }

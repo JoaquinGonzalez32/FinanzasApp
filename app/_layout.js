@@ -18,6 +18,7 @@ import { AccountProvider } from '../src/context/AccountContext';
 import { useWidgetSync } from '../src/features/widgets/hooks/useWidgetSync';
 import { ThemeProvider } from '../src/theme';
 import ErrorBoundaryFallback from '../components/ui/ErrorBoundaryFallback';
+import GlobalToast from '../components/ui/GlobalToast';
 import { queryClient } from '../src/lib/queryClient';
 import { applySchedule, configureForegroundBehavior, getSettings } from '../src/features/notifications/notificationService';
 
@@ -243,6 +244,7 @@ export default function RootLayout() {
                     <AuthProvider>
                         <AccountProvider>
                             <RootNavigator />
+                            <GlobalToast />
                         </AccountProvider>
                     </AuthProvider>
                 </ThemeProvider>
