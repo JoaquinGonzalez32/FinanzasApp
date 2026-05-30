@@ -166,15 +166,24 @@ export interface DonutSlice {
   icon?: string;
 }
 
+export type RecurringFrequency = "monthly" | "weekly" | "biweekly" | "yearly";
+
 export interface RecurringTemplate {
   id: string;
   user_id: string;
   category_id: string;
   account_id: string | null;
-  /** Fixed monthly amount */
+  /** Fixed amount applied each occurrence */
   amount: number;
-  /** Day of month to apply (1–28) */
-  day_of_month: number;
+  frequency: RecurringFrequency;
+  /** monthly/yearly: day of month to apply (1–28). null for weekly/biweekly. */
+  day_of_month: number | null;
+  /** weekly/biweekly: 0=Sun … 6=Sat. null otherwise. */
+  day_of_week: number | null;
+  /** yearly: 1–12. null otherwise. */
+  month_of_year: number | null;
+  /** biweekly: reference date that fixes which 14-day cycle. null otherwise. */
+  anchor_date: string | null;
   is_active: boolean;
   created_at: string;
   category?: Category;
@@ -184,5 +193,9 @@ export interface RecurringTemplateInsert {
   category_id: string;
   account_id?: string | null;
   amount: number;
-  day_of_month: number;
+  frequency?: RecurringFrequency;
+  day_of_month?: number | null;
+  day_of_week?: number | null;
+  month_of_year?: number | null;
+  anchor_date?: string | null;
 }

@@ -12,6 +12,28 @@ import { useAccounts } from '../src/hooks/useAccounts';
 import { formatCurrency, getCategoryStyle, getCurrencySymbol } from '../src/lib/helpers';
 import { createRecurringTemplate, deleteRecurringTemplate } from '../src/services/recurringService';
 import { invalidate } from '../src/lib/queryClient';
+import { describeSchedule, monthlyEquivalent, FREQUENCY_LABELS } from '../src/lib/recurringSchedule';
+
+const FREQUENCIES = ['monthly', 'weekly', 'biweekly', 'yearly'];
+const WEEKDAYS = [
+    { value: 1, label: 'Lun' }, { value: 2, label: 'Mar' }, { value: 3, label: 'Mié' },
+    { value: 4, label: 'Jue' }, { value: 5, label: 'Vie' }, { value: 6, label: 'Sáb' },
+    { value: 0, label: 'Dom' },
+];
+const MONTHS = [
+    { value: 1, label: 'Ene' }, { value: 2, label: 'Feb' }, { value: 3, label: 'Mar' },
+    { value: 4, label: 'Abr' }, { value: 5, label: 'May' }, { value: 6, label: 'Jun' },
+    { value: 7, label: 'Jul' }, { value: 8, label: 'Ago' }, { value: 9, label: 'Sep' },
+    { value: 10, label: 'Oct' }, { value: 11, label: 'Nov' }, { value: 12, label: 'Dic' },
+];
+
+/** Anchor for a biweekly template = next date (>= today) on the chosen weekday. */
+function nextWeekdayISO(dow) {
+    const d = new Date();
+    const delta = (dow - d.getDay() + 7) % 7;
+    d.setDate(d.getDate() + delta);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export default function RecurringScreen() {
     const router = useRouter();
@@ -39,6 +61,9 @@ export default function RecurringScreen() {
     const [newAmount, setNewAmount] = useState('');
     const [newDay, setNewDay] = useState('1');
     const [newAccountId, setNewAccountId] = useState(null);
+    const [newFrequency, setNewFrequency] = useState('monthly');
+    const [newWeekday, setNewWeekday] = useState(1); // Mon
+    const [newMonth, setNewMonth] = useState(1); // Jan
 
     const accCurrencyMap = useMemo(() => {
         const m = {};
@@ -78,19 +103,36 @@ export default function RecurringScreen() {
         setNewAmount('');
         setNewDay('1');
         setNewAccountId(null);
+        setNewFrequency('monthly');
+        setNewWeekday(1);
+        setNewMonth(1);
     }, []);
 
     const handleSaveNew = useCallback(async () => {
         if (!newCategory) return;
         const amount = Number(newAmount) || 0;
         const day = Math.max(1, Math.min(28, Number(newDay) || 1));
+
+        // Build the frequency-specific payload. Columns not used by a given
+        // frequency stay null (enforced by the DB coherence CHECK in 014).
+        let schedule;
+        if (newFrequency === 'monthly') {
+            schedule = { frequency: 'monthly', day_of_month: day };
+        } else if (newFrequency === 'weekly') {
+            schedule = { frequency: 'weekly', day_of_week: newWeekday };
+        } else if (newFrequency === 'biweekly') {
+            schedule = { frequency: 'biweekly', day_of_week: newWeekday, anchor_date: nextWeekdayISO(newWeekday) };
+        } else {
+            schedule = { frequency: 'yearly', day_of_month: day, month_of_year: newMonth };
+        }
+
         setSaving(true);
         try {
             await createRecurringTemplate({
                 category_id: newCategory.id,
                 account_id: newAccountId || null,
                 amount,
-                day_of_month: day,
+                ...schedule,
             });
             invalidate.recurring();
             setAddVisible(false);
@@ -100,7 +142,14 @@ export default function RecurringScreen() {
         } finally {
             setSaving(false);
         }
-    }, [newCategory, newAmount, newDay, newAccountId, resetAddForm, showToast]);
+    }, [newCategory, newAmount, newDay, newAccountId, newFrequency, newWeekday, newMonth, resetAddForm, showToast]);
+
+    // Monthly-equivalent total across all templates of this type — lets the user
+    // gauge true monthly cost when mixing weekly/biweekly/yearly subscriptions.
+    const monthlyTotal = useMemo(
+        () => templates.reduce((sum, t) => sum + monthlyEquivalent(t), 0),
+        [templates],
+    );
 
     if (loading) {
         return (
@@ -131,6 +180,21 @@ export default function RecurringScreen() {
 
             <ScrollView className="flex-1 px-5 py-6" keyboardShouldPersistTaps="handled">
                 <View className="space-y-6 pb-24">
+
+                    {/* ── Monthly-equivalent total ── */}
+                    {templates.length > 0 && (
+                        <View className="bg-primary/10 dark:bg-primary/20 rounded-2xl p-4 border border-primary/20">
+                            <Text className="text-xs font-bold text-primary/80 uppercase tracking-wide">
+                                {isIncome ? 'Ingreso' : 'Gasto'} mensual estimado
+                            </Text>
+                            <Text className="text-2xl font-extrabold text-primary mt-1">
+                                {formatCurrency(monthlyTotal, 'UYU')}
+                            </Text>
+                            <Text className="text-[11px] text-stone-400 mt-0.5">
+                                Equivalente mensual de {templates.length} plantilla{templates.length === 1 ? '' : 's'}
+                            </Text>
+                        </View>
+                    )}
 
                     {/* ── All templates ── */}
                     <View className="space-y-3">
@@ -169,7 +233,7 @@ export default function RecurringScreen() {
                                                     {cat?.name ?? 'Sin categoría'}
                                                 </Text>
                                                 <Text className="text-xs text-stone-400">
-                                                    Día {item.day_of_month} · {formatCurrency(item.amount, accCurrencyMap[item.account_id])}
+                                                    {describeSchedule(item)} · {formatCurrency(item.amount, accCurrencyMap[item.account_id])}
                                                 </Text>
                                             </View>
                                             <TouchableOpacity
@@ -230,39 +294,110 @@ export default function RecurringScreen() {
                                     </TouchableOpacity>
                                 </View>
 
-                                {/* Amount + Day row */}
-                                <View className="flex-row gap-3">
-                                    <View className="flex-1">
-                                        <Text className="text-xs font-bold text-stone-500 uppercase mb-2">Monto</Text>
-                                        <View className="flex-row items-center bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md px-4 h-14">
-                                            <Text className="text-stone-400 font-bold mr-1">{getCurrencySymbol(accCurrencyMap[newAccountId])}</Text>
-                                            <TextInput
-                                                value={newAmount}
-                                                onChangeText={v => setNewAmount(v.replace(/[^0-9]/g, ''))}
-                                                keyboardType="numeric"
-                                                placeholder="0"
-                                                placeholderTextColor="#a8a29e"
-                                                maxLength={15}
-                                                className="flex-1 text-base font-bold text-stone-900 dark:text-white"
-                                            />
-                                        </View>
-                                    </View>
-                                    <View style={{ width: 120 }}>
-                                        <Text className="text-xs font-bold text-stone-500 uppercase mb-2">Día del mes</Text>
-                                        <View className="flex-row items-center justify-center bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md h-14 px-4">
-                                            <TextInput
-                                                value={newDay}
-                                                onChangeText={v => setNewDay(v.replace(/[^0-9]/g, ''))}
-                                                keyboardType="numeric"
-                                                placeholder="1"
-                                                placeholderTextColor="#a8a29e"
-                                                maxLength={2}
-                                                className="flex-1 text-base font-bold text-stone-900 dark:text-white text-center"
-                                            />
-                                        </View>
-                                        <Text className="text-[10px] text-stone-400 text-center mt-1">Entre 1 y 28</Text>
+                                {/* Frequency selector */}
+                                <View>
+                                    <Text className="text-xs font-bold text-stone-500 uppercase mb-2">Frecuencia</Text>
+                                    <View className="flex-row flex-wrap gap-2">
+                                        {FREQUENCIES.map(freq => {
+                                            const isActive = newFrequency === freq;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={freq}
+                                                    onPress={() => setNewFrequency(freq)}
+                                                    accessibilityRole="button"
+                                                    accessibilityState={{ selected: isActive }}
+                                                    className={`px-4 py-2.5 rounded-xl ${isActive ? 'bg-primary' : 'bg-frost dark:bg-input-dark'}`}
+                                                >
+                                                    <Text className={`text-sm font-bold ${isActive ? 'text-white' : 'text-stone-600 dark:text-slate-400'}`}>
+                                                        {FREQUENCY_LABELS[freq]}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
                                     </View>
                                 </View>
+
+                                {/* Amount */}
+                                <View>
+                                    <Text className="text-xs font-bold text-stone-500 uppercase mb-2">Monto</Text>
+                                    <View className="flex-row items-center bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md px-4 h-14">
+                                        <Text className="text-stone-400 font-bold mr-1">{getCurrencySymbol(accCurrencyMap[newAccountId])}</Text>
+                                        <TextInput
+                                            value={newAmount}
+                                            onChangeText={v => setNewAmount(v.replace(/[^0-9]/g, ''))}
+                                            keyboardType="numeric"
+                                            placeholder="0"
+                                            placeholderTextColor="#a8a29e"
+                                            maxLength={15}
+                                            className="flex-1 text-base font-bold text-stone-900 dark:text-white"
+                                        />
+                                    </View>
+                                </View>
+
+                                {/* Schedule — conditional on frequency */}
+                                {(newFrequency === 'monthly' || newFrequency === 'yearly') && (
+                                    <View className="flex-row gap-3">
+                                        {newFrequency === 'yearly' && (
+                                            <View className="flex-1">
+                                                <Text className="text-xs font-bold text-stone-500 uppercase mb-2">Mes</Text>
+                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                                                    {MONTHS.map(m => {
+                                                        const isActive = newMonth === m.value;
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={m.value}
+                                                                onPress={() => setNewMonth(m.value)}
+                                                                className={`mr-2 px-3 h-14 items-center justify-center rounded-xl ${isActive ? 'bg-primary' : 'bg-frost dark:bg-input-dark'}`}
+                                                            >
+                                                                <Text className={`text-sm font-bold ${isActive ? 'text-white' : 'text-stone-600 dark:text-slate-400'}`}>{m.label}</Text>
+                                                            </TouchableOpacity>
+                                                        );
+                                                    })}
+                                                </ScrollView>
+                                            </View>
+                                        )}
+                                        <View style={{ width: 120 }}>
+                                            <Text className="text-xs font-bold text-stone-500 uppercase mb-2">Día del mes</Text>
+                                            <View className="flex-row items-center justify-center bg-white/75 dark:bg-card-dark rounded-2xl border border-white/60 dark:border-slate-800 shadow-md h-14 px-4">
+                                                <TextInput
+                                                    value={newDay}
+                                                    onChangeText={v => setNewDay(v.replace(/[^0-9]/g, ''))}
+                                                    keyboardType="numeric"
+                                                    placeholder="1"
+                                                    placeholderTextColor="#a8a29e"
+                                                    maxLength={2}
+                                                    className="flex-1 text-base font-bold text-stone-900 dark:text-white text-center"
+                                                />
+                                            </View>
+                                            <Text className="text-[10px] text-stone-400 text-center mt-1">Entre 1 y 28</Text>
+                                        </View>
+                                    </View>
+                                )}
+
+                                {(newFrequency === 'weekly' || newFrequency === 'biweekly') && (
+                                    <View>
+                                        <Text className="text-xs font-bold text-stone-500 uppercase mb-2">Día de la semana</Text>
+                                        <View className="flex-row flex-wrap gap-2">
+                                            {WEEKDAYS.map(d => {
+                                                const isActive = newWeekday === d.value;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={d.value}
+                                                        onPress={() => setNewWeekday(d.value)}
+                                                        className={`px-3.5 py-2.5 rounded-xl ${isActive ? 'bg-primary' : 'bg-frost dark:bg-input-dark'}`}
+                                                    >
+                                                        <Text className={`text-sm font-bold ${isActive ? 'text-white' : 'text-stone-600 dark:text-slate-400'}`}>{d.label}</Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                        {newFrequency === 'biweekly' && (
+                                            <Text className="text-[10px] text-stone-400 mt-2">
+                                                Arranca el próximo {WEEKDAYS.find(d => d.value === newWeekday)?.label.toLowerCase()}, luego cada 2 semanas.
+                                            </Text>
+                                        )}
+                                    </View>
+                                )}
 
                                 {/* Account selector (optional) */}
                                 {accounts.length > 0 && (

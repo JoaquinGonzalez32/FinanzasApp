@@ -18,10 +18,11 @@ export default function UpcomingThisMonth({ pendingRecurring = [], criticalBudge
     const todayDay = new Date().getDate();
 
     const items = useMemo(() => {
-        // Recurring → upcoming
+        // Recurring → upcoming. nextDate (YYYY-MM-DD) is computed by useRecurring
+        // via getNextOccurrence, so this works for any frequency.
         const recurringItems = pendingRecurring.map((p) => {
-            const dom = p.recurring.day_of_month;
-            const daysUntil = Math.max(0, dom - todayDay);
+            const occDay = p.nextDate ? Number(p.nextDate.split('-')[2]) : todayDay;
+            const daysUntil = Math.max(0, occDay - todayDay);
             return {
                 kind: 'recurring',
                 key: `r-${p.recurring.id}`,
