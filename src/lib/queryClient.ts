@@ -1,6 +1,10 @@
 import { QueryClient } from '@tanstack/react-query';
 import type { Transaction } from '../types/database';
-import { insertTransactionSorted, removeTransactionById } from './optimisticTransactions';
+import {
+    insertTransactionSorted,
+    removeTransactionById,
+    incomeBelongsToBudgetMonth,
+} from './optimisticTransactions';
 
 export const queryClient = new QueryClient({
     defaultOptions: {
@@ -97,6 +101,16 @@ export const invalidate = {
  * call it from a mutation's error path. The accompanying refetch (via
  * `invalidate.transactions()`) reconciles the cache with the server afterwards.
  */
+function rollbackFrom(
+    snapshots: ReadonlyArray<readonly [readonly unknown[], Transaction[] | undefined]>,
+): () => void {
+    return () => {
+        for (const [key, data] of snapshots) {
+            queryClient.setQueryData(key, data);
+        }
+    };
+}
+
 function patchTransactionCaches(
     patch: (rows: Transaction[] | undefined) => Transaction[],
 ): () => void {
@@ -106,23 +120,62 @@ function patchTransactionCaches(
     for (const [key] of snapshots) {
         queryClient.setQueryData<Transaction[]>(key, (rows) => patch(rows));
     }
-    return () => {
-        for (const [key, data] of snapshots) {
-            queryClient.setQueryData(key, data);
-        }
-    };
+    return rollbackFrom(snapshots);
+}
+
+/**
+ * Patch the per-month budget-income caches (`['budgetIncome', M]`). An income
+ * counts toward exactly one budget month, so we drop the row from every month
+ * cache and re-insert it only into the month it belongs to — keeping the Home
+ * "Ingresos" total truthful the instant a mutation happens.
+ */
+function patchBudgetIncomeCaches(args: {
+    removeId?: string;
+    upsert?: Transaction;
+}): () => void {
+    const snapshots = queryClient.getQueriesData<Transaction[]>({
+        queryKey: qk.budgetIncomeRoot,
+    });
+    for (const [key] of snapshots) {
+        const month = key[1] as string;
+        queryClient.setQueryData<Transaction[]>(key, (rows) => {
+            let next = rows ?? [];
+            if (args.removeId) next = removeTransactionById(next, args.removeId);
+            if (args.upsert) {
+                next = removeTransactionById(next, args.upsert.id);
+                if (incomeBelongsToBudgetMonth(args.upsert, month)) {
+                    next = insertTransactionSorted(next, args.upsert);
+                }
+            }
+            return next;
+        });
+    }
+    return rollbackFrom(snapshots);
+}
+
+function combineRollbacks(...rollbacks: Array<() => void>): () => void {
+    return () => rollbacks.forEach((r) => r());
 }
 
 export const optimisticTx = {
-    /** Insert (or upsert) a transaction into every list cache. */
+    /** Insert (or upsert) a transaction into the list + budget-income caches. */
     insert: (tx: Transaction) =>
-        patchTransactionCaches((rows) => insertTransactionSorted(rows, tx)),
-    /** Remove a transaction from every list cache. */
+        combineRollbacks(
+            patchTransactionCaches((rows) => insertTransactionSorted(rows, tx)),
+            patchBudgetIncomeCaches({ upsert: tx }),
+        ),
+    /** Remove a transaction from the list + budget-income caches. */
     remove: (id: string) =>
-        patchTransactionCaches((rows) => removeTransactionById(rows, id)),
+        combineRollbacks(
+            patchTransactionCaches((rows) => removeTransactionById(rows, id)),
+            patchBudgetIncomeCaches({ removeId: id }),
+        ),
     /** Swap a temporary (optimistic) row for the authoritative server row. */
     replace: (tempId: string, real: Transaction) =>
-        patchTransactionCaches((rows) =>
-            insertTransactionSorted(removeTransactionById(rows, tempId), real),
+        combineRollbacks(
+            patchTransactionCaches((rows) =>
+                insertTransactionSorted(removeTransactionById(rows, tempId), real),
+            ),
+            patchBudgetIncomeCaches({ removeId: tempId, upsert: real }),
         ),
 };

@@ -43,3 +43,22 @@ export function removeTransactionById(
 ): Transaction[] {
   return (rows ?? []).filter((r) => r.id !== id);
 }
+
+/**
+ * The budget month (YYYY-MM) an income counts toward: its explicit
+ * `budget_month`, or — when unset — the month of its `date`. Mirrors the
+ * server rule in `getBudgetMonthIncome`.
+ */
+export function budgetMonthOf(
+  tx: Pick<Transaction, "budget_month" | "date">
+): string {
+  return tx.budget_month ?? tx.date.slice(0, 7);
+}
+
+/** Whether `tx` should appear in the budget-income list for `month`. */
+export function incomeBelongsToBudgetMonth(
+  tx: Pick<Transaction, "type" | "budget_month" | "date">,
+  month: string
+): boolean {
+  return tx.type === "income" && budgetMonthOf(tx) === month;
+}

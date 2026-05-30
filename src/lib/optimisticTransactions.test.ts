@@ -4,6 +4,8 @@ import type { Transaction } from "../types/database";
 import {
   insertTransactionSorted,
   removeTransactionById,
+  budgetMonthOf,
+  incomeBelongsToBudgetMonth,
 } from "./optimisticTransactions.ts";
 
 /** Build a transaction with sensible defaults; override per case. */
@@ -125,4 +127,46 @@ test("remove does not mutate the input array", () => {
   const existing = [tx({ id: "a" }), tx({ id: "b" })];
   removeTransactionById(existing, "a");
   assert.deepEqual(ids(existing), ["a", "b"]);
+});
+
+// ── budgetMonthOf ─────────────────────────────────────────────────────────────
+
+test("budgetMonthOf: explicit budget_month wins over the date month", () => {
+  assert.equal(
+    budgetMonthOf(tx({ date: "2026-05-15", budget_month: "2026-07" })),
+    "2026-07"
+  );
+});
+
+test("budgetMonthOf: null budget_month falls back to the date's month", () => {
+  assert.equal(
+    budgetMonthOf(tx({ date: "2026-05-15", budget_month: null })),
+    "2026-05"
+  );
+});
+
+test("budgetMonthOf: undefined budget_month falls back to the date's month", () => {
+  assert.equal(
+    budgetMonthOf(tx({ date: "2026-05-15", budget_month: undefined })),
+    "2026-05"
+  );
+});
+
+// ── incomeBelongsToBudgetMonth ────────────────────────────────────────────────
+
+test("income with matching date-month belongs to that budget month", () => {
+  const t = tx({ type: "income", date: "2026-05-15", budget_month: null });
+  assert.equal(incomeBelongsToBudgetMonth(t, "2026-05"), true);
+  assert.equal(incomeBelongsToBudgetMonth(t, "2026-06"), false);
+});
+
+test("income with explicit budget_month belongs to that month, not its date month", () => {
+  const t = tx({ type: "income", date: "2026-05-15", budget_month: "2026-07" });
+  assert.equal(incomeBelongsToBudgetMonth(t, "2026-07"), true);
+  assert.equal(incomeBelongsToBudgetMonth(t, "2026-05"), false);
+});
+
+test("expenses never belong to a budget-income month", () => {
+  const t = tx({ type: "expense", date: "2026-05-15", budget_month: null });
+  assert.equal(incomeBelongsToBudgetMonth(t, "2026-05"), false);
 });
