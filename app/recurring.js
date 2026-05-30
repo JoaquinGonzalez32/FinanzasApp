@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal } from 'react-native';
 
 import { friendlyMessage } from '../src/lib/friendlyError';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback, useMemo } from 'react';
 import { useToast } from '../components/ui';
+import ConfirmModal from '../components/ConfirmModal';
 import { useRecurring } from '../src/hooks/useRecurring';
 import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
@@ -54,6 +55,7 @@ export default function RecurringScreen() {
     const [saving, setSaving] = useState(false);
     const [addVisible, setAddVisible] = useState(false);
     const [catPickerVisible, setCatPickerVisible] = useState(false);
+    const [deleteId, setDeleteId] = useState(null);
     const { show: showToast, ToastComponent } = useToast();
 
     // Add form state
@@ -80,23 +82,19 @@ export default function RecurringScreen() {
         [typeCategories, assignedCatIds]
     );
 
-    const handleDelete = useCallback(async (id) => {
-        const confirmed = typeof window !== 'undefined' && window.confirm
-            ? window.confirm('¿Eliminar este registro recurrente?')
-            : await new Promise(resolve =>
-                Alert.alert('Eliminar plantilla', '¿Eliminar este registro recurrente?', [
-                    { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
-                    { text: 'Eliminar', onPress: () => resolve(true), style: 'destructive' },
-                ])
-            );
-        if (!confirmed) return;
+    const handleDelete = useCallback((id) => setDeleteId(id), []);
+
+    const confirmDelete = useCallback(async () => {
+        const id = deleteId;
+        setDeleteId(null);
+        if (!id) return;
         try {
             await deleteRecurringTemplate(id);
             invalidate.recurring();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });
         }
-    }, [showToast]);
+    }, [deleteId, showToast]);
 
     const resetAddForm = useCallback(() => {
         setNewCategory(null);
@@ -440,6 +438,20 @@ export default function RecurringScreen() {
             </Modal>
 
             {ToastComponent}
+
+            <ConfirmModal
+                visible={!!deleteId}
+                title="Eliminar plantilla"
+                message={(() => {
+                    const t = templates.find(x => x.id === deleteId);
+                    const name = t?.category?.name;
+                    return name
+                        ? `¿Eliminar el recurrente de "${name}"?`
+                        : '¿Eliminar este registro recurrente?';
+                })()}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteId(null)}
+            />
 
             {/* ── Category Picker Modal (stacked on top of add modal) ── */}
             <Modal visible={catPickerVisible} animationType="slide" transparent>

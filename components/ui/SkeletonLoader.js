@@ -1,10 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { View, Animated } from 'react-native';
+import { useReducedMotion } from '../../src/hooks/useReducedMotion';
 
 const SkeletonPulse = ({ className: extraClass = '', style }) => {
     const opacity = useRef(new Animated.Value(0.3)).current;
+    const reducedMotion = useReducedMotion();
 
     useEffect(() => {
+        if (reducedMotion) {
+            // Static mid-opacity placeholder — no shimmer loop.
+            opacity.setValue(0.5);
+            return;
+        }
         const animation = Animated.loop(
             Animated.sequence([
                 Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: true }),
@@ -13,7 +20,7 @@ const SkeletonPulse = ({ className: extraClass = '', style }) => {
         );
         animation.start();
         return () => animation.stop();
-    }, [opacity]);
+    }, [opacity, reducedMotion]);
 
     return (
         <Animated.View

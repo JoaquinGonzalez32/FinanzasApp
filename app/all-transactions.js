@@ -1,15 +1,13 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMemo, useState, useCallback } from 'react';
 import TransactionItem from '../components/TransactionItem';
-import ConfirmModal from '../components/ConfirmModal';
+import { SkeletonLoader, EmptyState, useToast } from '../components/ui';
 import { useTransactions } from '../src/hooks/useTransactions';
 import { useAccounts } from '../src/hooks/useAccounts';
-import { deleteTransaction } from '../src/services/transactionsService';
-import { friendlyMessage } from '../src/lib/friendlyError';
-import { invalidate } from '../src/lib/queryClient';
+import { useUndoableTransactionDelete } from '../src/hooks/useUndoableDelete';
 import { formatAmount, formatCurrency, getCategoryStyle, formatTime, sumByType, MONTHS_ES, DAYS_ES } from '../src/lib/helpers';
 
 function formatDateLabel(dateStr) {
@@ -25,7 +23,8 @@ export default function AllTransactionsScreen() {
     const { transactions: monthTx, loading, error, refresh } = useTransactions({ mode: 'month' });
     const { accounts } = useAccounts();
     const [refreshing, setRefreshing] = useState(false);
-    const [deleteTx, setDeleteTx] = useState(null);
+    const { show: showToast, ToastComponent } = useToast();
+    const { requestDelete } = useUndoableTransactionDelete(showToast);
 
     const accMap = useMemo(() => {
         const m = {};
@@ -69,20 +68,7 @@ export default function AllTransactionsScreen() {
         });
     };
 
-    const handleDeleteTx = (tx) => setDeleteTx(tx);
-
-    const confirmDelete = async () => {
-        if (!deleteTx) return;
-        try {
-            await deleteTransaction(deleteTx.id);
-            invalidate.transactions();
-        } catch (e) {
-            if (__DEV__) console.log('Delete error:', e.message);
-            // TODO: add toast here when useToast is available in this screen
-        } finally {
-            setDeleteTx(null);
-        }
-    };
+    const handleDeleteTx = (tx) => requestDelete(tx, tx.category?.name ?? 'Transacción');
 
     const renderTx = (tx) => {
         const style = getCategoryStyle(tx.category?.color);
@@ -132,7 +118,11 @@ export default function AllTransactionsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" colors={['#6366F1']} />
                 }
             >
-                {loading && !refreshing && <ActivityIndicator color="#6366F1" style={{ marginVertical: 20 }} />}
+                {loading && !refreshing && (
+                    <View className="gap-3 pt-2">
+                        <SkeletonLoader.List count={6} />
+                    </View>
+                )}
 
                 {error && (
                     <View className="bg-red-500/10 rounded-xl p-4 flex-row items-center gap-3 border border-red-200 dark:border-red-900/30 mb-4">
@@ -145,10 +135,13 @@ export default function AllTransactionsScreen() {
                 )}
 
                 {!loading && monthTx.length === 0 && !error && (
-                    <View className="items-center py-12">
-                        <MaterialIcons name="receipt-long" size={48} color="#a8a29e" />
-                        <Text className="text-stone-400 text-sm text-center mt-3">Sin movimientos este mes</Text>
-                    </View>
+                    <EmptyState
+                        icon="receipt-long"
+                        title="Sin movimientos"
+                        subtitle="Todavía no registraste movimientos este mes."
+                        actionLabel="Agregar movimiento"
+                        onAction={() => router.push({ pathname: '/add-transaction', params: { type: 'expense' } })}
+                    />
                 )}
 
                 {grouped.map(([date, txs]) => {
@@ -172,13 +165,7 @@ export default function AllTransactionsScreen() {
                     );
                 })}
             </ScrollView>
-            <ConfirmModal
-                visible={!!deleteTx}
-                title="Eliminar transacción"
-                message={deleteTx ? `¿Eliminar "${deleteTx.category?.name ?? 'Sin categoría'}" por ${formatCurrency(deleteTx.amount, txCurrency(deleteTx))}?` : ''}
-                onConfirm={confirmDelete}
-                onCancel={() => setDeleteTx(null)}
-            />
+            {ToastComponent}
         </SafeAreaView>
     );
 }

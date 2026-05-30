@@ -1,15 +1,23 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Animated, TouchableOpacity } from 'react-native';
+import { useReducedMotion } from '../../src/hooks/useReducedMotion';
 
 /**
  * FadeIn — fade + slide up on mount
  * Usage: <FadeIn delay={100}><View>...</View></FadeIn>
  */
 export const FadeIn = ({ children, delay = 0, duration = 400, translateY = 12, style }) => {
-    const opacity = useRef(new Animated.Value(0)).current;
-    const translate = useRef(new Animated.Value(translateY)).current;
+    const reducedMotion = useReducedMotion();
+    const opacity = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
+    const translate = useRef(new Animated.Value(reducedMotion ? 0 : translateY)).current;
 
     useEffect(() => {
+        if (reducedMotion) {
+            // Skip the entrance animation — render in final position immediately.
+            opacity.setValue(1);
+            translate.setValue(0);
+            return;
+        }
         const anim = Animated.parallel([
             Animated.timing(opacity, {
                 toValue: 1,
@@ -27,7 +35,7 @@ export const FadeIn = ({ children, delay = 0, duration = 400, translateY = 12, s
         ]);
         anim.start();
         return () => anim.stop();
-    }, []);
+    }, [reducedMotion]);
 
     return (
         <Animated.View style={[{ opacity, transform: [{ translateY: translate }] }, style]}>
@@ -95,16 +103,22 @@ export const ScalePress = ({ children, onPress, onLongPress, disabled, activeSca
  * AnimatedProgressBar — fills from 0 to target width on mount
  */
 export const AnimatedProgressBar = ({ percentage, color, height = 10, delay = 200, trackColor = '#e2e8f0' }) => {
+    const reducedMotion = useReducedMotion();
     const width = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+        const target = Math.min(percentage, 100);
+        if (reducedMotion) {
+            width.setValue(target);
+            return;
+        }
         Animated.timing(width, {
-            toValue: Math.min(percentage, 100),
+            toValue: target,
             duration: 800,
             delay,
             useNativeDriver: false,
         }).start();
-    }, [percentage]);
+    }, [percentage, reducedMotion]);
 
     const animWidth = width.interpolate({
         inputRange: [0, 100],
@@ -136,9 +150,14 @@ export const AnimatedProgressBar = ({ percentage, color, height = 10, delay = 20
  * PulseView — continuous subtle pulse (for FAB, badges, etc.)
  */
 export const PulseView = ({ children, style, minScale = 0.95, maxScale = 1.05, duration = 1500 }) => {
+    const reducedMotion = useReducedMotion();
     const scale = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
+        if (reducedMotion) {
+            scale.setValue(1);
+            return;
+        }
         const anim = Animated.loop(
             Animated.sequence([
                 Animated.timing(scale, { toValue: maxScale, duration: duration / 2, useNativeDriver: true }),
@@ -147,7 +166,7 @@ export const PulseView = ({ children, style, minScale = 0.95, maxScale = 1.05, d
         );
         anim.start();
         return () => anim.stop();
-    }, []);
+    }, [reducedMotion]);
 
     return (
         <Animated.View style={[{ transform: [{ scale }] }, style]}>

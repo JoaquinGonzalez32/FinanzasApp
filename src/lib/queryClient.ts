@@ -1,4 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
+import type { Transaction } from '../types/database';
+import { insertTransactionSorted, removeTransactionById } from './optimisticTransactions';
 
 export const queryClient = new QueryClient({
     defaultOptions: {
@@ -84,4 +86,43 @@ export const invalidate = {
     profile: () => {
         queryClient.invalidateQueries({ queryKey: qk.profile });
     },
+};
+
+/**
+ * Optimistic patches for the transaction list caches.
+ *
+ * Each cached transaction list (`['transactions', ...]`) is patched in place so
+ * the UI reflects a create/delete instantly, before the network round-trip.
+ * Every helper returns a `rollback()` that restores the exact prior snapshots —
+ * call it from a mutation's error path. The accompanying refetch (via
+ * `invalidate.transactions()`) reconciles the cache with the server afterwards.
+ */
+function patchTransactionCaches(
+    patch: (rows: Transaction[] | undefined) => Transaction[],
+): () => void {
+    const snapshots = queryClient.getQueriesData<Transaction[]>({
+        queryKey: qk.transactionsRoot,
+    });
+    for (const [key] of snapshots) {
+        queryClient.setQueryData<Transaction[]>(key, (rows) => patch(rows));
+    }
+    return () => {
+        for (const [key, data] of snapshots) {
+            queryClient.setQueryData(key, data);
+        }
+    };
+}
+
+export const optimisticTx = {
+    /** Insert (or upsert) a transaction into every list cache. */
+    insert: (tx: Transaction) =>
+        patchTransactionCaches((rows) => insertTransactionSorted(rows, tx)),
+    /** Remove a transaction from every list cache. */
+    remove: (id: string) =>
+        patchTransactionCaches((rows) => removeTransactionById(rows, id)),
+    /** Swap a temporary (optimistic) row for the authoritative server row. */
+    replace: (tempId: string, real: Transaction) =>
+        patchTransactionCaches((rows) =>
+            insertTransactionSorted(removeTransactionById(rows, tempId), real),
+        ),
 };

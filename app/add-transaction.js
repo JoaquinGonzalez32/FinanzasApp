@@ -8,7 +8,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
 import { createTransaction, updateTransaction, deleteTransaction } from '../src/services/transactionsService';
-import { invalidate } from '../src/lib/queryClient';
+import { invalidate, optimisticTx } from '../src/lib/queryClient';
 import { haptics } from '../src/lib/haptics';
 import { toDateISO, MONTHS_ES, DAYS_ES, getCurrencySymbol, shiftMonth, monthLabel } from '../src/lib/helpers';
 import { useAccountContext } from '../src/context/AccountContext';
@@ -127,16 +127,23 @@ export default function AddTransactionScreen() {
                 date: selectedDate,
                 budget_month: bm,
             };
+            // Both create and update return the full row (with category join).
+            // updateTransaction swaps the id (delete-old + create-new), so an
+            // edit must replace the old id; a create just inserts. Patching the
+            // cache with the returned row means the list shows it instantly on
+            // navigate — no skeleton/refetch flash on the destination screen.
+            const saved = isEdit
+                ? await updateTransaction(params.editId, payload)
+                : await createTransaction(payload);
             if (isEdit) {
-                await updateTransaction(params.editId, payload);
+                optimisticTx.replace(params.editId, saved);
             } else {
-                await createTransaction(payload);
+                optimisticTx.insert(saved);
             }
             invalidate.transactions();
             router.back();
         } catch (e) {
             showToast({ type: 'error', message: friendlyMessage(e) });
-        } finally {
             setSubmitting(false);
         }
     };
@@ -144,13 +151,16 @@ export default function AddTransactionScreen() {
     const handleDelete = async () => {
         setShowDeleteConfirm(false);
         setSubmitting(true);
+        // Remove from cache up front so the row is already gone when we land
+        // back on the list; restore it if the network delete fails.
+        const rollback = optimisticTx.remove(params.editId);
         try {
             await deleteTransaction(params.editId);
             invalidate.transactions();
             router.back();
         } catch (e) {
+            rollback();
             showToast({ type: 'error', message: friendlyMessage(e) });
-        } finally {
             setSubmitting(false);
         }
     };

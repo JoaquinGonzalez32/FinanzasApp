@@ -30,12 +30,10 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import TransactionRow from '../../components/ui/TransactionRow';
-import ConfirmModal from '../../components/ConfirmModal';
 import { SkeletonLoader, useToast, FadeIn, FrostBackground, EmptyState } from '../../components/ui';
-import { getYearTransactions, deleteTransaction } from '../../src/services/transactionsService';
-import { friendlyMessage } from '../../src/lib/friendlyError';
+import { getYearTransactions } from '../../src/services/transactionsService';
+import { useUndoableTransactionDelete } from '../../src/hooks/useUndoableDelete';
 import { useQuery } from '@tanstack/react-query';
-import { invalidate } from '../../src/lib/queryClient';
 import { formatCurrency, sumByType, MONTHS_ES, DAYS_ES, monthLabel, getCategoryStyle } from '../../src/lib/helpers';
 import { useAccountContext } from '../../src/context/AccountContext';
 import AccountSwitcher from '../../src/components/AccountSwitcher';
@@ -50,9 +48,9 @@ export default function MonthScreen() {
     const [year, setYear] = useState(currentYear);
     const [selectedMonth, setSelectedMonth] = useState(currentMonth);
     const [selectedDay, setSelectedDay] = useState(null);
-    const [deleteTx, setDeleteTx] = useState(null);
     const [calendarVisible, setCalendarVisible] = useState(false);
     const { show: showToast, ToastComponent } = useToast();
+    const { requestDelete } = useUndoableTransactionDelete(showToast);
 
     const { selectedAccountId, selectedAccount, accounts, isAllAccounts } = useAccountContext();
 
@@ -188,17 +186,8 @@ export default function MonthScreen() {
         return `→ ${monthLabel(tx.budget_month)}`;
     };
 
-    const confirmDelete = async () => {
-        if (!deleteTx) return;
-        const txToDelete = deleteTx;
-        setDeleteTx(null);
-        try {
-            await deleteTransaction(txToDelete.id);
-            invalidate.transactions();
-            showToast({ type: 'success', message: `"${txToDelete.category?.name ?? 'Transaccion'}" eliminada` });
-        } catch (e) {
-            showToast({ type: 'error', message: friendlyMessage(e) });
-        }
+    const handleDelete = (tx) => {
+        requestDelete(tx, tx.category?.name ?? 'Transacción');
     };
 
     const goMonth = (delta) => {
@@ -344,8 +333,17 @@ export default function MonthScreen() {
                     <EmptyState
                         icon="receipt-long"
                         title="Sin movimientos"
-                        subtitle={selectedDay ? 'No hay movimientos para este dia' : 'No hay movimientos este mes'}
-                        actionLabel={selectedDay ? undefined : undefined}
+                        subtitle={selectedDay ? 'No hay movimientos para este día' : 'No hay movimientos este mes'}
+                        actionLabel={selectedDay ? 'Ver todo el mes' : 'Agregar movimiento'}
+                        onAction={selectedDay
+                            ? () => setSelectedDay(null)
+                            : () => router.push({
+                                pathname: '/add-transaction',
+                                params: {
+                                    type: 'expense',
+                                    ...(selectedAccountId ? { account: selectedAccountId } : {}),
+                                },
+                            })}
                     />
                 )}
 
@@ -381,7 +379,7 @@ export default function MonthScreen() {
                                                 : selectedAccount?.currency
                                             }
                                             onPress={() => handleEditTx(tx)}
-                                            onLongPress={() => setDeleteTx(tx)}
+                                            onLongPress={() => handleDelete(tx)}
                                             accountName={isAllAccounts ? accMap[tx.account_id ?? tx.category?.account_id]?.name : undefined}
                                             accountColor={isAllAccounts ? accMap[tx.account_id ?? tx.category?.account_id]?.color : undefined}
                                             budgetMonthLabel={getBudgetMonthLabel(tx)}
@@ -469,13 +467,6 @@ export default function MonthScreen() {
                 </View>
             </Modal>
 
-            <ConfirmModal
-                visible={!!deleteTx}
-                title="Eliminar transaccion"
-                message={deleteTx ? `Eliminar "${deleteTx.category?.name ?? 'Sin categoria'}" por ${formatCurrency(deleteTx.amount, accMap[deleteTx.account_id ?? deleteTx.category?.account_id]?.currency)}?` : ''}
-                onConfirm={confirmDelete}
-                onCancel={() => setDeleteTx(null)}
-            />
             {ToastComponent}
         </FrostBackground>
     );
