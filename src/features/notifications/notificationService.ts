@@ -16,7 +16,7 @@ export interface NotificationSettings {
 }
 
 export const DEFAULT_SETTINGS: NotificationSettings = {
-    enabled: false,
+    enabled: true,
     hour: 21,
     minute: 0,
     tone: "normal",

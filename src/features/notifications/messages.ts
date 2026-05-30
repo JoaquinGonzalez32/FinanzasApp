@@ -8,7 +8,6 @@ const NORMAL_MESSAGES: { title: string; body: string }[] = [
     { title: "Che, ¿registraste hoy?", body: "Llevá la cuenta antes de que se te escape el mes 💸" },
     { title: "Bo, no te olvides", body: "Anotá los gastos del día, dale" },
     { title: "Recordatorio del día", body: "¿En qué gastaste hoy? Anotalo antes de irte a dormir" },
-    { title: "Hola crack", body: "Pasá un minuto y registrá los movimientos de hoy" },
     { title: "Recordatorio amistoso", body: "El presupuesto no se cuida solo, anotá lo del día" },
     { title: "¿Cómo viene el día?", body: "Si gastaste algo, dejalo registrado ahora" },
     { title: "Antes de cerrar el día", body: "Anotá los gastos para no perderte" },
