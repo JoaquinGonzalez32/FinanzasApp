@@ -43,7 +43,9 @@ function AnimatedCounter({ value, currency, size = 'large' }) {
                 letterSpacing: -0.5,
             }}
         >
-            {formatCurrency(display, currency)}
+            {/* formatCurrency does Math.abs, so re-apply the sign — an overspent
+                budget (negative "available") must read as -$X, never +$X. */}
+            {(display < 0 ? '-' : '') + formatCurrency(display, currency)}
         </Text>
     );
 }
@@ -111,30 +113,49 @@ function AccountCard({ data, width, onPress, onPlanPress, daysInMonth }) {
                         </Text>
                     </View>
 
-                    <Text className="text-xs font-semibold text-indigo-200 uppercase tracking-widest mb-2">
-                        Gastado este mes
-                    </Text>
-
-                    <AnimatedCounter value={expense} currency={currency} />
-
                     {budgetProgress ? (
-                        <View className="mt-4">
-                            <AnimatedProgressBar
-                                percentage={budgetProgress.percentage}
-                                color={budgetBarColor(budgetProgress.percentage)}
-                                height={6}
-                                delay={500}
-                                trackColor="rgba(255,255,255,0.15)"
-                            />
-                        </View>
+                        <>
+                            {/* R2/R4 — available as hero, pace promoted, spent demoted. */}
+                            <Text className="text-xs font-semibold text-indigo-200 uppercase tracking-widest mb-2">
+                                {budgetProgress.remaining < 0 ? 'Te excediste este mes' : 'Disponible este mes'}
+                            </Text>
+                            <AnimatedCounter value={budgetProgress.remaining} currency={currency} />
+                            {pace && (
+                                <View className="flex-row items-center gap-1.5 mt-2">
+                                    <MaterialIcons name={pace.icon} size={14} color={pace.color} />
+                                    <Text style={{ color: pace.color, fontSize: 13, fontWeight: '700' }}>{pace.text}</Text>
+                                    <Text className="text-xs text-white/60 font-medium">
+                                        · {formatCurrency(budgetProgress.dailyBudget, currency)}/dia · {budgetProgress.daysLeft} dia{budgetProgress.daysLeft !== 1 ? 's' : ''}
+                                    </Text>
+                                </View>
+                            )}
+                            <View className="mt-4">
+                                <AnimatedProgressBar
+                                    percentage={budgetProgress.percentage}
+                                    color={budgetBarColor(budgetProgress.percentage)}
+                                    height={6}
+                                    delay={500}
+                                    trackColor="rgba(255,255,255,0.15)"
+                                />
+                            </View>
+                            <Text className="text-xs text-white/70 font-medium mt-2">
+                                Gastado {formatCurrency(expense, currency)} de {formatCurrency(budgetProgress.planned, currency)}
+                            </Text>
+                        </>
                     ) : (
-                        <TouchableOpacity
-                            onPress={onPlanPress}
-                            className="flex-row items-center gap-2 mt-4 bg-white/15 self-start px-4 py-2.5 rounded-xl"
-                        >
-                            <MaterialIcons name="pie-chart-outline" size={16} color="rgba(255,255,255,0.9)" />
-                            <Text className="text-sm font-bold text-white/90">Planifica tu mes</Text>
-                        </TouchableOpacity>
+                        <>
+                            <Text className="text-xs font-semibold text-indigo-200 uppercase tracking-widest mb-2">
+                                Gastado este mes
+                            </Text>
+                            <AnimatedCounter value={expense} currency={currency} />
+                            <TouchableOpacity
+                                onPress={onPlanPress}
+                                className="flex-row items-center gap-2 mt-4 bg-white/15 self-start px-4 py-2.5 rounded-xl"
+                            >
+                                <MaterialIcons name="pie-chart-outline" size={16} color="rgba(255,255,255,0.9)" />
+                                <Text className="text-sm font-bold text-white/90">Planifica tu mes</Text>
+                            </TouchableOpacity>
+                        </>
                     )}
 
                     {/* Bottom chips */}
@@ -152,29 +173,11 @@ function AccountCard({ data, width, onPress, onPlanPress, daysInMonth }) {
                             </View>
                         )}
 
-                        {pace && (
-                            <View className="flex-row items-center gap-1 bg-white/12 px-2.5 py-1.5 rounded-lg">
-                                <MaterialIcons name={pace.icon} size={12} color={pace.color} />
-                                <Text style={{ color: pace.color, fontSize: 12, fontWeight: '700' }}>
-                                    {pace.text}
-                                </Text>
-                            </View>
-                        )}
-
                         {income > 0 && (
                             <View className="flex-row items-center gap-1 bg-white/12 px-2.5 py-1.5 rounded-lg">
                                 <MaterialIcons name="arrow-upward" size={10} color="#6EE7B7" />
                                 <Text style={{ fontSize: 12, fontWeight: '700', color: '#6EE7B7' }}>
                                     +{formatCurrency(income, currency)}
-                                </Text>
-                            </View>
-                        )}
-
-                        {budgetProgress && (
-                            <View className="flex-row items-center gap-1 bg-white/12 px-2.5 py-1.5 rounded-lg">
-                                <MaterialIcons name="event-note" size={10} color="rgba(255,255,255,0.6)" />
-                                <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>
-                                    {formatCurrency(budgetProgress.planned, currency)} plan
                                 </Text>
                             </View>
                         )}
@@ -307,41 +310,53 @@ const MonthStatusCard = ({
                 <View className="absolute -top-8 -right-8 w-32 h-32 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
                 <View className="absolute bottom-2 -left-6 w-20 h-20 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} />
 
-                <Text className="text-xs font-semibold text-indigo-200 uppercase tracking-widest mb-2">
-                    Gastado este mes
-                </Text>
-
                 {loading && !refreshing ? (
-                    <View className="h-14 w-48 bg-white/10 rounded-2xl" />
+                    <>
+                        <Text className="text-xs font-semibold text-indigo-200 uppercase tracking-widest mb-2">
+                            Disponible este mes
+                        </Text>
+                        <View className="h-14 w-48 bg-white/10 rounded-2xl" />
+                    </>
+                ) : budgetProgress ? (
+                    <>
+                        {/* R2 — the hero is the actionable number: what's left to spend,
+                            not the retrospective "spent". Mirrors YNAB/Copilot. */}
+                        <Text className="text-xs font-semibold text-indigo-200 uppercase tracking-widest mb-2">
+                            {budgetProgress.remaining < 0 ? 'Te excediste este mes' : 'Disponible este mes'}
+                        </Text>
+                        <AnimatedCounter value={budgetProgress.remaining} currency={primaryCurrency} />
+
+                        {/* R4 — pace promoted right under the hero, colored by health. */}
+                        {pace && (
+                            <View className="flex-row items-center gap-1.5 mt-2">
+                                <MaterialIcons name={pace.icon} size={14} color={pace.color} />
+                                <Text style={{ color: pace.color, fontSize: 13, fontWeight: '700' }}>{pace.text}</Text>
+                                <Text className="text-xs text-white/60 font-medium">
+                                    · {formatCurrency(budgetProgress.dailyBudget, primaryCurrency)}/dia · {budgetProgress.daysLeft} dia{budgetProgress.daysLeft !== 1 ? 's' : ''}
+                                </Text>
+                            </View>
+                        )}
+
+                        <View className="mt-4">
+                            <AnimatedProgressBar
+                                percentage={budgetProgress.percentage}
+                                color={progressColor}
+                                height={6}
+                                delay={500}
+                                trackColor="rgba(255,255,255,0.15)"
+                            />
+                        </View>
+                        <Text className="text-xs text-white/70 font-medium mt-2">
+                            Gastado {formatCurrency(monthTotalExpense, primaryCurrency)} de {formatCurrency(budgetProgress.planned, primaryCurrency)}
+                        </Text>
+                    </>
                 ) : (
                     <>
+                        {/* No budget yet → nothing "available" to show; keep spent as hero. */}
+                        <Text className="text-xs font-semibold text-indigo-200 uppercase tracking-widest mb-2">
+                            Gastado este mes
+                        </Text>
                         <AnimatedCounter value={monthTotalExpense} currency={primaryCurrency} />
-                        {budgetProgress && (
-                            <>
-                                <View className="mt-4">
-                                    <AnimatedProgressBar
-                                        percentage={budgetProgress.percentage}
-                                        color={progressColor}
-                                        height={6}
-                                        delay={500}
-                                        trackColor="rgba(255,255,255,0.15)"
-                                    />
-                                </View>
-                                <View className="flex-row items-center justify-between mt-3">
-                                    <View className="flex-row items-center gap-1.5">
-                                        <View className="h-5 w-5 rounded-full bg-white/15 items-center justify-center">
-                                            <MaterialIcons name="speed" size={11} color="rgba(255,255,255,0.9)" />
-                                        </View>
-                                        <Text className="text-sm font-bold text-white/90">
-                                            {formatCurrency(budgetProgress.dailyBudget, primaryCurrency)}/dia
-                                        </Text>
-                                    </View>
-                                    <Text className="text-xs text-white/60 font-medium">
-                                        {budgetProgress.daysLeft} dia{budgetProgress.daysLeft !== 1 ? 's' : ''} · {formatCurrency(budgetProgress.remaining, primaryCurrency)} disp.
-                                    </Text>
-                                </View>
-                            </>
-                        )}
                     </>
                 )}
 
@@ -371,29 +386,11 @@ const MonthStatusCard = ({
                         </View>
                     )}
 
-                    {pace && (
-                        <View className="flex-row items-center gap-1 bg-white/12 px-2.5 py-1.5 rounded-lg">
-                            <MaterialIcons name={pace.icon} size={12} color={pace.color} />
-                            <Text style={{ color: pace.color, fontSize: 12, fontWeight: '700' }}>
-                                {pace.text}
-                            </Text>
-                        </View>
-                    )}
-
                     {!loading && monthTotalIncome > 0 && (
                         <View className="flex-row items-center gap-1 bg-white/12 px-2.5 py-1.5 rounded-lg">
                             <MaterialIcons name="arrow-upward" size={10} color="#6EE7B7" />
                             <Text style={{ fontSize: 12, fontWeight: '700', color: '#6EE7B7' }}>
                                 +{formatCurrency(monthTotalIncome, primaryCurrency)}
-                            </Text>
-                        </View>
-                    )}
-
-                    {budgetProgress && (
-                        <View className="flex-row items-center gap-1 bg-white/12 px-2.5 py-1.5 rounded-lg">
-                            <MaterialIcons name="event-note" size={10} color="rgba(255,255,255,0.6)" />
-                            <Text className="text-xs font-bold text-white/60">
-                                {formatCurrency(budgetProgress.planned, primaryCurrency)} plan
                             </Text>
                         </View>
                     )}

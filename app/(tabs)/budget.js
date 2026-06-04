@@ -465,7 +465,7 @@ export default function DashboardScreen() {
                         onPress={() => {
                             if (isAllAccounts) {
                                 // In "Todas" mode, prompt user to select an account first
-                                showToast({ type: 'info', message: 'Selecciona una cuenta para editar su presupuesto' });
+                                showToast({ type: 'info', message: 'Elegí una cuenta en el selector de arriba para editar su presupuesto' });
                             } else {
                                 setEditVisible(true);
                             }
@@ -513,7 +513,7 @@ export default function DashboardScreen() {
                         <FadeIn delay={100}>
                             <ScalePress onPress={() => {
                                 if (isAllAccounts) {
-                                    showToast({ type: 'info', message: 'Selecciona una cuenta para configurar su presupuesto' });
+                                    showToast({ type: 'info', message: 'Elegí una cuenta en el selector de arriba para configurar su presupuesto' });
                                 } else {
                                     setEditVisible(true);
                                 }
@@ -522,7 +522,7 @@ export default function DashboardScreen() {
                                     icon="pie-chart-outline"
                                     title="Sin presupuesto"
                                     subtitle={isAllAccounts
-                                        ? 'Selecciona una cuenta para configurar su presupuesto'
+                                        ? 'Elegí una cuenta en el selector de arriba para configurar su presupuesto'
                                         : 'Define cuanto queres gastar en cada categoria este mes'
                                     }
                                     actionLabel={isAllAccounts ? undefined : 'Configurar presupuesto'}

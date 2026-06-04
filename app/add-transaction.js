@@ -7,6 +7,7 @@ import { Button, SkeletonLoader } from '../components/ui';
 import ConfirmModal from '../components/ConfirmModal';
 import { useCategories } from '../src/hooks/useCategories';
 import { useAccounts } from '../src/hooks/useAccounts';
+import { useTransactions } from '../src/hooks/useTransactions';
 import { createTransaction, updateTransaction, deleteTransaction } from '../src/services/transactionsService';
 import { invalidate, optimisticTx } from '../src/lib/queryClient';
 import { toastBus } from '../src/lib/toastBus';
@@ -51,6 +52,26 @@ export default function AddTransactionScreen() {
 
     const { categories, loading: loadingCats } = useCategories(type);
     const { accounts } = useAccounts();
+
+    // R5 — surface frequently-used categories first. Ranks the (type-filtered)
+    // categories by how often they appear in this month's transactions, so the
+    // 80%-case category lands in the first visible row without scrolling.
+    // Cached query: reuses the home/budget month data, no extra fetch.
+    const { transactions: recentTx } = useTransactions({ mode: 'month' });
+    const orderedCategories = useMemo(() => {
+        if (categories.length === 0) return categories;
+        const freq = {};
+        for (const t of recentTx) {
+            if (t.category_id) freq[t.category_id] = (freq[t.category_id] || 0) + 1;
+        }
+        return [...categories].sort((a, b) => (freq[b.id] || 0) - (freq[a.id] || 0));
+    }, [categories, recentTx]);
+
+    // R1 — the confirm button must reflect real monetary validity, not just a
+    // non-empty string. Prevents the "looks enabled, does nothing" dead tap.
+    const numAmount = parseFloat((amount || '').replace(',', '.'));
+    const amountValid = Number.isFinite(numAmount) && numAmount > 0;
+    const amountInvalid = amount.trim().length > 0 && !amountValid;
 
     // Budget month picker: current date month ± 2
     const dateMonth = selectedDate.substring(0, 7);
@@ -111,9 +132,12 @@ export default function AddTransactionScreen() {
 
     const handleConfirm = () => {
         if (inFlight.current) return;
-        const numAmount = parseFloat(amount.replace(',', '.'));
-        if (!numAmount || numAmount <= 0) return;
+        if (!amountValid) return;
         inFlight.current = true;
+        // R6 — acknowledge the manual effort. The mutation is optimistic and the
+        // screen unmounts immediately, so this success haptic is the only feedback
+        // that the save "took" before the home counter re-animates.
+        haptics.success();
 
         // budget_month: only store when income AND differs from date month
         const bm = type === 'income' && effectiveBudgetMonth !== dateMonth
@@ -153,6 +177,7 @@ export default function AddTransactionScreen() {
             .catch((e) => {
                 rollback();
                 invalidate.transactions();
+                haptics.error();
                 toastBus.show({ type: 'error', message: friendlyMessage(e) });
             });
     };
@@ -163,11 +188,13 @@ export default function AddTransactionScreen() {
         // surfaces a failure even though this screen has already unmounted.
         const rollback = optimisticTx.remove(params.editId);
         router.back();
+        haptics.success();
         deleteTransaction(params.editId)
             .then(() => invalidate.transactions())
             .catch((e) => {
                 rollback();
                 invalidate.transactions();
+                haptics.error();
                 toastBus.show({ type: 'error', message: friendlyMessage(e) });
             });
     };
@@ -204,6 +231,11 @@ export default function AddTransactionScreen() {
                                 maxLength={15}
                             />
                         </View>
+                        {amountInvalid && (
+                            <Text className="text-red-500 text-xs font-medium mt-2">
+                                Ingresá un monto mayor a 0
+                            </Text>
+                        )}
                     </View>
                 </View>
 
@@ -244,7 +276,7 @@ export default function AddTransactionScreen() {
                         </View>
                     )}
                     <View className="flex-row flex-wrap justify-between">
-                        {categories.map((cat) => {
+                        {orderedCategories.map((cat) => {
                             const isActive = selectedCategory === cat.id;
                             return (
                                 <View key={cat.id} style={{ width: '22%', alignItems: 'center', gap: 8, marginBottom: 16 }}>
@@ -269,9 +301,17 @@ export default function AddTransactionScreen() {
                             );
                         })}
                         {!loadingCats && categories.length === 0 && (
-                            <Text className="text-slate-400 text-sm text-center py-2 w-full">
-                                Sin categorias. Crealas en Gestion.
-                            </Text>
+                            <TouchableOpacity
+                                onPress={() => router.push('/add-category')}
+                                className="w-full flex-row items-center justify-center gap-2 py-4 rounded-xl bg-primary-faint dark:bg-primary/10"
+                                accessibilityRole="button"
+                                accessibilityLabel="Crear una categoria"
+                            >
+                                <MaterialIcons name="add-circle-outline" size={18} color="#6366F1" />
+                                <Text className="text-primary text-sm font-bold">
+                                    Crear tu primera categoria
+                                </Text>
+                            </TouchableOpacity>
                         )}
                     </View>
                 </View>
@@ -460,7 +500,7 @@ export default function AddTransactionScreen() {
                         size="lg"
                         icon="check-circle"
                         fullWidth
-                        disabled={!amount}
+                        disabled={!amountValid}
                         onPress={handleConfirm}
                     >
                         {isEdit ? 'Guardar cambios' : `Confirmar ${type === 'expense' ? 'Gasto' : 'Ingreso'}`}

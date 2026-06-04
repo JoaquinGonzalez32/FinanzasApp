@@ -8,11 +8,13 @@ import { View, Text, ScrollView, Image, TouchableOpacity, RefreshControl } from 
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, useState, useCallback } from 'react';
-import { FadeIn, ActionButton, FrostBackground } from '../../components/ui';
+import { FadeIn, ActionButton, FrostBackground, EmptyState } from '../../components/ui';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useProfile } from '../../src/hooks/useProfile';
 import { useBudget } from '../../src/hooks/useBudget';
-import { sumByType, getCurrentMonth, getAssignedTotal, getCategoryAssignments } from '../../src/lib/helpers';
+import { sumByType, getCurrentMonth, getAssignedTotal, getCategoryAssignments, formatCurrency } from '../../src/lib/helpers';
+import { useFxRates } from '../../src/hooks/useFxRates';
+import FxRatesSheet from '../../src/features/home/components/FxRatesSheet';
 import { useAutoApplyRecurring } from '../../src/hooks/usePendingRecurringCount';
 import { useRecurring } from '../../src/hooks/useRecurring';
 import { useAccountContext } from '../../src/context/AccountContext';
@@ -176,6 +178,41 @@ export default function HomeScreen() {
         return alerts.sort((a, b) => b.pct - a.pct).slice(0, 3);
     }, [filteredBudgetItems, monthTx, accMap, isAllAccounts]);
 
+    // R7 (lite) — aggregate anchor for "Todas" mode: net (income − expense) per
+    // currency, plus account/currency counts. No FX conversion to a base currency
+    // yet (that needs a stored base + editable rates — see follow-up); per-currency
+    // subtotals already kill the "flat dump" feeling without inventing exchange rates.
+    const currencyNets = useMemo(() => {
+        if (!isAllAccounts) return null;
+        const curs = new Set([...Object.keys(expenseByCurrency), ...Object.keys(incomeByCurrency)]);
+        return Array.from(curs)
+            .map(cur => ({ currency: cur, net: (incomeByCurrency[cur] || 0) - (expenseByCurrency[cur] || 0) }))
+            .sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+    }, [isAllAccounts, expenseByCurrency, incomeByCurrency]);
+
+    // R7 (full) — convert the per-currency nets into one base-currency total using
+    // the user's manual rates. `missing` lists currencies without a rate yet so we
+    // prompt instead of showing a wrong number.
+    const { baseCurrency, rates: fxRates, setRate, convertToBase } = useFxRates();
+    const [fxSheetOpen, setFxSheetOpen] = useState(false);
+
+    const foreignCurrencies = useMemo(
+        () => (currencyNets ? currencyNets.map(r => r.currency).filter(c => c !== baseCurrency) : []),
+        [currencyNets, baseCurrency],
+    );
+
+    const baseConversion = useMemo(() => {
+        if (!currencyNets || foreignCurrencies.length === 0) return null;
+        let total = 0;
+        const missing = [];
+        for (const r of currencyNets) {
+            const c = convertToBase(r.net, r.currency);
+            if (c === null) missing.push(r.currency);
+            else total += c;
+        }
+        return { total, missing };
+    }, [currencyNets, foreignCurrencies, convertToBase]);
+
     // Savings rate
     const savingsRate = useMemo(() => {
         if (monthTotalIncome <= 0) return null;
@@ -237,6 +274,80 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                 </View>
 
+                {accounts.length === 0 && !loading ? (
+                    /* R8 — blank-slate: a first-run user has no accounts. Guide the one
+                       step that unlocks everything else, instead of empty zero-cards. */
+                    <FadeIn delay={100}>
+                        <View className="px-5 pt-6">
+                            <EmptyState
+                                icon="account-balance-wallet"
+                                title="Empezá por tu primera cuenta"
+                                subtitle="Creá una cuenta (efectivo, banco o tarjeta) para registrar tus ingresos y gastos y ver tu mes de un vistazo."
+                                actionLabel="Crear mi primera cuenta"
+                                onAction={() => router.push('/add-account')}
+                            />
+                        </View>
+                    </FadeIn>
+                ) : (
+                  <>
+                {/* ============ AGGREGATE STRIP ("Todas" with 2+ accounts) ============ */}
+                {isAllAccounts && accountCards?.length > 1 && currencyNets?.length > 0 && (
+                    <FadeIn delay={50}>
+                        <View className="px-5 pb-3">
+                            <View className="flex-row items-center justify-between mb-2">
+                                <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                    Neto del mes
+                                </Text>
+                                <Text className="text-xs text-slate-400 font-medium">
+                                    {accountCards.length} cuentas · {currencyNets.length} moneda{currencyNets.length !== 1 ? 's' : ''}
+                                </Text>
+                            </View>
+                            <View className="flex-row flex-wrap gap-2">
+                                {currencyNets.map(r => (
+                                    <View
+                                        key={r.currency}
+                                        className="flex-row items-center gap-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl"
+                                    >
+                                        <Text className="text-xs font-bold text-slate-400">{r.currency}</Text>
+                                        <Text style={{ color: r.net >= 0 ? '#10b981' : '#ef4444' }} className="text-sm font-extrabold">
+                                            {r.net >= 0 ? '+' : '-'}{formatCurrency(Math.abs(r.net), r.currency)}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+
+                            {/* Base-currency total (or prompt to set rates) */}
+                            {baseConversion && (
+                                baseConversion.missing.length > 0 ? (
+                                    <TouchableOpacity
+                                        onPress={() => setFxSheetOpen(true)}
+                                        className="flex-row items-center gap-2 mt-2.5 bg-primary-faint dark:bg-primary/10 px-3 py-2.5 rounded-xl"
+                                        accessibilityRole="button"
+                                    >
+                                        <MaterialIcons name="sync-alt" size={16} color="#6366F1" />
+                                        <Text className="text-xs font-bold text-primary flex-1">
+                                            Definí el tipo de cambio para ver tu neto en {baseCurrency}
+                                        </Text>
+                                        <MaterialIcons name="chevron-right" size={18} color="#6366F1" />
+                                    </TouchableOpacity>
+                                ) : (
+                                    <TouchableOpacity
+                                        onPress={() => setFxSheetOpen(true)}
+                                        className="flex-row items-center justify-between mt-2.5 px-1"
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Editar tipos de cambio"
+                                    >
+                                        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                                            ≈ {baseConversion.total < 0 ? '-' : ''}{formatCurrency(baseConversion.total, baseCurrency)} en {baseCurrency}
+                                        </Text>
+                                        <Text className="text-xs font-bold text-primary">Editar TC</Text>
+                                    </TouchableOpacity>
+                                )
+                            )}
+                        </View>
+                    </FadeIn>
+                )}
+
                 {/* ============ MONTH STATUS CARD ============ */}
                 <FadeIn delay={100}>
                     <View style={{ paddingBottom: 16, paddingHorizontal: isAllAccounts && accountCards?.length > 1 ? 0 : 20 }}>
@@ -265,6 +376,8 @@ export default function HomeScreen() {
                     pendingRecurring={pendingRecurring}
                     criticalBudgets={categoryAlerts}
                 />
+                  </>
+                )}
 
                 {/* ============ ERROR STATE ============ */}
                 {error && (
@@ -279,6 +392,16 @@ export default function HomeScreen() {
                     </View>
                 )}
             </ScrollView>
+
+            {/* FX rate editor (R7) */}
+            <FxRatesSheet
+                visible={fxSheetOpen}
+                onClose={() => setFxSheetOpen(false)}
+                baseCurrency={baseCurrency}
+                currencies={foreignCurrencies}
+                rates={fxRates}
+                setRate={setRate}
+            />
 
             {/* FAB */}
             <ActionButton
