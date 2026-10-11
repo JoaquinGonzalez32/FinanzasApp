@@ -3,9 +3,6 @@
     "allow": [
       "Bash(dir /s \"C:\\\\Users\\\\joaqu\\\\OneDrive\\\\Escritorio\\\\FinanzaApp\")",
       "Bash(npm install:*)",
-      "Bash(node -e \"\nconst url = ''https://cwefayzuzyjdfnkuhicu.supabase.co'';\nconst key = ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3ZWZheXp1enlqZGZua3VoaWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0MDI4MjUsImV4cCI6MjA4NTk3ODgyNX0.EFa0a6Jpr97B6HO5MSVSeCCLBV8TBxM03o3HCbu0x-g'';\nfetch\\(url + ''/rest/v1/categories?limit=1'', {\n  headers: { ''apikey'': key, ''Authorization'': ''Bearer '' + key }\n}\\).then\\(r => r.text\\(\\)\\).then\\(t => console.log\\(''categories:'', t.substring\\(0,200\\)\\)\\)\n.catch\\(e => console.log\\(''err:'', e.message\\)\\);\n\")",
-      "Bash(node -e \"\nconst url = ''https://cwefayzuzyjdfnkuhicu.supabase.co'';\nconst key = ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3ZWZheXp1enlqZGZua3VoaWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0MDI4MjUsImV4cCI6MjA4NTk3ODgyNX0.EFa0a6Jpr97B6HO5MSVSeCCLBV8TBxM03o3HCbu0x-g'';\nconst headers = { ''apikey'': key, ''Authorization'': ''Bearer '' + key };\n\nPromise.all\\([\n  fetch\\(url + ''/rest/v1/categories?limit=1'', { headers }\\).then\\(r => r.text\\(\\).then\\(t => \\({ status: r.status, body: t }\\)\\)\\),\n  fetch\\(url + ''/rest/v1/transactions?limit=1'', { headers }\\).then\\(r => r.text\\(\\).then\\(t => \\({ status: r.status, body: t }\\)\\)\\),\n]\\).then\\(\\([cats, txs]\\) => {\n  console.log\\(''categories:'', cats.status, cats.body.substring\\(0, 200\\)\\);\n  console.log\\(''transactions:'', txs.status, txs.body.substring\\(0, 200\\)\\);\n}\\);\n\")",
-      "Bash(node -e \"\nconst url = ''https://cwefayzuzyjdfnkuhicu.supabase.co'';\nconst key = ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3ZWZheXp1enlqZGZua3VoaWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0MDI4MjUsImV4cCI6MjA4NTk3ODgyNX0.EFa0a6Jpr97B6HO5MSVSeCCLBV8TBxM03o3HCbu0x-g'';\nconst headers = { \n  ''apikey'': key, \n  ''Authorization'': ''Bearer '' + key,\n  ''Content-Type'': ''application/json'',\n  ''Prefer'': ''return=representation''\n};\n\n// Try inserting without auth to see if RLS blocks it\nfetch\\(url + ''/rest/v1/categories'', { \n  method: ''POST'', \n  headers,\n  body: JSON.stringify\\({ name: ''test'', icon: ''test'', color: ''orange'', type: ''expense'', sort_order: 0 }\\)\n}\\).then\\(r => r.text\\(\\).then\\(t => console.log\\(''insert test:'', r.status, t\\)\\)\\);\n\")",
       "Bash(ls:*)",
       "Bash(npx tsc:*)",
       "Bash(npx expo export:*)",
@@ -21,14 +18,7 @@
       "Bash(cmdkey.exe /list:*)",
       "Bash(powershell.exe -Command \"cmdkey /list\")",
       "Bash(powershell.exe -Command \":*)",
-      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d '{\"\"query\"\": \"\"UPDATE budget_items SET month = to_char\\(now\\(\\), ''''YYYY-MM''''\\) WHERE month IS NULL;\"\"}')",
-      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d '{\"\"query\"\": \"\"ALTER TABLE budget_items ALTER COLUMN month SET NOT NULL;\"\"}')",
-      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d '{\"\"query\"\": \"\"CREATE TABLE account_goals \\(id uuid DEFAULT gen_random_uuid\\(\\) PRIMARY KEY, user_id uuid REFERENCES auth.users\\(id\\) ON DELETE CASCADE NOT NULL DEFAULT auth.uid\\(\\), account_id uuid REFERENCES accounts\\(id\\) ON DELETE CASCADE NOT NULL, goal_type text NOT NULL CHECK \\(goal_type IN \\(''''balance'''', ''''category''''\\)\\), category_id uuid REFERENCES categories\\(id\\) ON DELETE CASCADE, target_amount numeric NOT NULL DEFAULT 0, target_date date, created_at timestamptz DEFAULT now\\(\\)\\);\"\"}')",
-      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d '{\"\"query\"\": \"\"ALTER TABLE account_goals ADD CONSTRAINT category_goal_needs_category CHECK \\(goal_type != ''''category'''' OR category_id IS NOT NULL\\);\"\"}')",
-      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" --data-raw '{\"\"query\"\": \"\"ALTER TABLE account_goals ADD CONSTRAINT category_goal_needs_category CHECK \\(goal_type != '\"''\"'category'\"''\"' OR category_id IS NOT NULL\\);\"\"}')",
       "Bash(printf '{\"\"query\"\": \"\"ALTER TABLE account_goals ADD CONSTRAINT category_goal_needs_category CHECK \\(goal_type != %ccategory%c OR category_id IS NOT NULL\\);\"\"}' \"''\" \"''\")",
-      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d @-)",
-      "Bash(curl -s -X POST \"https://api.supabase.com/v1/projects/cwefayzuzyjdfnkuhicu/database/query\" -H \"Authorization: Bearer sbp_4676ca27b1b681f14f58efb982b4ae35a34fc185\" -H \"Content-Type: application/json\" -d @\"C:/Users/joaqu/OneDrive/Escritorio/FinanzaApp/tmp_sql.json\")",
       "Bash(tree:*)",
       "Bash(timeout 15 npx expo start:*)",
       "Bash(netstat:*)",
@@ -47,5 +37,38 @@
       "Bash(npx:*)",
       "Bash(node:*)"
     ]
-  }
+  },
+  "autoMemoryDirectory": "C:/dev/jarvis/memorias/finanza-app",
+  "enabledPlugins": {
+    "jarvis@joaco": true,
+    "spec@joaco": true,
+    "dev@joaco": true,
+    "design@joaco": true,
+    "audit@joaco": true,
+    "web@joaco": true,
+    "mobile@joaco": true,
+    "baffe@joaco": false,
+    "research@joaco": false,
+    "superpowers@claude-plugins-official": true,
+    "explanatory-output-style@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "supabase@claude-plugins-official": true,
+    "github@claude-plugins-official": false,
+    "ralph-loop@claude-plugins-official": false
+  },
+  "deniedMcpServers": [
+    {
+      "serverName": "higgsfield"
+    },
+    {
+      "serverName": "claude.ai Canva"
+    },
+    {
+      "serverName": "claude.ai Slack"
+    },
+    {
+      "serverName": "claude.ai HyperFrames by HeyGen"
+    }
+  ]
 }
