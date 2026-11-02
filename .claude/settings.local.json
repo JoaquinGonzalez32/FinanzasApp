@@ -38,7 +38,7 @@
       "Bash(node:*)"
     ]
   },
-  "autoMemoryDirectory": "C:/dev/jarvis/memorias/finanza-app",
+  "autoMemoryDirectory": "C:/dev/jarvis/vault/memorias/finanza-app",
   "enabledPlugins": {
     "jarvis@joaco": true,
     "spec@joaco": true,
